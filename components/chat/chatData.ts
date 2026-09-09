@@ -6382,32 +6382,33 @@ async function showMeloWebDesktopNotification(
         : copy.newNotification
     );
 
-  const notificationOptions:
-    NotificationOptions = {
-      body,
+  const notificationOptions = {
+  body,
 
-      icon:
-        options.avatarUrl ||
-        "/favicon.ico",
+  icon:
+    options.avatarUrl ||
+    "/favicon.ico",
 
-      badge:
-        "/favicon.ico",
+  badge:
+    "/favicon.ico",
 
-      tag:
-        options.key,
+  tag:
+    options.key,
 
-      data: {
-        href:
-          options.href ||
-          "",
+  data: {
+    href:
+      options.href ||
+      "",
 
-        kind:
-          options.kind,
-      },
+    kind:
+      options.kind,
+  },
 
-      renotify:
-        true,
-    };
+  renotify:
+    true,
+} as NotificationOptions & {
+  renotify: boolean;
+};
 
   const registration =
     await ensureMeloWebNotificationServiceWorker();

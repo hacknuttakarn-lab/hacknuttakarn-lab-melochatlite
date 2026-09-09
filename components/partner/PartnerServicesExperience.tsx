@@ -2708,13 +2708,16 @@ function categoryLabel(
         'transport',
         'other',
       ] as ItemFormat[]
-    ).flatMap(
-      (format) =>
-        subcategoryOptions(
-          format,
-          copy,
-        ),
-    );
+    ).flatMap<{
+  value: string;
+  label: string;
+}>(
+  (format) =>
+    subcategoryOptions(
+      format,
+      copy,
+    ),
+)
 
   const found =
     all.find(
@@ -2771,14 +2774,19 @@ function inquiryArray(
       raw =
         JSON.parse(raw);
     } catch {
-      raw =
-        raw
-          .split(',')
-          .map(
-            (item) =>
-              item.trim(),
-          );
-    }
+  raw =
+    String(
+      raw ?? '',
+    )
+      .split(',')
+      .map(
+        (item) =>
+          item.trim(),
+      )
+      .filter(
+        Boolean,
+      );
+}
   }
 
   if (

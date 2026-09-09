@@ -361,7 +361,13 @@ export default function HomeDashboardExperience() {
     return {
       friends: scopedFriends
         .filter((item) =>
-          searchText([item.displayName, item.city, item.country, item.bio, ...item.interests]).includes(q),
+          searchText([
+  item.displayName,
+  item.city,
+  item.country,
+  item.friendIntro,
+  ...item.interests,
+]).includes(q),
         )
         .slice(0, 4),
       trips: scopedTrips

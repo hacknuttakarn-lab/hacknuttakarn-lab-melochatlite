@@ -1579,7 +1579,7 @@ Promise<
     result.data,
   )
     .map(
-      (row) => ({
+      (row): AdminRewardRow => ({
         id:
           text(
             row.id,
@@ -1597,10 +1597,12 @@ Promise<
           ),
 
         fulfillmentType:
-          row.fulfillment_type ===
-          'entitlement'
-            ? 'entitlement'
-            : 'partner_code',
+          (
+            row.fulfillment_type ===
+            'entitlement'
+              ? 'entitlement'
+              : 'partner_code'
+          ) as AdminRewardRow['fulfillmentType'],
 
         titleTh:
           text(
