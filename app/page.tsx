@@ -3,8 +3,6 @@
 import Image from 'next/image';
 
 import { Header } from '@/components/Header';
-import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
-
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
 
@@ -27,6 +25,10 @@ export default function HomePage() {
 
   const auth =
     authCopy[locale];
+
+  const heroTitle1 = t('hero.title1');
+  const thaiHeroTitleBreakIndex =
+    locale === 'th' ? heroTitle1.lastIndexOf(' ') : -1;
 
   const features = [
     [
@@ -67,8 +69,6 @@ export default function HomePage() {
     <main>
       <Header />
 
-      <PublicLanguageSwitcher />
-
       <section
         className="heroV2 shell"
         id="home"
@@ -84,8 +84,18 @@ export default function HomePage() {
           </div>
 
           <h1>
-            {t(
-              'hero.title1',
+            {thaiHeroTitleBreakIndex > -1 ? (
+              <>
+                {heroTitle1.slice(0, thaiHeroTitleBreakIndex)}
+
+                <br />
+
+                <span className="heroTitlePrimaryLine">
+                  {heroTitle1.slice(thaiHeroTitleBreakIndex + 1)}
+                </span>
+              </>
+            ) : (
+              heroTitle1
             )}
 
             <br />

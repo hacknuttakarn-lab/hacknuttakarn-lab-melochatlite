@@ -12,6 +12,7 @@ import { loadFriendSnapshot } from '@/components/connect/connectData';
 import { loadChatUnreadTotal } from '@/components/chat/chatData';
 import ChatDrawer from '@/components/chat/ChatDrawer';
 import VerifiedUserAvatar from '@/components/profile/VerifiedUserAvatar';
+import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { COUNTRY_PICKER_COUNTRIES, GLOBAL_COUNTRY_SCOPE, countryPickerLabel, countryScopeFlag, countryScopeLabel, matchesCountryScope, type CountryScope } from '@/lib/discoveryCountry';
 import { switchToPartnerMode } from '@/components/partner/partnerModeWeb';
 import { loadTripsWeb } from '@/components/trips/tripWebData';
@@ -1562,7 +1563,22 @@ export function Header() {
               <Link href="/#features" onClick={close}>{t('nav.features')}</Link>
               <Link href="/#safety" onClick={close}>{t('nav.safety')}</Link>
               <Link href="/#partner" onClick={close}>{t('nav.partner')}</Link>
-              <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
+              {pathname === '/' ? (
+                <div className="publicHeaderControls">
+                  <PublicLanguageSwitcher placement="header" />
+                  <button
+                    type="button"
+                    className="themeButton publicThemeButton"
+                    onClick={toggleTheme}
+                    title={theme === 'dark' ? themeCopy.light : themeCopy.dark}
+                    aria-label={theme === 'dark' ? themeCopy.light : themeCopy.dark}
+                  >
+                    <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+                  </button>
+                </div>
+              ) : (
+                <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
+              )}
             </>
           )}
 

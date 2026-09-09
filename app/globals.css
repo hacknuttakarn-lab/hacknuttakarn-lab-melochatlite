@@ -71,6 +71,7 @@ button { color: inherit; }
 .desktopNav a { color: var(--text-secondary); font-size: 14px; font-weight: 700; transition: color .2s ease, background .2s ease; }
 .desktopNav a:hover { color: var(--primary); }
 .desktopNav .navDownload { color: var(--text); border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 9px 13px; box-shadow: 0 8px 24px var(--shadow); }
+.publicHeaderControls { display: inline-flex; align-items: center; gap: 8px; }
 .headerTools { display: flex; align-items: center; gap: 8px; }
 .languageSelect, .countrySelect, .themeButton {
   height: 40px;
@@ -90,6 +91,8 @@ button { color: inherit; }
 .countrySelect select { max-width: 118px; }
 .languageSelect option, .countrySelect option { background: var(--surface); color: var(--text); }
 .themeButton { width: 40px; justify-content: center; cursor: pointer; font-size: 19px; }
+.publicThemeButton { flex: 0 0 40px; padding: 0; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
+.publicThemeButton:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
 .menuButton { display: none; width: 40px; height: 40px; border: 0; background: transparent; padding: 9px; cursor: pointer; }
 .menuButton span { display: block; height: 2px; background: var(--text); margin: 5px 0; border-radius: 99px; transition: transform .2s ease, opacity .2s ease; }
 .menuButton.isOpen span:first-child { transform: translateY(7px) rotate(45deg); }
@@ -110,6 +113,7 @@ button { color: inherit; }
 .pulseDot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 5px color-mix(in srgb, var(--success) 13%, transparent); }
 .heroV2 h1 { font-size: clamp(58px, 6.5vw, 88px); line-height: .96; letter-spacing: -.064em; margin: 24px 0; max-width: 720px; }
 .heroV2 h1 span { color: var(--primary); }
+.heroV2 h1 .heroTitlePrimaryLine { color: inherit; white-space: nowrap; }
 .heroLead { max-width: 650px; color: var(--text-secondary); font-size: 18px; line-height: 1.78; }
 .heroActions { display: flex; gap: 12px; margin-top: 31px; flex-wrap: wrap; }
 .button { min-height: 49px; padding: 0 21px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; transition: transform .2s ease, box-shadow .2s ease; border: 0; }
@@ -205,6 +209,8 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
   .desktopNav { position: fixed; left: 20px; right: 20px; top: 82px; display: none; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: 0 20px 60px var(--shadow); }
   .desktopNav.mobileOpen { display: flex; }
   .desktopNav a { padding: 13px 12px; border-radius: 12px; }.desktopNav a:hover { background: var(--surface-2); }.desktopNav .navDownload { box-shadow: none; }
+  .desktopNav .publicHeaderControls { width: 100%; padding: 4px 0; }
+  .desktopNav .publicHeaderControls .publicThemeButton { box-shadow: none; }
   .menuButton { display: block; }
   .heroV2 { grid-template-columns: 1fr; padding-top: 64px; text-align: center; }
   .heroV2Copy { max-width: 760px; margin-inline: auto; }.heroLead { margin-inline: auto; }.heroActions, .heroTrust { justify-content: center; }.meloStage { width: min(620px, 100%); margin-inline: auto; min-height: 600px; }
