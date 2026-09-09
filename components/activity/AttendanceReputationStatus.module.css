@@ -1,0 +1,113 @@
+.card {
+  border: 1px solid var(--border, rgba(17,24,39,.1));
+  border-radius: 24px;
+  background: var(--surface, #fff);
+  padding: 22px;
+  box-shadow: 0 12px 34px color-mix(in srgb, var(--shadow) 58%, transparent);
+}
+.heading {
+  display: grid;
+  grid-template-columns: 44px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 12px;
+}
+.icon {
+  width: 44px;
+  height: 44px;
+  display: grid;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 20px;
+  font-weight: 950;
+}
+.heading small {
+  display: block;
+  color: var(--primary);
+  font-size: 9px;
+  font-weight: 900;
+  letter-spacing: .1em;
+  text-transform: uppercase;
+}
+.heading h2 {
+  margin: 3px 0 0;
+  color: var(--text);
+  font-size: 19px;
+  letter-spacing: -.02em;
+}
+.sessionBadge {
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 7px 10px;
+  font-size: 10px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+.sessionOpen {
+  border-color: color-mix(in srgb, var(--success) 34%, var(--border));
+  background: color-mix(in srgb, var(--success) 10%, var(--surface));
+  color: var(--success);
+}
+.metrics {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 9px;
+  margin-top: 18px;
+}
+.metrics > div {
+  min-height: 72px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, transparent);
+  border-radius: 15px;
+  background: var(--surface-2);
+  padding: 11px 12px;
+}
+.metrics span,
+.metrics small {
+  display: block;
+  color: var(--text-secondary);
+  font-size: 9px;
+  font-weight: 740;
+}
+.metrics strong {
+  display: block;
+  margin-top: 5px;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.35;
+}
+.metrics small { margin-top: 3px; }
+.notice {
+  display: grid;
+  grid-template-columns: 12px minmax(0, 1fr) auto;
+  gap: 10px;
+  align-items: center;
+  margin-top: 12px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-2);
+  padding: 12px 13px;
+}
+.notice > span { color: var(--text-secondary); font-size: 12px; }
+.noticeOpen {
+  border-color: color-mix(in srgb, var(--success) 24%, var(--border));
+  background: color-mix(in srgb, var(--success) 7%, var(--surface));
+}
+.noticeOpen > span { color: var(--success); }
+.notice strong { display: block; color: var(--text); font-size: 11px; }
+.notice p { margin: 3px 0 0; color: var(--text-secondary); font-size: 10px; line-height: 1.55; }
+.notice a { color: var(--primary); font-size: 10px; font-weight: 850; text-decoration: none; white-space: nowrap; }
+.notice a:hover { text-decoration: underline; }
+.stateText { margin: 18px 0 0; color: var(--text-secondary); font-size: 11px; }
+
+@media (max-width: 720px) {
+  .card { padding: 18px; border-radius: 20px; }
+  .heading { grid-template-columns: 40px minmax(0, 1fr); }
+  .icon { width: 40px; height: 40px; }
+  .sessionBadge { grid-column: 1 / -1; justify-self: start; }
+  .metrics { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+  .notice { grid-template-columns: 12px minmax(0, 1fr); }
+  .notice a { grid-column: 2; justify-self: start; }
+}

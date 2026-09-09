@@ -1,0 +1,16 @@
+.page{
+  min-height:100vh;
+  background:
+    radial-gradient(circle at 88% 4%,color-mix(in srgb,var(--primary) 9%,transparent),transparent 34rem),
+    var(--background);
+  color:var(--text);
+}
+.shell{width:min(1320px,calc(100% - 40px));margin:0 auto;padding:38px 0 80px}
+.hero{display:flex;align-items:flex-end;justify-content:space-between;gap:28px;padding:30px 0 28px;border-bottom:1px solid var(--border)}
+.heroCopy{max-width:780px;min-width:0}.kicker{display:inline-flex;color:var(--primary);font-size:10px;font-weight:950;letter-spacing:.17em}.hero h1{margin:9px 0 8px;font-size:clamp(42px,5vw,62px);line-height:.98;letter-spacing:-.05em}.hero p{max-width:720px;margin:0;color:var(--text-secondary);font-size:14px;line-height:1.7}
+.modeSwitch{display:flex;gap:5px;padding:5px;border:1px solid var(--border);border-radius:17px;background:var(--surface);box-shadow:0 12px 30px color-mix(in srgb,var(--shadow) 38%,transparent);flex:0 0 auto}
+.modeButton{min-width:132px;min-height:46px;display:inline-flex;align-items:center;justify-content:center;gap:8px;padding:0 18px;border:0;border-radius:12px;background:transparent;color:var(--text-secondary);font:inherit;font-size:11px;font-weight:900;cursor:pointer;transition:background .16s ease,color .16s ease,transform .16s ease,box-shadow .16s ease}.modeButton:hover{color:var(--text);background:var(--surface-2)}.modeIcon{font-size:17px;line-height:1}.modeButtonActive{color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary-dark));box-shadow:0 8px 20px color-mix(in srgb,var(--primary) 24%,transparent)}.modeButtonActive:hover{color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary-dark))}.modeButtonActiveLove{color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary-dark));box-shadow:0 8px 20px color-mix(in srgb,var(--primary) 24%,transparent)}.modeButtonActiveLove:hover{color:#fff;background:linear-gradient(135deg,var(--primary),var(--primary-dark))}
+.contentStage{margin-top:22px}.modePanel{width:100%}.modePanel[hidden]{display:none!important}
+@media(max-width:900px){.shell{width:min(100% - 30px,1320px);padding-top:24px}.hero{align-items:flex-start;flex-direction:column}.modeSwitch{width:100%}.modeButton{flex:1;min-width:0}}
+@media(max-width:560px){.shell{width:min(100% - 20px,1320px);padding:18px 0 58px}.hero{padding:18px 0 20px;gap:20px}.hero h1{font-size:40px}.hero p{font-size:12px}.modeButton{min-height:44px;padding:0 12px}.contentStage{margin-top:16px}}
+@media(prefers-reduced-motion:reduce){.modeButton{transition:none}}

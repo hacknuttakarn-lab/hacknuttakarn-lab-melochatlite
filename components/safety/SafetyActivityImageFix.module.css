@@ -1,0 +1,89 @@
+.scope {
+  /* Local anchor required by Next.js CSS Modules pure-selector validation. */
+}
+
+/*
+ * Melo Web Safety Center - Trip/Event image proportion fix
+ * Loaded only with the Safety Center data bundle.
+ *
+ * The original SafetyCenterExperience uses CSS-module classes named
+ * activityHeader/activityImage. These global selectors are intentionally
+ * limited to that exact structure and do not alter other Trip/Event cards.
+ */
+
+.scope :global([class*="activityHeader"] > [class*="activityImage"]) {
+  position: relative !important;
+  display: grid !important;
+  place-items: center !important;
+
+  width: 78px !important;
+  min-width: 78px !important;
+  max-width: 78px !important;
+
+  height: 78px !important;
+  min-height: 78px !important;
+  max-height: 78px !important;
+
+  aspect-ratio: 1 / 1 !important;
+  overflow: hidden !important;
+  flex: 0 0 78px !important;
+  border-radius: 16px !important;
+  box-sizing: border-box !important;
+}
+
+.scope :global([class*="activityHeader"]) {
+  grid-template-columns: 78px minmax(0, 1fr) !important;
+  align-items: center !important;
+  column-gap: 13px !important;
+}
+
+.scope :global([class*="activityHeader"] > [class*="activityImage"] > img) {
+  position: absolute !important;
+  inset: 0 !important;
+
+  display: block !important;
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: none !important;
+
+  height: 100% !important;
+  min-height: 100% !important;
+  max-height: none !important;
+
+  object-fit: cover !important;
+  object-position: center center !important;
+  border-radius: inherit !important;
+  transform: none !important;
+}
+
+.scope :global([class*="activityHeader"] > [class*="activityImage"] > span) {
+  display: grid !important;
+  width: 100% !important;
+  height: 100% !important;
+  place-items: center !important;
+}
+
+.scope :global([class*="activityHeader"] > :last-child) {
+  min-width: 0 !important;
+}
+
+/* Mobile: slightly smaller but still perfectly square and never compressed. */
+@media (max-width: 760px) {
+  .scope :global([class*="activityHeader"]) {
+    grid-template-columns: 68px minmax(0, 1fr) !important;
+    column-gap: 11px !important;
+  }
+
+  .scope :global([class*="activityHeader"] > [class*="activityImage"]) {
+    width: 68px !important;
+    min-width: 68px !important;
+    max-width: 68px !important;
+
+    height: 68px !important;
+    min-height: 68px !important;
+    max-height: 68px !important;
+
+    flex-basis: 68px !important;
+    border-radius: 14px !important;
+  }
+}

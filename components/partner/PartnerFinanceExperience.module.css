@@ -1,0 +1,593 @@
+.pageHeader{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:20px;
+  margin-bottom:22px;
+}
+
+.pageHeader>div{
+  min-width:0;
+}
+
+.pageHeader small{
+  display:block;
+  color:var(--primary);
+  font-size:12px;
+  font-weight:950;
+  letter-spacing:.13em;
+}
+
+.pageHeader h1{
+  margin:7px 0 8px;
+  color:var(--text);
+  font-size:32px;
+  line-height:1.2;
+  letter-spacing:-.035em;
+}
+
+.pageHeader p{
+  max-width:780px;
+  margin:0;
+  color:var(--text-secondary);
+  font-size:12px;
+  line-height:1.65;
+}
+
+.refreshButton{
+  min-height:44px;
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  justify-content:center;
+  gap:8px;
+  padding:0 15px;
+  border:1px solid var(--border);
+  border-radius:13px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:11px;
+  font-weight:900;
+  cursor:pointer;
+  transition:
+    background .16s ease,
+    border-color .16s ease,
+    color .16s ease;
+}
+
+.refreshButton span{
+  font-size:18px;
+  line-height:1;
+}
+
+.refreshButton:hover{
+  border-color:
+    color-mix(
+      in srgb,
+      var(--primary) 45%,
+      var(--border)
+    );
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+
+.refreshButton:disabled{
+  opacity:.55;
+  cursor:default;
+}
+
+.error{
+  display:grid;
+  gap:5px;
+  margin-bottom:16px;
+  padding:14px 16px;
+  border:1px solid
+    color-mix(
+      in srgb,
+      var(--danger) 38%,
+      var(--border)
+    );
+  border-radius:15px;
+  background:
+    color-mix(
+      in srgb,
+      var(--danger) 7%,
+      var(--surface)
+    );
+}
+
+.error strong{
+  color:var(--danger);
+  font-size:13px;
+}
+
+.error span{
+  color:var(--text-secondary);
+  font-size:11px;
+  line-height:1.6;
+}
+
+.state{
+  min-height:280px;
+  display:grid;
+  place-items:center;
+  align-content:center;
+  gap:13px;
+  padding:30px;
+  border:1px solid var(--border);
+  border-radius:23px;
+  background:var(--surface);
+  color:var(--text-secondary);
+  text-align:center;
+}
+
+.state strong{
+  color:var(--text);
+  font-size:15px;
+}
+
+.spinner{
+  width:32px;
+  height:32px;
+  border:3px solid var(--border);
+  border-top-color:var(--primary);
+  border-radius:50%;
+  animation:spin .8s linear infinite;
+}
+
+@keyframes spin{
+  to{
+    transform:rotate(360deg);
+  }
+}
+
+.workspace{
+  display:grid;
+  gap:28px;
+}
+
+
+/* ========================================
+   TOP BALANCE AREA
+   ======================================== */
+
+.balanceLayout{
+  display:grid;
+  grid-template-columns:
+    minmax(0,1.38fr)
+    minmax(320px,.62fr);
+  gap:16px;
+  align-items:stretch;
+}
+
+.heroCard{
+  position:relative;
+  min-height:300px;
+  overflow:hidden;
+  display:flex;
+  flex-direction:column;
+  padding:28px;
+  border:1px solid
+    color-mix(
+      in srgb,
+      var(--primary) 30%,
+      var(--border)
+    );
+  border-radius:26px;
+  background:
+    linear-gradient(
+      140deg,
+      #071a2d 0%,
+      #092944 54%,
+      #0e3b63 100%
+    );
+  color:#fff;
+  box-shadow:
+    0 20px 50px
+    rgba(3,18,34,.2);
+}
+
+.heroCard:after{
+  content:'';
+  position:absolute;
+  width:330px;
+  height:330px;
+  right:-115px;
+  bottom:-170px;
+  border-radius:50%;
+  background:
+    rgba(59,154,255,.15);
+}
+
+.heroTop{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:flex-start;
+  justify-content:space-between;
+  gap:20px;
+}
+
+.heroTop small{
+  display:block;
+  color:#a8c3d7;
+  font-size:10px;
+  font-weight:850;
+}
+
+.heroTop strong{
+  display:block;
+  margin-top:10px;
+  color:#fff;
+  font-size:
+    clamp(
+      40px,
+      5vw,
+      62px
+    );
+  line-height:1;
+  letter-spacing:-.045em;
+}
+
+.sourceBadge{
+  min-height:32px;
+  display:inline-flex;
+  flex:0 0 auto;
+  align-items:center;
+  padding:0 12px;
+  border-radius:999px;
+  background:
+    rgba(255,255,255,.1);
+  color:#bedfff;
+  font-size:9px;
+  font-weight:900;
+  white-space:nowrap;
+}
+
+.heroCard>p{
+  position:relative;
+  z-index:1;
+  max-width:650px;
+  margin:20px 0 0;
+  color:#b8cddd;
+  font-size:11px;
+  line-height:1.7;
+}
+
+.heroStore{
+  position:relative;
+  z-index:1;
+  display:flex;
+  align-items:center;
+  gap:11px;
+  margin-top:auto;
+  padding-top:24px;
+}
+
+.heroStore>span{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:
+    rgba(255,255,255,.09);
+  color:#76bcff;
+  font-size:18px;
+}
+
+.heroStore small,
+.heroStore b{
+  display:block;
+}
+
+.heroStore small{
+  color:#8faec5;
+  font-size:8px;
+}
+
+.heroStore b{
+  margin-top:4px;
+  color:#fff;
+  font-size:11px;
+}
+
+
+/* ========================================
+   BALANCE SIDE CARDS
+   ======================================== */
+
+.sideBalanceGrid{
+  display:grid;
+  grid-template-rows:
+    repeat(
+      2,
+      minmax(0,1fr)
+    );
+  gap:16px;
+}
+
+.compactCard{
+  min-height:142px;
+  display:grid;
+  grid-template-columns:
+    52px
+    minmax(0,1fr);
+  gap:14px;
+  align-items:center;
+  padding:20px;
+  border:1px solid var(--border);
+  border-radius:22px;
+  background:var(--surface);
+  box-shadow:
+    0 12px 30px
+    color-mix(
+      in srgb,
+      var(--shadow) 18%,
+      transparent
+    );
+}
+
+.compactIcon{
+  width:52px;
+  height:52px;
+  display:grid;
+  place-items:center;
+  border-radius:16px;
+  background:var(--primary-soft);
+  color:var(--primary);
+  font-size:20px;
+  font-weight:950;
+}
+
+.compactCard small{
+  display:block;
+  color:var(--text-secondary);
+  font-size:9.5px;
+  font-weight:850;
+}
+
+.compactCard strong{
+  display:block;
+  margin-top:7px;
+  color:var(--text);
+  font-size:24px;
+  line-height:1.15;
+  letter-spacing:-.025em;
+}
+
+.compactCard p{
+  margin:7px 0 0;
+  color:var(--text-secondary);
+  font-size:8.5px;
+  line-height:1.55;
+}
+
+
+/* ========================================
+   SECTION HEADER
+   ======================================== */
+
+.sectionTitle{
+  display:flex;
+  align-items:flex-end;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:12px;
+}
+
+.sectionTitle small{
+  display:block;
+  color:var(--primary);
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.12em;
+  text-transform:uppercase;
+}
+
+.sectionTitle h2{
+  margin:5px 0 0;
+  color:var(--text);
+  font-size:19px;
+  line-height:1.3;
+}
+
+
+/* ========================================
+   REVENUE
+   ======================================== */
+
+.revenueGrid{
+  display:grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0,1fr)
+    );
+  gap:14px;
+}
+
+.revenueCard{
+  min-height:180px;
+  padding:23px;
+  border:1px solid var(--border);
+  border-radius:23px;
+  background:var(--surface);
+  box-shadow:
+    0 12px 30px
+    color-mix(
+      in srgb,
+      var(--shadow) 18%,
+      transparent
+    );
+}
+
+.revenueCard small{
+  display:block;
+  color:var(--text-secondary);
+  font-size:10px;
+  font-weight:850;
+}
+
+.revenueCard strong{
+  display:block;
+  margin-top:12px;
+  color:var(--text);
+  font-size:32px;
+  line-height:1.1;
+  letter-spacing:-.035em;
+  overflow-wrap:anywhere;
+}
+
+.revenueCard p{
+  margin:13px 0 0;
+  color:var(--text-secondary);
+  font-size:10px;
+  line-height:1.65;
+}
+
+
+/* ========================================
+   STORE ACTIVITY
+   ======================================== */
+
+.activityGrid{
+  display:grid;
+  grid-template-columns:
+    repeat(
+      4,
+      minmax(0,1fr)
+    );
+  gap:12px;
+}
+
+.activityCard{
+  min-height:112px;
+  display:grid;
+  grid-template-columns:
+    42px
+    minmax(0,1fr);
+  gap:12px;
+  align-items:center;
+  padding:17px;
+  border:1px solid var(--border);
+  border-radius:19px;
+  background:var(--surface);
+  box-shadow:
+    0 10px 26px
+    color-mix(
+      in srgb,
+      var(--shadow) 16%,
+      transparent
+    );
+}
+
+.activityCard>span{
+  width:42px;
+  height:42px;
+  display:grid;
+  place-items:center;
+  border-radius:13px;
+  background:var(--surface-2);
+  color:var(--primary);
+  font-size:17px;
+  font-weight:950;
+}
+
+.activityCard strong{
+  display:block;
+  color:var(--text);
+  font-size:24px;
+  line-height:1;
+}
+
+.activityCard small{
+  display:block;
+  margin-top:7px;
+  color:var(--text-secondary);
+  font-size:9px;
+  font-weight:800;
+  line-height:1.45;
+}
+
+
+/* ========================================
+   TABLET
+   ======================================== */
+
+@media(max-width:1050px){
+
+  .balanceLayout{
+    grid-template-columns:1fr;
+  }
+
+  .sideBalanceGrid{
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0,1fr)
+      );
+    grid-template-rows:auto;
+  }
+
+  .activityGrid{
+    grid-template-columns:
+      repeat(
+        2,
+        minmax(0,1fr)
+      );
+  }
+}
+
+
+/* ========================================
+   MOBILE
+   ======================================== */
+
+@media(max-width:720px){
+
+  .pageHeader{
+    align-items:flex-start;
+    flex-direction:column;
+  }
+
+  .pageHeader h1{
+    font-size:28px;
+  }
+
+  .refreshButton{
+    width:100%;
+  }
+
+  .heroCard{
+    min-height:250px;
+    padding:22px;
+  }
+
+  .heroTop{
+    flex-direction:column;
+  }
+
+  .heroTop strong{
+    font-size:38px;
+  }
+
+  .sourceBadge{
+    order:-1;
+  }
+
+  .sideBalanceGrid,
+  .revenueGrid,
+  .activityGrid{
+    grid-template-columns:1fr;
+  }
+
+  .compactCard{
+    min-height:130px;
+  }
+
+  .revenueCard{
+    min-height:150px;
+  }
+}

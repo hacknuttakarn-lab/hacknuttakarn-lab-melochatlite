@@ -1,0 +1,645 @@
+.layer {
+  position: fixed;
+  inset: 0;
+  z-index: 190;
+  pointer-events: none;
+  visibility: hidden;
+}
+
+.layerOpen {
+  pointer-events: auto;
+  visibility: visible;
+}
+
+.backdrop {
+  position: absolute;
+  inset: 0;
+  border: 0;
+  background: rgba(5, 10, 18, .54);
+  opacity: 0;
+  cursor: default;
+  transition: opacity .2s ease;
+}
+
+.layerOpen .backdrop {
+  opacity: 1;
+}
+
+.drawer {
+  position: absolute;
+  top: 0;
+  right: 0;
+  display: grid;
+  grid-template-rows: auto auto auto minmax(0, 1fr);
+  width: min(590px, 100vw);
+  height: 100dvh;
+  overflow: hidden;
+  border-left: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: -24px 0 64px rgba(0, 0, 0, .28);
+  transform: translateX(104%);
+  transition: transform .24s cubic-bezier(.2, .8, .2, 1), width .2s ease;
+}
+
+.layerOpen .drawer {
+  transform: translateX(0);
+}
+
+.drawerConversation {
+  width: min(590px, 100vw);
+  grid-template-rows: minmax(0, 1fr);
+}
+
+.drawerHeader {
+  display: flex;
+  min-height: 84px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  border-bottom: 1px solid var(--border);
+  padding: 16px 20px 13px;
+}
+
+.drawerHeader > div:first-child {
+  display: grid;
+  gap: 2px;
+}
+
+.drawerHeader span {
+  color: var(--primary);
+  font-size: 10px;
+  font-weight: 900;
+  letter-spacing: .14em;
+}
+
+.drawerHeader strong {
+  font-size: 24px;
+  letter-spacing: -.035em;
+}
+
+.closeButton,
+.listHeader > button,
+.conversationCloseRow button {
+  display: grid;
+  place-items: center;
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+
+.headerActions {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.translationTopToggle {
+  display: inline-grid;
+  grid-template-columns: 24px auto auto;
+  align-items: center;
+  gap: 7px;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 5px 9px 5px 7px;
+  cursor: pointer;
+  transition: border-color .15s ease, background .15s ease, color .15s ease;
+}
+
+.translationTopToggle > span {
+  display: grid;
+  width: 24px;
+  height: 24px;
+  place-items: center;
+  border-radius: 50%;
+  background: var(--surface);
+  font-size: 12px;
+}
+
+.translationTopToggle > strong {
+  font-size: 11px;
+  font-weight: 850;
+}
+
+.translationTopToggle > b {
+  border-radius: 999px;
+  background: var(--surface);
+  padding: 3px 6px;
+  font-size: 8px;
+  line-height: 1;
+}
+
+.translationTopToggleOn {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border));
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.translationTopToggle:hover {
+  border-color: color-mix(in srgb, var(--primary) 32%, var(--border));
+}
+
+.closeButton {
+  width: 40px;
+  height: 40px;
+  border-radius: 50%;
+  font-size: 22px;
+}
+
+.folderTabsSingle {
+  grid-template-columns: minmax(0, 1fr);
+}
+
+.folderTabs {
+  position: relative;
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 4px;
+  margin: 12px 16px 8px;
+  padding: 4px;
+  overflow: visible;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: color-mix(in srgb, var(--surface-2) 86%, var(--surface));
+  box-shadow: inset 0 1px 0 color-mix(in srgb, #fff 4%, transparent);
+}
+
+.folderTabs::before {
+  content: "";
+  position: absolute;
+  right: 18px;
+  bottom: -6px;
+  left: 18px;
+  height: 12px;
+  border-radius: 0 0 14px 14px;
+  background: linear-gradient(180deg, color-mix(in srgb, var(--surface-2) 52%, transparent), transparent);
+  pointer-events: none;
+}
+
+.folderTabs button {
+  position: relative;
+  z-index: 1;
+  display: grid;
+  min-width: 0;
+  min-height: 44px;
+  align-content: center;
+  justify-items: center;
+  gap: 2px;
+  border: 0;
+  border-radius: 14px;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 5px 4px 6px;
+  cursor: pointer;
+  isolation: isolate;
+  transition:
+    transform .18s ease,
+    background .18s ease,
+    color .18s ease,
+    box-shadow .18s ease;
+}
+
+.folderTabs button::before {
+  content: "";
+  position: absolute;
+  inset: 2px;
+  z-index: -1;
+  border: 1px solid transparent;
+  border-radius: 12px;
+  pointer-events: none;
+  transition: border-color .18s ease, background .18s ease;
+}
+
+.folderTabs button:hover {
+  color: var(--text);
+  transform: translateY(-1px);
+}
+
+.folderTabs button:hover::before {
+  border-color: color-mix(in srgb, var(--primary) 20%, var(--border));
+  background: color-mix(in srgb, var(--primary) 6%, var(--surface));
+}
+
+.folderTabs .folderActive {
+  z-index: 3;
+  color: #fff;
+  transform: translateY(-4px);
+  text-shadow: 0 1px 0 rgba(0, 0, 0, .12);
+}
+
+.folderTabs .folderActive:hover {
+  color: #fff;
+  transform: translateY(-5px);
+}
+
+.folderTabs .folderActive::before {
+  inset: 0;
+  border-color: color-mix(in srgb, var(--primary) 74%, #fff 10%);
+  border-radius: 16px 16px 12px 12px;
+  background:
+    linear-gradient(180deg,
+      color-mix(in srgb, var(--primary) 84%, #8fb5ff 16%) 0%,
+      var(--primary) 58%,
+      color-mix(in srgb, var(--primary) 88%, #111 12%) 100%);
+  box-shadow:
+    0 12px 28px color-mix(in srgb, var(--primary) 25%, transparent),
+    inset 0 1px 0 rgba(255, 255, 255, .2);
+}
+
+.folderTabs .folderActive::after {
+  content: "";
+  position: absolute;
+  bottom: -5px;
+  left: 50%;
+  z-index: -2;
+  width: 12px;
+  height: 12px;
+  border-right: 1px solid color-mix(in srgb, var(--primary) 72%, #fff 8%);
+  border-bottom: 1px solid color-mix(in srgb, var(--primary) 72%, #fff 8%);
+  border-radius: 0 0 5px 0;
+  background: color-mix(in srgb, var(--primary) 91%, #111 9%);
+  transform: translateX(-50%) rotate(45deg);
+}
+
+.folderTabs strong {
+  max-width: 100%;
+  overflow: hidden;
+  font-size: 11px;
+  font-weight: 850;
+  line-height: 1.15;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.folderTabs b {
+  position: absolute;
+  top: 1px;
+  right: 5px;
+  z-index: 5;
+  display: grid;
+  min-width: 18px;
+  height: 18px;
+  place-items: center;
+  border: 2px solid var(--surface-2);
+  border-radius: 999px;
+  background: #ef5d68;
+  color: #fff;
+  padding: 0 4px;
+  font-size: 8.5px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 3px 8px rgba(0, 0, 0, .2);
+}
+
+.folderActive b {
+  border-color: color-mix(in srgb, var(--primary) 88%, #111 12%);
+}
+
+.partnerChatSearch {
+  display: grid;
+  grid-template-columns: 22px minmax(0, 1fr) auto;
+  align-items: center;
+  gap: 8px;
+  margin: 12px 16px 8px;
+  min-height: 48px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 0 12px;
+}
+
+.partnerChatSearch > span {
+  display: grid;
+  place-items: center;
+  font-size: 18px;
+}
+
+.partnerChatSearch input {
+  width: 100%;
+  min-width: 0;
+  height: 44px;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font: inherit;
+  font-size: 13px;
+}
+
+.partnerChatSearch input::placeholder { color: var(--text-secondary); }
+
+.partnerChatSearch button {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border: 0;
+  border-radius: 50%;
+  background: var(--surface);
+  color: var(--text-secondary);
+  cursor: pointer;
+}
+
+.listHeader {
+  display: flex;
+  min-height: 68px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  border-top: 0;
+  border-bottom: 1px solid var(--border);
+  padding: 13px 16px 10px;
+}
+
+.listHeader > div {
+  display: grid;
+  gap: 2px;
+}
+
+.listHeader span {
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  font-weight: 750;
+}
+
+.listHeader strong {
+  font-size: 16px;
+}
+
+.listHeader > button {
+  width: 36px;
+  height: 36px;
+  border-radius: 11px;
+  color: var(--primary);
+  font-size: 17px;
+}
+
+.listHeader > button:disabled {
+  opacity: .5;
+  cursor: wait;
+}
+
+.roomList {
+  min-height: 0;
+  overflow-y: auto;
+  padding: 8px 10px 18px;
+  scrollbar-width: thin;
+}
+
+.roomRow {
+  position: relative;
+  display: grid;
+  grid-template-columns: 52px minmax(0, 1fr) auto auto;
+  align-items: center;
+  gap: 10px;
+  width: 100%;
+  min-height: 72px;
+  border: 1px solid transparent;
+  border-radius: 16px;
+  background: transparent;
+  color: var(--text);
+  padding: 10px;
+  text-align: left;
+  cursor: pointer;
+  transition: background .15s ease, border-color .15s ease;
+}
+
+.roomRow:hover {
+  border-color: var(--border);
+  background: var(--surface-2);
+}
+
+.roomRow:not(:last-child)::after {
+  content: "";
+  position: absolute;
+  right: 10px;
+  bottom: -1px;
+  left: 72px;
+  height: 1px;
+  background: color-mix(in srgb, var(--border) 82%, transparent);
+  pointer-events: none;
+}
+
+.avatar {
+  display: grid;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+  aspect-ratio: 1 / 1;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 16px;
+}
+
+.avatar > img,
+.avatar > b {
+  display: block;
+  width: 52px;
+  min-width: 52px;
+  max-width: 52px;
+  height: 52px;
+  min-height: 52px;
+  max-height: 52px;
+  aspect-ratio: 1 / 1;
+  border-radius: 16px;
+}
+
+.avatar > img {
+  object-fit: cover;
+}
+
+.avatar > b {
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 18px;
+}
+
+.roomCopy {
+  min-width: 0;
+}
+
+.roomCopy > span {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+}
+
+.roomCopy strong {
+  overflow: hidden;
+  font-size: 14.5px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.roomCopy time {
+  flex: 0 0 auto;
+  color: var(--text-secondary);
+  font-size: 9.5px;
+}
+
+.roomCopy small {
+  display: block;
+  margin-top: 5px;
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 12px;
+  line-height: 1.35;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unreadBadge {
+  display: grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  border-radius: 999px;
+  background: #ef5d68;
+  color: #fff;
+  padding: 0 6px;
+  font-size: 9.5px;
+  font-weight: 900;
+}
+
+.chevron {
+  color: var(--text-secondary);
+  font-size: 20px;
+}
+
+.roomState {
+  display: grid;
+  min-height: 180px;
+  place-items: center;
+  padding: 24px;
+  color: var(--text-secondary);
+  font-size: 13px;
+  text-align: center;
+}
+
+.conversationWrap,
+.conversationBody {
+  min-width: 0;
+  min-height: 0;
+}
+
+.conversationWrap {
+  display: grid;
+  grid-template-rows: 52px minmax(0, 1fr);
+  height: 100%;
+  background: var(--surface);
+}
+
+.conversationCloseRow {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr) 38px 38px;
+  align-items: center;
+  gap: 8px;
+  border-bottom: 1px solid var(--border);
+  padding: 7px 10px;
+}
+
+.conversationCloseRow button {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  font-size: 20px;
+}
+
+
+.conversationTranslationToggle {
+  color: var(--text-secondary) !important;
+  font-size: 14px !important;
+}
+
+.conversationTranslationToggleOn {
+  border-color: color-mix(in srgb, var(--primary) 40%, var(--border)) !important;
+  background: var(--primary-soft) !important;
+  color: var(--primary) !important;
+}
+
+.conversationCloseRow span {
+  overflow: hidden;
+  color: var(--text-secondary);
+  font-size: 11px;
+  font-weight: 850;
+  text-align: center;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.conversationBody {
+  height: 100%;
+  overflow: hidden;
+}
+
+@media (max-width: 620px) {
+  .drawer,
+  .drawerConversation {
+    width: 100vw;
+  }
+
+  .folderTabs {
+    gap: 2px;
+    margin-inline: 10px;
+    padding: 4px;
+    border-radius: 18px;
+  }
+
+  .folderTabs button {
+    min-height: 42px;
+    padding-inline: 3px;
+  }
+
+  .folderTabs .folderActive,
+  .folderTabs .folderActive:hover {
+    transform: translateY(-3px);
+  }
+
+
+  .folderTabs strong {
+    font-size: 10px;
+  }
+
+  .drawerHeader {
+    padding-inline: 14px;
+  }
+
+  .translationTopToggle {
+    grid-template-columns: 24px auto;
+    padding-right: 7px;
+  }
+
+  .translationTopToggle > strong {
+    display: none;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .backdrop,
+  .drawer {
+    transition: none;
+  }
+}
+
+.profileNameLink {
+  color: inherit;
+  text-decoration: none;
+}
+
+.profileNameLink:hover {
+  color: var(--primary, #347ff3);
+  text-decoration: underline;
+  text-underline-offset: 2px;
+}

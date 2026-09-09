@@ -1,0 +1,626 @@
+.workspace {
+  display: grid;
+  gap: 16px;
+}
+
+.card,
+.accounts {
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  background: var(--surface);
+}
+
+.card {
+  padding: 20px;
+}
+
+.cardHeader,
+.accountsHeader {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.cardHeader small,
+.accountsHeader small {
+  display: block;
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 900;
+  letter-spacing: .12em;
+}
+
+.cardHeader h3,
+.accountsHeader h3 {
+  margin: 5px 0 0;
+  color: var(--text);
+  font-size: 21px;
+  line-height: 1.3;
+}
+
+.cardHeader p,
+.accountsHeader p {
+  max-width: 700px;
+  margin: 6px 0 0;
+  color: var(--text-secondary);
+  font-size: 12.5px;
+  line-height: 1.6;
+}
+
+.secondaryButton {
+  flex: 0 0 auto;
+  min-height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--primary);
+  padding: 0 13px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.secondaryButton:hover {
+  background: var(--primary-soft);
+}
+
+.formGrid {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(0, 1fr)
+    );
+  gap: 14px;
+  margin-top: 20px;
+}
+
+.fullField {
+  display: block;
+}
+
+.fullField > span,
+.fieldLabel {
+  display: block;
+  margin-bottom: 8px;
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.4;
+  font-weight: 850;
+}
+
+.fullField input[type='email'] {
+  width: 100%;
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  outline: 0;
+  background: var(--surface-2);
+  color: var(--text);
+  padding: 0 13px;
+  font: inherit;
+  font-size: 12.5px;
+}
+
+.fullField input[type='email']:focus {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--primary) 50%,
+      var(--border)
+    );
+
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(--primary) 8%,
+      transparent
+    );
+}
+
+.roles {
+  display: grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(0, 1fr)
+    );
+  gap: 8px;
+}
+
+.roles button {
+  min-height: 46px;
+  border: 1px solid var(--border);
+  border-radius: 12px;
+  background: var(--surface-2);
+  color: var(--text-secondary);
+  padding: 0 10px;
+  font: inherit;
+  font-size: 11.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.roles button:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--primary) 34%,
+      var(--border)
+    );
+}
+
+.roles button[data-active='true'] {
+  border-color: var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.activeRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 16px;
+  margin-top: 20px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.activeRow strong,
+.activeRow small {
+  display: block;
+}
+
+.activeRow strong {
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.4;
+}
+
+.activeRow small {
+  margin-top: 5px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.switch {
+  position: relative;
+  flex: 0 0 auto;
+  width: 44px;
+  height: 25px;
+  cursor: pointer;
+}
+
+.switch input {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+}
+
+.switch span {
+  position: absolute;
+  inset: 0;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface);
+  transition: .16s ease;
+}
+
+.switch span::after {
+  content: '';
+  position: absolute;
+  top: 3px;
+  left: 3px;
+  width: 17px;
+  height: 17px;
+  border-radius: 50%;
+  background: var(--text-secondary);
+  transition: .16s ease;
+}
+
+.switch input:checked + span {
+  border-color: var(--primary);
+  background: var(--primary);
+}
+
+.switch input:checked + span::after {
+  left: 22px;
+  background: #fff;
+}
+
+.permissionsTitle {
+  margin-top: 22px;
+  color: var(--text);
+  font-size: 15.5px;
+  line-height: 1.4;
+}
+
+.superInfo {
+  margin-top: 11px;
+  border:
+    1px solid
+    color-mix(
+      in srgb,
+      var(--primary) 25%,
+      var(--border)
+    );
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  padding: 12px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+.permissionList {
+  margin-top: 11px;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+}
+
+.permissionGroup {
+  display: grid;
+  grid-template-columns:
+    minmax(170px, .85fr)
+    minmax(0, 1.15fr);
+  gap: 14px;
+  align-items: center;
+  min-height: 68px;
+  padding: 11px 14px;
+  border-bottom: 1px solid var(--border);
+}
+
+.permissionGroup:last-child {
+  border-bottom: 0;
+}
+
+.permissionGroup > strong {
+  color: var(--text);
+  font-size: 12.5px;
+  line-height: 1.45;
+}
+
+.permissionOptions {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+.permissionOptions label {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  min-height: 38px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  background: var(--surface-2);
+  padding: 0 11px;
+  color: var(--text-secondary);
+  font-size: 11.5px;
+  line-height: 1.4;
+  font-weight: 700;
+  cursor: pointer;
+}
+
+.permissionOptions label:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--primary) 34%,
+      var(--border)
+    );
+}
+
+.permissionOptions input {
+  width: 17px;
+  height: 17px;
+  flex: 0 0 auto;
+  accent-color: var(--primary);
+}
+
+.saveButton {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 18px;
+  border: 0;
+  border-radius: 12px;
+  background: var(--primary);
+  color: #fff;
+  font: inherit;
+  font-size: 12.5px;
+  font-weight: 900;
+  cursor: pointer;
+}
+
+.saveButton:hover {
+  filter: brightness(1.04);
+}
+
+.saveButton:disabled {
+  opacity: .55;
+  cursor: wait;
+}
+
+.error,
+.success {
+  margin-top: 13px;
+  border-radius: 11px;
+  padding: 11px 13px;
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-weight: 700;
+}
+
+.error {
+  border: 1px solid rgba(221, 68, 82, .28);
+  background: rgba(221, 68, 82, .07);
+  color: #d74554;
+}
+
+.success {
+  border: 1px solid rgba(32, 163, 105, .28);
+  background: rgba(32, 163, 105, .07);
+  color: #208d63;
+}
+
+.accounts {
+  padding: 20px;
+}
+
+.totalBadge {
+  display: grid;
+  min-width: 40px;
+  height: 40px;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 850;
+}
+
+.staffList {
+  display: grid;
+  gap: 9px;
+  margin-top: 15px;
+}
+
+.staff {
+  display: grid;
+  grid-template-columns:
+    48px
+    minmax(0, 1fr)
+    auto;
+  gap: 13px;
+  align-items: center;
+  width: 100%;
+  border: 1px solid var(--border);
+  border-radius: 14px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 11px 13px;
+  text-align: left;
+  font: inherit;
+  cursor: pointer;
+}
+
+.staff:hover {
+  border-color:
+    color-mix(
+      in srgb,
+      var(--primary) 38%,
+      var(--border)
+    );
+
+  background: var(--surface-2);
+}
+
+.staffAvatar {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 50%;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 16px;
+  font-weight: 900;
+}
+
+.staffAvatar img {
+  display: block;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.staffCopy {
+  min-width: 0;
+}
+
+.staffCopy strong,
+.staffCopy small,
+.staffCopy em {
+  display: block;
+}
+
+.staffCopy strong {
+  overflow: hidden;
+  color: var(--text);
+  font-size: 13.5px;
+  line-height: 1.4;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.staffCopy small {
+  margin-top: 4px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  line-height: 1.45;
+}
+
+.staffCopy em {
+  margin-top: 5px;
+  color: var(--primary);
+  font-size: 10.5px;
+  font-style: normal;
+  font-weight: 700;
+  line-height: 1.5;
+}
+
+.edit {
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 850;
+  white-space: nowrap;
+}
+
+.empty {
+  margin-top: 15px;
+  border: 1px dashed var(--border);
+  border-radius: 14px;
+  color: var(--text-secondary);
+  padding: 34px 16px;
+  text-align: center;
+  font-size: 11.5px;
+  line-height: 1.5;
+}
+
+.state {
+  display: grid;
+  min-height: 340px;
+  place-items: center;
+  align-content: center;
+  gap: 10px;
+  color: var(--text-secondary);
+  text-align: center;
+}
+
+.state strong {
+  color: var(--text);
+  font-size: 19px;
+  line-height: 1.35;
+}
+
+.state p {
+  max-width: 480px;
+  margin: 0;
+  font-size: 12.5px;
+  line-height: 1.55;
+}
+
+.state small {
+  max-width: 540px;
+  color: #d74554;
+  font-size: 10.5px;
+  line-height: 1.5;
+}
+
+.lock {
+  display: grid;
+  width: 54px;
+  height: 54px;
+  place-items: center;
+  border-radius: 16px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 21px;
+  font-weight: 900;
+}
+
+.spinner {
+  width: 20px;
+  height: 20px;
+  border: 2px solid var(--border);
+  border-top-color: var(--primary);
+  border-radius: 50%;
+  animation:
+    adminAccessSpin
+    .7s
+    linear
+    infinite;
+}
+
+@keyframes adminAccessSpin {
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (max-width: 760px) {
+  .formGrid {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionGroup {
+    grid-template-columns: 1fr;
+  }
+
+  .permissionOptions {
+    justify-content: flex-start;
+  }
+
+  .roles {
+    grid-template-columns: 1fr;
+  }
+
+  .cardHeader,
+  .accountsHeader {
+    display: grid;
+  }
+
+  .secondaryButton {
+    justify-self: start;
+  }
+
+  .staff {
+    grid-template-columns:
+      48px
+      minmax(0, 1fr);
+  }
+
+  .edit {
+    grid-column: 2;
+    justify-self: start;
+  }
+
+  .card {
+    padding: 16px;
+  }
+
+  .accounts {
+    padding: 16px;
+  }
+
+  .cardHeader h3,
+  .accountsHeader h3 {
+    font-size: 19px;
+  }
+
+  .cardHeader p,
+  .accountsHeader p {
+    font-size: 12px;
+  }
+
+  .permissionGroup > strong {
+    font-size: 12px;
+  }
+
+  .permissionOptions label {
+    font-size: 11px;
+  }
+}

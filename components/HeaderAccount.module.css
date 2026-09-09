@@ -1,0 +1,944 @@
+.accountMenuWrap {
+  position: relative;
+}
+
+.accountButton {
+  height: 40px;
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  color: var(--text);
+  border-radius: 13px;
+  padding: 0 10px 0 7px;
+  box-shadow: 0 7px 22px var(--shadow);
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 820;
+  white-space: nowrap;
+  transition: border-color .2s ease, box-shadow .2s ease, transform .2s ease;
+}
+
+.accountButton:hover {
+  border-color: color-mix(in srgb, var(--primary) 38%, var(--border));
+  box-shadow: 0 10px 26px var(--shadow);
+  transform: translateY(-1px);
+}
+
+.avatar,
+.mobileAvatar,
+.avatarLarge {
+  display: grid;
+  place-items: center;
+  border-radius: 50%;
+  color: #fff;
+  background: linear-gradient(135deg, var(--primary), var(--violet));
+  font-weight: 900;
+  box-shadow: 0 7px 18px color-mix(in srgb, var(--primary) 23%, transparent);
+}
+
+.avatar {
+  width: 28px;
+  height: 28px;
+  font-size: 11px;
+}
+
+.accountLabel {
+  max-width: 128px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.chevron {
+  color: var(--text-secondary);
+  font-size: 15px;
+  line-height: 1;
+  transform: translateY(-1px);
+  transition: transform .2s ease;
+}
+
+.chevronOpen {
+  transform: rotate(180deg) translateY(1px);
+}
+
+.dropdown {
+  position: absolute;
+  right: 0;
+  top: calc(100% + 10px);
+  width: 292px;
+  padding: 9px;
+  border: 1px solid var(--border);
+  border-radius: 19px;
+  background: color-mix(in srgb, var(--surface) 96%, transparent);
+  backdrop-filter: blur(22px) saturate(140%);
+  box-shadow: 0 24px 60px var(--shadow);
+  animation: menuIn .16s ease-out;
+  z-index: 120;
+}
+
+@keyframes menuIn {
+  from { opacity: 0; transform: translateY(-5px) scale(.985); }
+  to { opacity: 1; transform: translateY(0) scale(1); }
+}
+
+.identity {
+  display: grid;
+  grid-template-columns: 40px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 8px 9px 9px;
+}
+
+.avatarLarge {
+  width: 40px;
+  height: 40px;
+  font-size: 14px;
+}
+
+.identity small,
+.identity strong {
+  display: block;
+}
+
+.identity small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin-bottom: 3px;
+}
+
+.identity strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+  font-size: 12px;
+}
+
+.divider {
+  height: 1px;
+  margin: 5px 4px;
+  background: var(--border);
+}
+
+.dropdown a,
+.logoutButton {
+  width: 100%;
+  min-height: 42px;
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 0 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 720;
+  text-align: left;
+  transition: background .18s ease, color .18s ease;
+}
+
+.dropdown a:hover,
+.logoutButton:hover {
+  background: var(--surface-2);
+}
+
+.dropdown a > span,
+.logoutButton > span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 11px;
+  font-weight: 900;
+}
+
+.logoutButton {
+  color: var(--danger);
+}
+
+.logoutButton > span {
+  color: var(--danger);
+  background: color-mix(in srgb, var(--danger) 10%, var(--surface));
+}
+
+.mobileAccountMenu {
+  display: none;
+}
+
+.mobileIdentity {
+  display: grid;
+  grid-template-columns: 38px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  margin: 5px 4px 7px;
+  padding: 10px;
+  border-radius: 14px;
+  background: var(--surface-2);
+}
+
+.mobileAvatar {
+  width: 38px;
+  height: 38px;
+  font-size: 13px;
+}
+
+.mobileIdentity strong,
+.mobileIdentity small {
+  display: block;
+}
+
+.mobileIdentity strong {
+  font-size: 12px;
+}
+
+.mobileIdentity small {
+  color: var(--text-secondary);
+  font-size: 10px;
+  margin-top: 3px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.mobileLogout {
+  min-height: 44px;
+  margin-top: 3px;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: color-mix(in srgb, var(--danger) 8%, transparent);
+  color: var(--danger);
+  text-align: left;
+  font-weight: 820;
+  cursor: pointer;
+}
+
+@media (max-width: 1140px) and (min-width: 1001px) {
+  .accountLabel { display: none; }
+  .accountButton { padding-right: 8px; }
+}
+
+@media (max-width: 1000px) {
+  .accountMenuWrap { display: none; }
+  .mobileAccountMenu {
+    display: grid;
+    margin-top: 4px;
+    padding-top: 5px;
+    border-top: 1px solid var(--border);
+  }
+
+  .mobileAccountMenu a {
+    color: var(--text) !important;
+    font-weight: 760 !important;
+  }
+}
+
+/* App-style navigation shown after Melo account sign-in */
+.memberNav {
+  gap: 14px;
+}
+.memberNav > a {
+  font-size: 12px;
+  font-weight: 780;
+  white-space: nowrap;
+}
+
+@media (max-width: 1320px) and (min-width: 1201px) {
+  .memberNav { gap: 9px; }
+  .memberNav > a { font-size: 11px; }
+  .accountLabel { display: none; }
+  .accountButton { padding-right: 8px; }
+}
+
+@media (max-width: 1200px) {
+  .accountMenuWrap { display: none; }
+  .mobileAccountMenu {
+    display: grid;
+    margin-top: 4px;
+    padding-top: 5px;
+    border-top: 1px solid var(--border);
+  }
+  .mobileAccountMenu a {
+    color: var(--text) !important;
+    font-weight: 760 !important;
+  }
+}
+
+
+/* Settings icon-only trigger + theme inside dropdown */
+.accountButtonIcon {
+  width: 42px;
+  min-width: 42px;
+  padding: 0 6px;
+  justify-content: center;
+  gap: 0;
+}
+
+.accountButtonIcon .avatar {
+  width: 29px;
+  height: 29px;
+  font-size: 14px;
+}
+
+.themeMenuButton {
+  width: 100%;
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 25px minmax(0, 1fr);
+  gap: 10px;
+  align-items: center;
+  padding: 5px 10px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  cursor: pointer;
+  text-align: left;
+  transition: background .18s ease;
+}
+
+.themeMenuButton:hover {
+  background: var(--surface-2);
+}
+
+.themeMenuButton > span {
+  width: 25px;
+  height: 25px;
+  display: grid;
+  place-items: center;
+  border-radius: 8px;
+  color: var(--primary);
+  background: var(--primary-soft);
+  font-size: 13px;
+}
+
+.themeMenuCopy strong,
+.themeMenuCopy small {
+  display: block;
+}
+
+.themeMenuCopy strong {
+  font-size: 12px;
+  font-weight: 760;
+}
+
+.themeMenuCopy small {
+  margin-top: 2px;
+  color: var(--text-secondary);
+  font-size: 10px;
+  font-weight: 600;
+}
+
+.mobileThemeButton {
+  min-height: 48px;
+  display: grid;
+  grid-template-columns: 28px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  margin: 2px 0;
+  padding: 0 12px;
+  border: 0;
+  border-radius: 12px;
+  background: transparent;
+  color: var(--text);
+  text-align: left;
+  cursor: pointer;
+  font-weight: 760;
+}
+
+.mobileThemeButton:hover {
+  background: var(--surface-2);
+}
+
+.mobileThemeButton > span:first-child {
+  display: grid;
+  width: 28px;
+  height: 28px;
+  place-items: center;
+  border-radius: 9px;
+  color: var(--primary);
+  background: var(--primary-soft);
+}
+
+.mobileThemeButton > span:nth-child(2) {
+  font-size: 12px;
+}
+
+.mobileThemeButton small {
+  color: var(--text-secondary);
+  font-size: 10px;
+}
+
+
+/* =========================================================
+   Member header V4 — nav beside logo + global search on right
+   ========================================================= */
+.memberNav {
+  margin-left: 0 !important;
+  gap: 18px;
+}
+
+.memberHeaderTools {
+  margin-left: auto;
+  min-width: 0;
+}
+
+.headerSearch {
+  display: grid;
+  grid-template-columns: 26px minmax(0, 1fr) auto;
+  align-items: center;
+  width: clamp(220px, 23vw, 360px);
+  height: 40px;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  box-shadow: 0 7px 20px var(--shadow);
+  overflow: hidden;
+}
+
+.headerSearch > span {
+  display: grid;
+  place-items: center;
+  color: var(--text-secondary);
+  font-size: 18px;
+}
+
+.headerSearch input {
+  min-width: 0;
+  height: 100%;
+  border: 0;
+  outline: 0;
+  background: transparent;
+  color: var(--text);
+  font-size: 12.5px;
+}
+
+.headerSearch input::placeholder {
+  color: var(--text-secondary);
+}
+
+.clearSearch {
+  display: grid;
+  width: 30px;
+  height: 30px;
+  place-items: center;
+  margin-right: 4px;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--text-secondary);
+  cursor: pointer;
+  font-size: 17px;
+}
+
+.clearSearch:hover {
+  background: var(--surface-2);
+}
+
+.mobileSearch {
+  display: none;
+}
+
+@media (max-width: 1320px) and (min-width: 1001px) {
+  .memberNav {
+    gap: 11px;
+  }
+
+  .memberNav > a {
+    font-size: 11px;
+  }
+
+  .headerSearch {
+    width: clamp(190px, 19vw, 270px);
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 1001px) {
+  .headerSearch {
+    width: 190px;
+  }
+
+  .headerSearch input {
+    font-size: 11px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .headerSearch {
+    display: none;
+  }
+
+  .mobileSearch {
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr);
+    align-items: center;
+    min-height: 44px;
+    margin: 4px;
+    border: 1px solid var(--border);
+    border-radius: 12px;
+    background: var(--surface-2);
+    padding: 0 10px;
+  }
+
+  .mobileSearch > span {
+    color: var(--primary);
+  }
+
+  .mobileSearch input {
+    width: 100%;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 12px;
+  }
+}
+
+
+/* Auth hydration guard: prevents public nav flash for signed-in users. */
+.authNavSkeleton {
+  display: flex;
+  align-items: center;
+  gap: 16px;
+  height: 40px;
+  pointer-events: none;
+}
+.authNavSkeleton > span {
+  display: block;
+  width: 48px;
+  height: 10px;
+  border-radius: 999px;
+  background: var(--surface-2);
+  opacity: .42;
+}
+.authNavSkeleton > span:nth-child(2) { width: 58px; }
+.authNavSkeleton > span:nth-child(3) { width: 48px; }
+.authToolsSkeleton {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  pointer-events: none;
+}
+.authSearchSkeleton,
+.authControlSkeleton,
+.authIconSkeleton {
+  display: block;
+  border: 1px solid var(--border);
+  background: var(--surface);
+  box-shadow: 0 7px 20px var(--shadow);
+  opacity: .45;
+}
+.authSearchSkeleton { width: clamp(220px, 23vw, 360px); height: 40px; border-radius: 13px; }
+.authControlSkeleton { width: 112px; height: 40px; border-radius: 13px; }
+.authIconSkeleton { width: 40px; height: 40px; border-radius: 50%; }
+@media (max-width: 1320px) and (min-width: 1001px) {
+  .authSearchSkeleton { width: clamp(190px, 19vw, 270px); }
+}
+@media (max-width: 1080px) and (min-width: 1001px) {
+  .authSearchSkeleton { width: 190px; }
+}
+@media (max-width: 1000px) {
+  .authNavSkeleton,
+  .authToolsSkeleton { display: none; }
+}
+
+
+/* =========================================================
+   V2 — Member Menu + horizontal activity submenu
+   ========================================================= */
+.memberMenuWrap{
+  position:relative;
+  display:inline-flex;
+  align-items:center;
+}
+.memberMenuButton{
+  display:inline-flex;
+  min-height:34px;
+  align-items:center;
+  gap:5px;
+  border:0;
+  border-radius:10px;
+  background:transparent;
+  color:var(--text-secondary);
+  padding:0 7px;
+  font-size:12px;
+  font-weight:780;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background .18s ease,color .18s ease;
+}
+.memberMenuButton:hover,
+.memberMenuButtonOpen{
+  background:var(--surface-2);
+  color:var(--text);
+}
+.memberMenuButton>span{
+  color:var(--primary);
+  font-size:12px;
+}
+.memberMenuButton>b{
+  color:var(--text-secondary);
+  font-size:10px;
+  transition:transform .18s ease;
+}
+.memberMenuButtonOpen>b{
+  transform:rotate(180deg);
+}
+.memberSubmenu{
+  position:absolute;
+  top:calc(100% + 12px);
+  left:0;
+  z-index:180;
+  display:flex;
+  gap:6px;
+  min-width:max-content;
+  padding:7px;
+  border:1px solid var(--border);
+  border-radius:15px;
+  background:color-mix(in srgb,var(--surface) 97%,transparent);
+  backdrop-filter:blur(20px) saturate(140%);
+  box-shadow:0 18px 44px var(--shadow);
+  animation:memberSubmenuIn .16s ease-out;
+}
+.memberSubmenu a{
+  display:inline-flex;
+  min-height:38px;
+  align-items:center;
+  gap:7px;
+  border-radius:10px;
+  color:var(--text) !important;
+  padding:0 12px;
+  font-size:12px !important;
+  font-weight:760 !important;
+  text-decoration:none;
+  white-space:nowrap;
+}
+.memberSubmenu a:hover{
+  background:var(--surface-2);
+}
+.memberSubmenu a>span{
+  display:grid;
+  width:24px;
+  height:24px;
+  place-items:center;
+  border-radius:8px;
+  background:var(--primary-soft);
+  color:var(--primary);
+}
+@keyframes memberSubmenuIn{
+  from{opacity:0;transform:translateY(-5px) scale(.985)}
+  to{opacity:1;transform:translateY(0) scale(1)}
+}
+
+@media(max-width:1000px){
+  .memberMenuWrap{
+    display:block;
+    width:100%;
+  }
+  .memberMenuButton{
+    width:100%;
+    min-height:42px;
+    justify-content:flex-start;
+    padding:0 10px;
+  }
+  .memberMenuButton>b{
+    margin-left:auto;
+  }
+  .memberSubmenu{
+    position:static;
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    margin:5px 0 4px;
+    box-shadow:none;
+  }
+}
+
+
+/* =========================================================
+   V2 — Header global search live suggestions
+   ========================================================= */
+.headerSearchWrap {
+  position: relative;
+  width: clamp(220px, 23vw, 360px);
+  min-width: 0;
+}
+
+.headerSearchWrap .headerSearch {
+  width: 100%;
+  overflow: hidden;
+}
+
+.searchDropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  left: 0;
+  right: 0;
+  z-index: 220;
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: var(--surface);
+  box-shadow: 0 20px 50px rgba(8,15,24,.18);
+}
+
+.searchDropdownHead {
+  display: flex;
+  min-height: 38px;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 0 12px;
+  border-bottom: 1px solid var(--border);
+}
+
+.searchDropdownHead strong {
+  font-size: 11px;
+}
+
+.searchSpinner {
+  color: var(--primary);
+  font-size: 13px;
+  animation: headerSearchSpin 1s linear infinite;
+}
+
+.searchSuggestionList {
+  display: grid;
+  max-height: 344px;
+  overflow-y: auto;
+  padding: 5px;
+}
+
+.searchSuggestionRow {
+  display: grid;
+  grid-template-columns: 42px minmax(0, 1fr) auto;
+  gap: 9px;
+  align-items: center;
+  min-height: 55px;
+  border-radius: 11px;
+  color: var(--text);
+  padding: 6px 7px;
+  text-decoration: none;
+}
+
+.searchSuggestionRow:hover {
+  background: var(--surface-2);
+}
+
+.searchSuggestionImage {
+  display: grid;
+  width: 42px;
+  height: 42px;
+  place-items: center;
+  overflow: hidden;
+  border-radius: 11px;
+  background: var(--primary-soft);
+  color: var(--primary);
+}
+
+.searchSuggestionImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+.searchSuggestionCopy {
+  min-width: 0;
+}
+
+.searchSuggestionCopy strong,
+.searchSuggestionCopy small {
+  display: block;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.searchSuggestionCopy strong {
+  font-size: 11.5px;
+}
+
+.searchSuggestionCopy small {
+  margin-top: 3px;
+  color: var(--text-secondary);
+  font-size: 9.5px;
+}
+
+.searchSuggestionRow em {
+  color: var(--primary);
+  font-size: 9px;
+  font-style: normal;
+  font-weight: 820;
+}
+
+.searchEmpty {
+  padding: 22px 14px;
+  color: var(--text-secondary);
+  font-size: 10.5px;
+  text-align: center;
+}
+
+.searchAllButton {
+  width: 100%;
+  min-height: 39px;
+  border: 0;
+  border-top: 1px solid var(--border);
+  background: transparent;
+  color: var(--primary);
+  font-size: 10.5px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.searchAllButton:hover {
+  background: var(--surface-2);
+}
+
+@keyframes headerSearchSpin {
+  to { transform: rotate(360deg); }
+}
+
+@media (max-width: 1320px) and (min-width: 1001px) {
+  .headerSearchWrap {
+    width: clamp(190px, 19vw, 270px);
+  }
+}
+
+@media (max-width: 1080px) and (min-width: 1001px) {
+  .headerSearchWrap {
+    width: 190px;
+  }
+}
+
+@media (max-width: 1000px) {
+  .headerSearchWrap {
+    display: none;
+  }
+}
+
+
+/* =========================================================
+   V4.1 — Signed-in header aligns exactly with main web content.
+   CSS Modules requires at least one local class in each selector.
+   ========================================================= */
+.memberHeaderInner {
+  width: min(1320px, calc(100% - 34px)) !important;
+  max-width: none !important;
+  margin-left: auto !important;
+  margin-right: auto !important;
+  padding-left: 0 !important;
+  padding-right: 0 !important;
+}
+
+.memberHeaderInner > :global(.brand) {
+  flex: 0 0 auto;
+}
+
+.memberHeaderTools {
+  margin-left: auto !important;
+}
+
+@media (max-width: 760px) {
+  .memberHeaderInner {
+    width: min(100% - 20px, 1320px) !important;
+  }
+}
+
+
+/* =========================================================
+   V5 — Header left/right edge matches the 1320px Trips shell.
+   Inline width in Header.tsx is the source of truth; this block
+   only controls interior alignment.
+   ========================================================= */
+.memberHeaderInner {
+  box-sizing: border-box;
+  gap: 18px;
+}
+
+.memberHeaderInner > :global(.brand) {
+  margin-left: 0 !important;
+}
+
+.memberHeaderTools {
+  margin-left: auto !important;
+  margin-right: 0 !important;
+}
+
+@media (max-width: 760px) {
+  .memberHeaderInner {
+    width: min(100% - 20px, 1320px) !important;
+  }
+}
+
+
+/* V7 — richer live-search thumbnails */
+.searchSuggestionImage {
+  width: 48px;
+  height: 48px;
+  border-radius: 13px;
+}
+
+.searchSuggestionRow {
+  grid-template-columns: 48px minmax(0, 1fr) auto;
+  min-height: 62px;
+}
+
+.searchSuggestionImage img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+}
+
+/* Top navigation unread badge for Chats. */
+.chatNavLink {
+  display: inline-flex !important;
+  align-items: center;
+  gap: 6px;
+}
+
+.chatNavBadge {
+  display: inline-grid;
+  min-width: 18px;
+  height: 18px;
+  padding: 0 5px;
+  place-items: center;
+  border: 2px solid var(--bg);
+  border-radius: 999px;
+  background: #ef5d68;
+  color: #fff;
+  font-size: 9px;
+  font-weight: 900;
+  line-height: 1;
+  box-shadow: 0 2px 8px rgba(239, 93, 104, .28);
+}
+
+@media (max-width: 1200px) {
+  .chatNavLink {
+    justify-content: flex-start;
+  }
+}
+
+.chatNavButton {
+  border: 0;
+  background: transparent;
+  color: var(--text-secondary);
+  padding: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+}
+
+.chatNavButton:hover {
+  color: var(--primary);
+}
+
+.notificationWrap{position:relative}.notificationButton,.safetyShortcutButton{position:relative;display:inline-grid;width:42px;height:40px;place-items:center;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:13px;box-shadow:0 7px 22px var(--shadow);cursor:pointer;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;text-decoration:none}.notificationButton:hover,.safetyShortcutButton:hover{border-color:color-mix(in srgb,var(--primary) 38%,var(--border));box-shadow:0 10px 26px var(--shadow);transform:translateY(-1px)}.notificationGlyph{font-size:16px;line-height:1}.safetyShortcutGlyph{font-size:18px;line-height:1;color:#ef5268;font-weight:900}.notificationBadge{position:absolute;top:-5px;right:-4px;display:inline-grid;min-width:18px;height:18px;padding:0 5px;place-items:center;border:2px solid var(--bg);border-radius:999px;background:#ef5d68;color:#fff;font-size:9px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(239,93,104,.28)}.notificationDropdown{position:absolute;right:0;top:calc(100% + 10px);width:min(380px,calc(100vw - 28px));max-height:min(520px,70vh);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:9px;border:1px solid var(--border);border-radius:19px;background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(22px) saturate(140%);box-shadow:0 24px 60px var(--shadow);animation:menuIn .16s ease-out;z-index:120}.notificationDropdownHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 10px}.notificationDropdownHead strong{font-size:12px;font-weight:820}.notificationDropdownHead span{color:var(--text-secondary);font-size:10px;font-weight:700}.notificationList{display:grid;gap:8px;max-height:360px;overflow:auto;padding-right:2px}.notificationRow{display:grid;grid-template-columns:48px minmax(0,1fr) 16px;gap:10px;align-items:start;padding:10px;border-radius:15px;color:var(--text);text-decoration:none;border:1px solid transparent;background:transparent;transition:background .16s ease,border-color .16s ease}.notificationRow:hover{background:var(--surface-2);border-color:color-mix(in srgb,var(--primary) 18%,var(--border))}.notificationRowUnread{background:color-mix(in srgb,var(--primary-soft) 48%,transparent);border-color:color-mix(in srgb,var(--primary) 18%,var(--border))}.notificationAvatar{width:46px;height:46px;border-radius:50%!important;overflow:hidden;background:linear-gradient(160deg,#2691ff,#4fb7ff);color:#fff;display:grid;place-items:center;font-size:16px;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}.notificationAvatar img{width:100%;height:100%;object-fit:cover;display:block}.notificationAvatar b{font-style:normal;letter-spacing:.02em}.notificationCopy strong,.notificationCopy small,.notificationCopy time{display:block}.notificationCopy strong{font-size:11px;font-weight:820;line-height:1.35}.notificationCopy small{margin-top:4px;color:var(--text-secondary);font-size:10px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.notificationCopy time{margin-top:7px;color:var(--text-secondary);font-size:9px;font-weight:700;line-height:1}.notificationStatus{display:grid;place-items:center;min-height:46px;color:#2b93ff;font-size:22px;line-height:1}.notificationEmpty{padding:18px 8px;color:var(--text-secondary);font-size:11px;text-align:center}.notificationFooterButton{margin-top:8px;min-height:42px;border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:var(--primary-soft);color:var(--primary);border-radius:13px;font:inherit;font-size:11px;font-weight:850;cursor:pointer}.notificationFooterButton:hover{border-color:var(--primary)}
+
+.partnerModeMenuButton{width:100%;min-height:44px;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:11px;padding:0 10px;border-radius:11px;text-align:left;cursor:pointer}.partnerModeMenuButton:hover{background:var(--primary-soft);color:var(--primary)}.partnerModeMenuButton>span{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-size:12px}.partnerModeMenuButton strong{font-size:11px;font-weight:850}.mobilePartnerModeButton{width:100%;min-height:42px;border:0;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;gap:10px;padding:0 12px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.mobilePartnerModeButton span{font-size:14px}

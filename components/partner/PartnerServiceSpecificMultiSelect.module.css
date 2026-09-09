@@ -1,0 +1,385 @@
+.root {
+  position: relative;
+
+  width: 100%;
+  min-width: 0;
+
+  z-index: 1;
+}
+
+/*
+ * ตอนเปิด Dropdown ให้เฉพาะ component นี้
+ * อยู่เหนือ field / card รอบข้าง
+ */
+.root[data-open='true'] {
+  z-index: 80;
+}
+
+.trigger {
+  position: relative;
+
+  width: 100%;
+  min-height: 46px;
+
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+
+  align-items: center;
+
+  gap: 12px;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 13px;
+
+  background:
+    var(--surface-2);
+
+  color:
+    var(--text);
+
+  padding:
+    10px
+    13px;
+
+  font: inherit;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  transition:
+    border-color .15s ease,
+    background .15s ease,
+    box-shadow .15s ease;
+}
+
+.root[data-open='true']
+.trigger {
+  border-color:
+    var(--primary);
+
+  background:
+    var(--surface);
+
+  box-shadow:
+    0 0 0 3px
+    color-mix(
+      in srgb,
+      var(--primary) 9%,
+      transparent
+    );
+}
+
+.trigger > span {
+  min-width: 0;
+
+  overflow: hidden;
+
+  color:
+    var(--text);
+
+  font-size: 12px;
+  line-height: 1.5;
+  font-weight: 700;
+
+  text-overflow:
+    ellipsis;
+
+  white-space:
+    nowrap;
+}
+
+.trigger[data-empty='true']
+> span {
+  color:
+    color-mix(
+      in srgb,
+      var(--text-secondary) 80%,
+      transparent
+    );
+}
+
+.trigger > b {
+  color:
+    var(--text-secondary);
+
+  font-size: 15px;
+  line-height: 1;
+  font-weight: 900;
+}
+
+/* =========================================================
+   DROPDOWN PANEL
+
+   สำคัญ:
+   ใช้ position:absolute เพื่อไม่ให้ panel
+   ไปเพิ่มความสูงของการ์ดสีฟ้า
+   และไม่ดัน field อีกฝั่ง
+   ========================================================= */
+
+.panel {
+  position: absolute;
+
+  top: calc(100% + 7px);
+  left: 0;
+  right: 0;
+
+  z-index: 100;
+
+  width: 100%;
+
+  overflow: hidden;
+
+  border:
+    1px solid
+    var(--border);
+
+  border-radius: 15px;
+
+  background:
+    var(--surface);
+
+  box-shadow:
+    0 18px 42px
+    rgba(
+      0,
+      0,
+      0,
+      .18
+    );
+}
+
+.optionList {
+  max-height: 340px;
+
+  overflow-y: auto;
+
+  overscroll-behavior:
+    contain;
+
+  scrollbar-width:
+    thin;
+
+  scrollbar-color:
+    color-mix(
+      in srgb,
+      var(--text-secondary) 45%,
+      transparent
+    )
+    transparent;
+}
+
+.optionList::-webkit-scrollbar {
+  width: 7px;
+}
+
+.optionList::-webkit-scrollbar-track {
+  background:
+    transparent;
+}
+
+.optionList::-webkit-scrollbar-thumb {
+  border-radius: 999px;
+
+  background:
+    color-mix(
+      in srgb,
+      var(--text-secondary) 40%,
+      transparent
+    );
+}
+
+/* =========================================================
+   OPTIONS
+   ========================================================= */
+
+.option {
+  width: 100%;
+  min-height: 48px;
+
+  display: grid;
+
+  grid-template-columns:
+    minmax(0, 1fr)
+    28px;
+
+  align-items: center;
+
+  gap: 10px;
+
+  border: 0;
+
+  border-bottom:
+    1px solid
+    var(--border);
+
+  background:
+    var(--surface);
+
+  color:
+    var(--text);
+
+  padding:
+    0
+    14px;
+
+  font: inherit;
+
+  cursor: pointer;
+
+  text-align: left;
+
+  transition:
+    background .12s ease,
+    color .12s ease;
+}
+
+.option:hover {
+  background:
+    var(--surface-2);
+}
+
+.option[data-selected='true'] {
+  background:
+    color-mix(
+      in srgb,
+      var(--primary-soft) 68%,
+      var(--surface)
+    );
+}
+
+.option > span {
+  min-width: 0;
+
+  font-size: 11.5px;
+  line-height: 1.5;
+  font-weight: 800;
+}
+
+.option > b {
+  width: 24px;
+  height: 24px;
+
+  display: grid;
+
+  place-items: center;
+
+  border-radius:
+    999px;
+
+  background:
+    var(--primary);
+
+  color:
+    #fff;
+
+  font-size: 11px;
+  line-height: 1;
+  font-weight: 950;
+}
+
+/* =========================================================
+   DONE
+   ========================================================= */
+
+.done {
+  width: 100%;
+  min-height: 48px;
+
+  border: 0;
+
+  border-top:
+    1px solid
+    var(--border);
+
+  background:
+    color-mix(
+      in srgb,
+      var(--primary-soft) 70%,
+      var(--surface)
+    );
+
+  color:
+    var(--primary);
+
+  font: inherit;
+
+  font-size: 12px;
+  font-weight: 950;
+
+  cursor: pointer;
+
+  transition:
+    background .12s ease;
+}
+
+.done:hover {
+  background:
+    var(--primary-soft);
+}
+
+/* =========================================================
+   TABLET / MOBILE
+   ========================================================= */
+
+@media (max-width: 720px) {
+  .root {
+    position: relative;
+  }
+
+  .trigger {
+    min-height: 50px;
+  }
+
+  .trigger > span {
+    font-size: 12px;
+  }
+
+  /*
+   * Mobile ก็ใช้ Floating Dropdown เช่นเดียวกัน
+   * เพื่อไม่ให้การ์ดด้านหลังยืดตัว
+   */
+  .panel {
+    top:
+      calc(
+        100% +
+        7px
+      );
+
+    left: 0;
+    right: 0;
+
+    width: 100%;
+  }
+
+  .optionList {
+    max-height:
+      min(
+        420px,
+        52vh
+      );
+  }
+
+  .option {
+    min-height: 52px;
+
+    padding:
+      0
+      14px;
+  }
+
+  .option > span {
+    font-size: 12px;
+  }
+
+  .done {
+    min-height: 52px;
+
+    font-size: 12px;
+  }
+}

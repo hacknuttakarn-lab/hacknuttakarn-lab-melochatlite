@@ -1,0 +1,2 @@
+.root{display:flex;align-items:center;flex-wrap:wrap;gap:5px;margin-top:7px;color:var(--text-secondary);font-size:10px;font-weight:800;line-height:1.35}.verified{display:inline-flex;align-items:center;color:var(--primary);font-weight:900}.separator{color:var(--text-secondary);opacity:.62}.nationality{display:inline-flex;align-items:center;gap:5px}.nationality b{font-size:13px;line-height:1}.nationality span{color:var(--text-secondary)}
+@media(max-width:680px){.root{margin-top:5px;font-size:9.5px}.nationality b{font-size:12px}}

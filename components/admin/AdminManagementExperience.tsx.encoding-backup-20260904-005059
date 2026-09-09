@@ -1,0 +1,4852 @@
+﻿'use client';
+
+import Link from 'next/link';
+import {
+  useEffect,
+  useMemo,
+  useState,
+} from 'react';
+
+import { Header } from '@/components/Header';
+import { useLocale } from '@/components/SiteProviders';
+
+import SettingsUtilityExperience
+  from '@/components/settings/SettingsUtilityExperience';
+
+import AdminLiveNoticeWorkspace
+  from '@/components/admin/AdminLiveNoticeWorkspace';
+
+import AdminAccessWorkspace
+  from '@/components/admin/AdminAccessWorkspace';
+
+import {
+  loadSettingsAccountSnapshot,
+  type SettingsAccountSnapshot,
+} from '@/components/settings/settingsWebData';
+
+import {
+  adminReviewActionsFor,
+  canActOnAdminReviewQueue,
+  canViewAdminReviewQueue,
+  getAdminReviewAccessWeb,
+  getAdminReviewQueueCountsWeb,
+  listAdminReviewQueueWeb,
+  loadAdminReviewEvidenceWeb,
+  resolveAdminReviewItemWeb,
+  type AdminReviewAccessWeb,
+  type AdminReviewAction,
+  type AdminReviewEvidenceWeb,
+  type AdminReviewItemWeb,
+  type AdminReviewQueueType,
+  type AdminReviewStatusFilter,
+} from '@/components/admin/adminReviewWebData';
+
+import styles
+  from './AdminManagementExperience.module.css';
+
+
+/* =========================================================
+   TYPES
+   ========================================================= */
+
+type AdminSection =
+  | 'review'
+  | 'quest'
+  | 'live'
+  | 'access';
+
+
+type AdminCopy = {
+  management: string;
+  managementEyebrow: string;
+  back: string;
+
+  menu: string;
+  workspace: string;
+
+  review: string;
+  reviewDesc: string;
+
+  quest: string;
+  questDesc: string;
+
+  live: string;
+  liveDesc: string;
+
+  access: string;
+  accessDesc: string;
+
+  checkingAccess: string;
+  accessDenied: string;
+  accessDeniedDesc: string;
+
+  pendingTotal: string;
+  currentQueue: string;
+  visibleResults: string;
+
+  refresh: string;
+  searchPlaceholder: string;
+
+  pending: string;
+  all: string;
+
+  loading: string;
+  retry: string;
+
+  empty: string;
+  emptySearch: string;
+
+  reviewButton: string;
+
+  submitted: string;
+  status: string;
+  email: string;
+
+  backToList: string;
+  detailTitle: string;
+  importantData: string;
+
+  checklist: string;
+  complete: string;
+  shouldCheck: string;
+
+  evidence: string;
+  evidencePrivate: string;
+  evidenceLoading: string;
+  noEvidence: string;
+  openFile: string;
+
+  adminNote: string;
+  adminNotePlaceholder: string;
+
+  readOnly: string;
+
+  updated: string;
+  requiredNote: string;
+
+  queueReports: string;
+  queueVerification: string;
+  queueBusiness: string;
+  queuePayout: string;
+  queueReverification: string;
+  queueDeletions: string;
+  queueReviewCases: string;
+
+  approve: string;
+  reject: string;
+  requestInfo: string;
+  suspend: string;
+
+  dismiss: string;
+  warn: string;
+  suspend24h: string;
+  suspend7d: string;
+  deactivate: string;
+
+  resolve: string;
+  hideReview: string;
+
+  acknowledge: string;
+  cancelDeletion: string;
+};
+
+
+/* =========================================================
+   LANGUAGES
+   ========================================================= */
+
+const COPY: Record<string, AdminCopy> = {
+  th: {
+    management: 'เธเธฒเธฃเธเธฑเธ”เธเธฒเธฃเธเธญเธเนเธญเธ”เธกเธดเธ',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: 'เธเธฅเธฑเธ',
+
+    menu: 'เน€เธกเธเธนเนเธญเธ”เธกเธดเธ',
+    workspace: 'เธเธทเนเธเธ—เธตเนเธเธฑเธ”เธเธฒเธฃ',
+
+    review: 'Admin Review Center',
+    reviewDesc:
+      'เธ•เธฃเธงเธเธชเธญเธเธเธฑเธเธเธต เธเธนเนเนเธเน เธฃเนเธฒเธเธเนเธฒ เน€เธญเธเธชเธฒเธฃ เธฃเธฒเธขเธเธฒเธ เนเธฅเธฐเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธ•เนเธญเธเธเธดเธเธฒเธฃเธ“เธฒ',
+
+    quest: 'Manage Quest & Reward',
+    questDesc:
+      'เธเธฑเธ”เธเธฒเธฃ Quest เนเธฅเธฐเธเธญเธเธฃเธฒเธเธงเธฑเธฅเธเธญเธ Melo',
+
+    live: 'Live Notice',
+    liveDesc:
+      'เธ”เธนเนเธฅเธฐเธเธฑเธ”เธเธฒเธฃเธเธฃเธฐเธเธฒเธจเธชเธ”เธเธญเธ Melo',
+
+    access: 'เธเธฑเธ”เธเธฒเธฃเธชเธดเธ—เธเธดเนเนเธญเธ”เธกเธดเธ',
+    accessDesc:
+      'เธเธณเธซเธเธ”เธฃเธฐเธ”เธฑเธเธเธฑเธเธเธตเนเธฅเธฐเธชเธดเธ—เธเธดเนเธเธฒเธฃเธ”เธนเธซเธฃเธทเธญเธ”เธณเน€เธเธดเธเธเธฒเธฃเธเธญเธเธเธนเนเธ”เธนเนเธฅเนเธ•เนเธฅเธฐเธเธ',
+
+    checkingAccess:
+      'เธเธณเธฅเธฑเธเธ•เธฃเธงเธเธชเธญเธเธชเธดเธ—เธเธดเน...',
+
+    accessDenied:
+      'เนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเน€เธเนเธฒเนเธเนเธเธฒเธ',
+
+    accessDeniedDesc:
+      'เน€เธกเธเธนเธเธตเนเนเธชเธ”เธเน€เธเธเธฒเธฐเธเธฑเธเธเธตเธ—เธตเนเธกเธตเธชเธดเธ—เธเธดเนเธ”เธนเนเธฅเธฃเธฐเธเธ',
+
+    pendingTotal:
+      'เธฃเธญเธ”เธณเน€เธเธดเธเธเธฒเธฃเธ—เธฑเนเธเธซเธกเธ”',
+
+    currentQueue:
+      'เธเธดเธงเธเธฑเธเธเธธเธเธฑเธ',
+
+    visibleResults:
+      'เธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเนเธชเธ”เธ',
+
+    refresh:
+      'เธฃเธตเน€เธเธฃเธ',
+
+    searchPlaceholder:
+      'เธเนเธเธซเธฒเธเธทเนเธญ เธญเธตเน€เธกเธฅ เธฃเนเธฒเธเธเนเธฒ เธซเธฃเธทเธญเธเนเธญเธกเธนเธฅเธ—เธตเนเน€เธเธตเนเธขเธงเธเนเธญเธ...',
+
+    pending:
+      'เธฃเธญเธ”เธณเน€เธเธดเธเธเธฒเธฃ',
+
+    all:
+      'เธ—เธฑเนเธเธซเธกเธ”',
+
+    loading:
+      'เธเธณเธฅเธฑเธเนเธซเธฅเธ”เธเนเธญเธกเธนเธฅ...',
+
+    retry:
+      'เธฅเธญเธเนเธซเธกเน',
+
+    empty:
+      'เนเธกเนเธกเธตเธฃเธฒเธขเธเธฒเธฃเนเธเธซเธกเธงเธ”เธเธตเน',
+
+    emptySearch:
+      'เนเธกเนเธเธเธฃเธฒเธขเธเธฒเธฃเธ—เธตเนเธ•เธฃเธเธเธฑเธเธเธฒเธฃเธเนเธเธซเธฒ',
+
+    reviewButton:
+      'เธ•เธฃเธงเธเธชเธญเธ',
+
+    submitted:
+      'เธชเนเธเน€เธกเธทเนเธญ',
+
+    status:
+      'เธชเธ–เธฒเธเธฐ',
+
+    email:
+      'เธญเธตเน€เธกเธฅ',
+
+    backToList:
+      'เธเธฅเธฑเธเนเธเธฃเธฒเธขเธเธฒเธฃ',
+
+    detailTitle:
+      'เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธเธฒเธฃเธ•เธฃเธงเธเธชเธญเธ',
+
+    importantData:
+      'เธเนเธญเธกเธนเธฅเธชเธณเธเธฑเธเธชเธณเธซเธฃเธฑเธเธเธดเธเธฒเธฃเธ“เธฒ',
+
+    checklist:
+      'Checklist',
+
+    complete:
+      'เธเธฃเธ',
+
+    shouldCheck:
+      'เธเธงเธฃเธ•เธฃเธงเธ',
+
+    evidence:
+      'เน€เธญเธเธชเธฒเธฃเนเธฅเธฐเธซเธฅเธฑเธเธเธฒเธ',
+
+    evidencePrivate:
+      'เธเนเธญเธกเธนเธฅเธชเนเธงเธเธ•เธฑเธงเธชเธณเธซเธฃเธฑเธ Admin Review เน€เธ—เนเธฒเธเธฑเนเธ',
+
+    evidenceLoading:
+      'เธเธณเธฅเธฑเธเนเธซเธฅเธ”เน€เธญเธเธชเธฒเธฃ...',
+
+    noEvidence:
+      'เนเธกเนเธกเธตเน€เธญเธเธชเธฒเธฃเธซเธฃเธทเธญเธซเธฅเธฑเธเธเธฒเธเนเธเธ',
+
+    openFile:
+      'เน€เธเธดเธ”เนเธเธฅเน',
+
+    adminNote:
+      'เธซเธกเธฒเธขเน€เธซเธ•เธธเธเธฒเธเนเธญเธ”เธกเธดเธ',
+
+    adminNotePlaceholder:
+      'เธฃเธฐเธเธธเน€เธซเธ•เธธเธเธฅ เธเธฅเธเธฒเธฃเธ•เธฃเธงเธ เธซเธฃเธทเธญเธเนเธญเธกเธนเธฅเธ—เธตเนเธ•เนเธญเธเธเธฒเธฃเนเธซเนเธเธนเนเนเธเน / Partner เนเธเนเนเธ',
+
+    readOnly:
+      'เธเธฑเธเธเธตเธเธตเนเธ”เธนเธเนเธญเธกเธนเธฅเนเธ”เน เนเธ•เนเนเธกเนเธกเธตเธชเธดเธ—เธเธดเนเธ”เธณเน€เธเธดเธเธเธฒเธฃเนเธเธซเธกเธงเธ”เธเธตเน',
+
+    updated:
+      'เธญเธฑเธเน€เธ”เธ•เธฃเธฒเธขเธเธฒเธฃเน€เธฃเธตเธขเธเธฃเนเธญเธขเนเธฅเนเธง',
+
+    requiredNote:
+      'เธเธฃเธธเธ“เธฒเธฃเธฐเธเธธเธชเธดเนเธเธ—เธตเนเธ•เนเธญเธเนเธเนเนเธเธซเธฃเธทเธญเธเนเธญเธกเธนเธฅเธ—เธตเนเธ•เนเธญเธเธชเนเธเน€เธเธดเนเธก',
+
+    queueReports:
+      'เธฃเธฒเธขเธเธฒเธเธเธนเนเนเธเน',
+
+    queueVerification:
+      'เธขเธทเธเธขเธฑเธเธ•เธฑเธงเธ•เธ',
+
+    queueBusiness:
+      'เธขเธทเธเธขเธฑเธเธเธฃเธดเธฉเธฑเธ—',
+
+    queuePayout:
+      'เธเธฑเธเธเธตเธฃเธฑเธเน€เธเธดเธ',
+
+    queueReverification:
+      'เธขเธทเธเธขเธฑเธเนเธซเธกเน',
+
+    queueDeletions:
+      'เธฅเธเธเธฑเธเธเธต',
+
+    queueReviewCases:
+      'เธเนเธญเธเธดเธเธฒเธ—เธฃเธตเธงเธดเธง',
+
+    approve:
+      'เธญเธเธธเธกเธฑเธ•เธด',
+
+    reject:
+      'เนเธกเนเธญเธเธธเธกเธฑเธ•เธด',
+
+    requestInfo:
+      'เธเธญเนเธเนเนเธ / เธเนเธญเธกเธนเธฅเน€เธเธดเนเธก',
+
+    suspend:
+      'เธฃเธฐเธเธฑเธ',
+
+    dismiss:
+      'เธเธดเธ”เธฃเธฒเธขเธเธฒเธ',
+
+    warn:
+      'เน€เธ•เธทเธญเธเธเธนเนเนเธเน',
+
+    suspend24h:
+      'เธฃเธฐเธเธฑเธ 24 เธเธก.',
+
+    suspend7d:
+      'เธฃเธฐเธเธฑเธ 7 เธงเธฑเธ',
+
+    deactivate:
+      'เธเธดเธ”เธเธฑเธเธเธต',
+
+    resolve:
+      'เนเธเนเนเธเน€เธฃเธทเนเธญเธเนเธฅเนเธง',
+
+    hideReview:
+      'เธเนเธญเธเธฃเธตเธงเธดเธง',
+
+    acknowledge:
+      'เธฃเธฑเธเธ—เธฃเธฒเธเธเธณเธเธญ',
+
+    cancelDeletion:
+      'เธขเธเน€เธฅเธดเธเธเธณเธเธญเธฅเธ',
+  },
+
+
+  en: {
+    management: 'Admin management',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: 'Back',
+
+    menu: 'Admin menu',
+    workspace: 'Admin workspace',
+
+    review: 'Admin Review Center',
+    reviewDesc:
+      'Review accounts, users, businesses, documents, reports and pending cases.',
+
+    quest: 'Manage Quest & Reward',
+    questDesc:
+      'Manage Melo quests and rewards.',
+
+    live: 'Live Notice',
+    liveDesc:
+      'View and manage Melo Live Notices.',
+
+    access: 'Admin Access',
+    accessDesc:
+      'Manage administrator roles and control what each admin can view or manage.',
+
+    checkingAccess:
+      'Checking access...',
+
+    accessDenied:
+      'Access denied',
+
+    accessDeniedDesc:
+      'This menu is available only to accounts with admin access.',
+
+    pendingTotal:
+      'Total pending',
+
+    currentQueue:
+      'Current queue',
+
+    visibleResults:
+      'Visible results',
+
+    refresh:
+      'Refresh',
+
+    searchPlaceholder:
+      'Search by name, email, business or related information...',
+
+    pending:
+      'Pending',
+
+    all:
+      'All',
+
+    loading:
+      'Loading...',
+
+    retry:
+      'Try again',
+
+    empty:
+      'No items in this category',
+
+    emptySearch:
+      'No items match your search',
+
+    reviewButton:
+      'Review',
+
+    submitted:
+      'Submitted',
+
+    status:
+      'Status',
+
+    email:
+      'Email',
+
+    backToList:
+      'Back to list',
+
+    detailTitle:
+      'Review details',
+
+    importantData:
+      'Important review information',
+
+    checklist:
+      'Checklist',
+
+    complete:
+      'Complete',
+
+    shouldCheck:
+      'Check',
+
+    evidence:
+      'Documents & evidence',
+
+    evidencePrivate:
+      'Private data for Admin Review only',
+
+    evidenceLoading:
+      'Loading documents...',
+
+    noEvidence:
+      'No documents or evidence attached',
+
+    openFile:
+      'Open file',
+
+    adminNote:
+      'Admin note',
+
+    adminNotePlaceholder:
+      'Enter the review result, reason or information that needs correction.',
+
+    readOnly:
+      'This account can view this queue but cannot perform actions.',
+
+    updated:
+      'The review item was updated.',
+
+    requiredNote:
+      'Please specify what information or documents need correction.',
+
+    queueReports:
+      'User reports',
+
+    queueVerification:
+      'Identity verification',
+
+    queueBusiness:
+      'Business verification',
+
+    queuePayout:
+      'Payout account',
+
+    queueReverification:
+      'Re-verification',
+
+    queueDeletions:
+      'Account deletion',
+
+    queueReviewCases:
+      'Review disputes',
+
+    approve:
+      'Approve',
+
+    reject:
+      'Reject',
+
+    requestInfo:
+      'Request changes / info',
+
+    suspend:
+      'Suspend',
+
+    dismiss:
+      'Dismiss report',
+
+    warn:
+      'Warn user',
+
+    suspend24h:
+      'Suspend 24h',
+
+    suspend7d:
+      'Suspend 7d',
+
+    deactivate:
+      'Deactivate account',
+
+    resolve:
+      'Resolve',
+
+    hideReview:
+      'Hide review',
+
+    acknowledge:
+      'Acknowledge',
+
+    cancelDeletion:
+      'Cancel deletion',
+  },
+
+
+  de: {
+    management: 'Admin-Verwaltung',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: 'Zurรผck',
+
+    menu: 'Admin-Menรผ',
+    workspace: 'Admin-Arbeitsbereich',
+
+    review: 'Admin Review Center',
+    reviewDesc:
+      'Konten, Nutzer, Unternehmen, Dokumente und Meldungen prรผfen.',
+
+    quest: 'Quest & Reward verwalten',
+    questDesc:
+      'Melo-Quests und Belohnungen verwalten.',
+
+    live: 'Live Notice',
+    liveDesc:
+      'Melo Live Notices verwalten.',
+
+    access: 'Admin-Berechtigungen',
+    accessDesc:
+      'Administratorrollen sowie Ansichts- und Verwaltungsrechte festlegen.',
+
+    checkingAccess:
+      'Berechtigung wird geprรผft...',
+
+    accessDenied:
+      'Kein Zugriff',
+
+    accessDeniedDesc:
+      'Dieses Menรผ ist nur fรผr Admin-Konten verfรผgbar.',
+
+    pendingTotal:
+      'Offen gesamt',
+
+    currentQueue:
+      'Aktuelle Warteschlange',
+
+    visibleResults:
+      'Ergebnisse',
+
+    refresh:
+      'Aktualisieren',
+
+    searchPlaceholder:
+      'Name, E-Mail, Unternehmen oder Informationen suchen...',
+
+    pending:
+      'Offen',
+
+    all:
+      'Alle',
+
+    loading:
+      'Wird geladen...',
+
+    retry:
+      'Erneut versuchen',
+
+    empty:
+      'Keine Eintrรคge',
+
+    emptySearch:
+      'Keine passenden Ergebnisse',
+
+    reviewButton:
+      'Prรผfen',
+
+    submitted:
+      'Eingereicht',
+
+    status:
+      'Status',
+
+    email:
+      'E-Mail',
+
+    backToList:
+      'Zurรผck zur Liste',
+
+    detailTitle:
+      'Prรผfdetails',
+
+    importantData:
+      'Wichtige Prรผfinformationen',
+
+    checklist:
+      'Checkliste',
+
+    complete:
+      'Vollstรคndig',
+
+    shouldCheck:
+      'Prรผfen',
+
+    evidence:
+      'Dokumente & Nachweise',
+
+    evidencePrivate:
+      'Private Admin-Daten',
+
+    evidenceLoading:
+      'Dokumente werden geladen...',
+
+    noEvidence:
+      'Keine Dokumente vorhanden',
+
+    openFile:
+      'Datei รถffnen',
+
+    adminNote:
+      'Admin-Notiz',
+
+    adminNotePlaceholder:
+      'Ergebnis, Grund oder notwendige รnderungen eingeben.',
+
+    readOnly:
+      'Nur Leseberechtigung.',
+
+    updated:
+      'Eintrag wurde aktualisiert.',
+
+    requiredNote:
+      'Bitte notwendige รnderungen angeben.',
+
+    queueReports:
+      'Nutzermeldungen',
+
+    queueVerification:
+      'Identitรคtsprรผfung',
+
+    queueBusiness:
+      'Unternehmensprรผfung',
+
+    queuePayout:
+      'Auszahlungskonto',
+
+    queueReverification:
+      'Erneute Prรผfung',
+
+    queueDeletions:
+      'Kontolรถschung',
+
+    queueReviewCases:
+      'Bewertungsfรคlle',
+
+    approve:
+      'Genehmigen',
+
+    reject:
+      'Ablehnen',
+
+    requestInfo:
+      'รnderungen anfordern',
+
+    suspend:
+      'Sperren',
+
+    dismiss:
+      'Meldung schlieรen',
+
+    warn:
+      'Warnen',
+
+    suspend24h:
+      '24 Std. sperren',
+
+    suspend7d:
+      '7 Tage sperren',
+
+    deactivate:
+      'Konto deaktivieren',
+
+    resolve:
+      'Erledigt',
+
+    hideReview:
+      'Bewertung ausblenden',
+
+    acknowledge:
+      'Bestรคtigen',
+
+    cancelDeletion:
+      'Lรถschung abbrechen',
+  },
+
+
+  zh: {
+    management: '็ฎก็ๅ‘็ฎก็',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: '่ฟ”ๅ',
+
+    menu: '็ฎก็ๅ‘่ๅ•',
+    workspace: '็ฎก็ๅทฅไฝๅบ',
+
+    review: '็ฎก็ๅ‘ๅฎกๆ ธไธญๅฟ',
+    reviewDesc:
+      'ๅฎกๆ ธ่ดฆๆทใ€็”จๆทใ€ๅ•ๅฎถใ€ๆ–ไปถๅ’ไธพๆฅใ€',
+
+    quest: '็ฎก็ Quest ๅ’ Reward',
+    questDesc:
+      '็ฎก็ Melo Quest ๅ’ๅฅ–ๅฑใ€',
+
+    live: 'ๅฎๆ—ถๅ…ฌๅ‘',
+    liveDesc:
+      'ๆฅ็ๅ’็ฎก็ Melo ๅฎๆ—ถๅ…ฌๅ‘ใ€',
+
+    access: '็ฎก็ๅ‘ๆ้',
+    accessDesc:
+      '่ฎพ็ฝฎ็ฎก็ๅ‘่ง’่ฒไปฅๅๆฏไธช็ฎก็ๅ‘ๅฏไปฅๆฅ็ๆ–ๅค็็ๆ•ฐๆฎๆ้ใ€',
+
+    checkingAccess:
+      'ๆญฃๅจๆฃ€ๆฅๆ้...',
+
+    accessDenied:
+      'ๆ— ่ฎฟ้—ฎๆ้',
+
+    accessDeniedDesc:
+      'ๆญค่ๅ•ไป…้็ฎก็ๅ‘่ดฆๆทใ€',
+
+    pendingTotal:
+      'ๅพ…ๅค็ๆ€ปๆ•ฐ',
+
+    currentQueue:
+      'ๅฝ“ๅ้ๅ—',
+
+    visibleResults:
+      'ๆพ็คบ็ป“ๆ',
+
+    refresh:
+      'ๅทๆ–ฐ',
+
+    searchPlaceholder:
+      'ๆ็ดขๅง“ๅใ€้ฎ็ฎฑใ€ๅ•ๅฎถๆ–็ธๅ…ณไฟกๆฏ...',
+
+    pending:
+      'ๅพ…ๅค็',
+
+    all:
+      'ๅ…จ้จ',
+
+    loading:
+      'ๅ ่ฝฝไธญ...',
+
+    retry:
+      '้่ฏ•',
+
+    empty:
+      'ๆๆ— ้กน็ฎ',
+
+    emptySearch:
+      'ๆฒกๆๅน้…็ป“ๆ',
+
+    reviewButton:
+      'ๅฎกๆ ธ',
+
+    submitted:
+      'ๆไบคๆ—ถ้—ด',
+
+    status:
+      '็ถๆ€',
+
+    email:
+      '้ฎ็ฎฑ',
+
+    backToList:
+      '่ฟ”ๅๅ—่กจ',
+
+    detailTitle:
+      'ๅฎกๆ ธ่ฏฆๆ…',
+
+    importantData:
+      '้่ฆๅฎกๆ ธไฟกๆฏ',
+
+    checklist:
+      'ๆฃ€ๆฅๆธ…ๅ•',
+
+    complete:
+      'ๅฎๆ•ด',
+
+    shouldCheck:
+      '้€ๆฃ€ๆฅ',
+
+    evidence:
+      'ๆ–ไปถไธ่ฏๆฎ',
+
+    evidencePrivate:
+      'ไป…้็ฎก็ๅ‘ๅฎกๆ ธ็็งๅฏๆ•ฐๆฎ',
+
+    evidenceLoading:
+      'ๆญฃๅจๅ ่ฝฝๆ–ไปถ...',
+
+    noEvidence:
+      'ๆฒกๆ้ไปถ',
+
+    openFile:
+      'ๆ“ๅผ€ๆ–ไปถ',
+
+    adminNote:
+      '็ฎก็ๅ‘ๅคๆณจ',
+
+    adminNotePlaceholder:
+      'ๅกซๅๅฎกๆ ธ็ป“ๆใ€ๅๅ ๆ–้€่ฆไฟฎๆ”น็ไฟกๆฏใ€',
+
+    readOnly:
+      'ไป…ๆๆฅ็ๆ้ใ€',
+
+    updated:
+      'ๅฎกๆ ธ้กน็ฎๅทฒๆดๆ–ฐใ€',
+
+    requiredNote:
+      '่ฏท่ฏดๆ้€่ฆไฟฎๆ”น็ไฟกๆฏใ€',
+
+    queueReports:
+      '็”จๆทไธพๆฅ',
+
+    queueVerification:
+      '่บซไปฝ้ช่ฏ',
+
+    queueBusiness:
+      'ๅ•ๅฎถ้ช่ฏ',
+
+    queuePayout:
+      'ๆ”ถๆฌพ่ดฆๆท',
+
+    queueReverification:
+      '้ๆ–ฐ้ช่ฏ',
+
+    queueDeletions:
+      '่ดฆๆทๅ ้ค',
+
+    queueReviewCases:
+      '่ฏไปทไบ่ฎฎ',
+
+    approve:
+      'ๆนๅ',
+
+    reject:
+      'ๆ’็ป',
+
+    requestInfo:
+      '่ฆๆฑไฟฎๆ”น / ่กฅๅ……ไฟกๆฏ',
+
+    suspend:
+      'ๆๅ',
+
+    dismiss:
+      'ๅ…ณ้—ญไธพๆฅ',
+
+    warn:
+      '่ญฆๅ‘็”จๆท',
+
+    suspend24h:
+      'ๆๅ 24 ๅฐๆ—ถ',
+
+    suspend7d:
+      'ๆๅ 7 ๅคฉ',
+
+    deactivate:
+      'ๅ็”จ่ดฆๆท',
+
+    resolve:
+      'ๅทฒ่งฃๅณ',
+
+    hideReview:
+      '้่—่ฏไปท',
+
+    acknowledge:
+      '็กฎ่ฎคๆ”ถๅฐ',
+
+    cancelDeletion:
+      'ๅ–ๆถๅ ้ค',
+  },
+
+
+  ja: {
+    management: '็ฎก็่€…ใกใใฅใผ',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: 'ๆปใ',
+
+    menu: '็ฎก็่€…ใกใใฅใผ',
+    workspace: '็ฎก็ใฏใผใฏในใใผใน',
+
+    review: '็ฎก็่€…ใฌใ“ใฅใผใปใณใฟใผ',
+    reviewDesc:
+      'ใขใซใฆใณใใ€ใฆใผใถใผใ€ๅบ—่—ใ€ๆธ้กใ€ๅ ฑๅ‘ใ’็ขบ่ชใ—ใพใใ€',
+
+    quest: 'Quest ใจ Reward ใ’็ฎก็',
+    questDesc:
+      'Melo Quest ใจ Reward ใ’็ฎก็ใ—ใพใใ€',
+
+    live: 'ใฉใคใ–ๅ‘็ฅ',
+    liveDesc:
+      'Melo Live Notice ใ’็ฎก็ใ—ใพใใ€',
+
+    access: '็ฎก็่€…ๆจฉ้',
+    accessDesc:
+      '็ฎก็่€…ใญใผใซใจ้–ฒ่ฆงใปๆ“ไฝๆจฉ้ใ’่จญๅฎใ—ใพใใ€',
+
+    checkingAccess:
+      'ๆจฉ้ใ’็ขบ่ชไธญ...',
+
+    accessDenied:
+      'ใขใฏใปในๆจฉใใใใพใใ“',
+
+    accessDeniedDesc:
+      '็ฎก็ๆจฉ้ใๅฟ…่ฆใงใใ€',
+
+    pendingTotal:
+      'ไฟ็•ไธญใฎๅ่จ',
+
+    currentQueue:
+      '็พๅจใฎใญใฅใผ',
+
+    visibleResults:
+      '่กจ็คบไปถๆ•ฐ',
+
+    refresh:
+      'ๆดๆ–ฐ',
+
+    searchPlaceholder:
+      'ๅๅใ€ใกใผใซใ€ๅบ—่—ใ€้–ข้€ฃๆ…ๅ ฑใ’ๆค็ดข...',
+
+    pending:
+      'ไฟ็•ไธญ',
+
+    all:
+      'ใในใฆ',
+
+    loading:
+      '่ชญใฟ่พผใฟไธญ...',
+
+    retry:
+      'ๅ่ฉฆ่ก',
+
+    empty:
+      '้ …็ฎใฏใใใพใใ“',
+
+    emptySearch:
+      'ๆค็ดข็ตๆใใใใพใใ“',
+
+    reviewButton:
+      '็ขบ่ช',
+
+    submitted:
+      '้€ไฟกๆ—ฅๆ',
+
+    status:
+      'ในใใผใฟใน',
+
+    email:
+      'ใกใผใซ',
+
+    backToList:
+      'ไธ€่ฆงใธๆปใ',
+
+    detailTitle:
+      'ใฌใ“ใฅใผ่ฉณ็ดฐ',
+
+    importantData:
+      '้่ฆใช็ขบ่ชๆ…ๅ ฑ',
+
+    checklist:
+      'ใใงใใฏใชในใ',
+
+    complete:
+      'ๅฎไบ',
+
+    shouldCheck:
+      '่ฆ็ขบ่ช',
+
+    evidence:
+      'ๆธ้กใป่จผๆ ',
+
+    evidencePrivate:
+      'Admin Review ๅฐ็”จใฎ้ๅ…ฌ้–ใใผใฟ',
+
+    evidenceLoading:
+      'ๆธ้กใ’่ชญใฟ่พผใฟไธญ...',
+
+    noEvidence:
+      'ๆทปไปๆธ้กใฏใใใพใใ“',
+
+    openFile:
+      'ใ•ใกใคใซใ’้–ใ',
+
+    adminNote:
+      '็ฎก็่€…ใกใข',
+
+    adminNotePlaceholder:
+      'ๅฏฉๆป็ตๆใ€็็”ฑใ€ไฟฎๆญฃๅ…ๅฎนใ’ๅ…ฅๅใ—ใฆใใ ใ•ใใ€',
+
+    readOnly:
+      '้–ฒ่ฆงใฎใฟๅฏ่ฝใงใใ€',
+
+    updated:
+      '้ …็ฎใ’ๆดๆ–ฐใ—ใพใ—ใใ€',
+
+    requiredNote:
+      'ไฟฎๆญฃๅ…ๅฎนใ’ๅ…ฅๅใ—ใฆใใ ใ•ใใ€',
+
+    queueReports:
+      'ใฆใผใถใผๅ ฑๅ‘',
+
+    queueVerification:
+      'ๆฌไบบ็ขบ่ช',
+
+    queueBusiness:
+      'ๅบ—่—็ขบ่ช',
+
+    queuePayout:
+      'ๅ—ๅ–ๅฃๅบง',
+
+    queueReverification:
+      'ๅ็ขบ่ช',
+
+    queueDeletions:
+      'ใขใซใฆใณใๅ้ค',
+
+    queueReviewCases:
+      'ใฌใ“ใฅใผ็•ฐ่ญฐ',
+
+    approve:
+      'ๆฟ่ช',
+
+    reject:
+      'ๅดไธ',
+
+    requestInfo:
+      'ไฟฎๆญฃ / ่ฟฝๅ ๆ…ๅ ฑใ’ไพ้ ผ',
+
+    suspend:
+      'ๅๆญข',
+
+    dismiss:
+      'ๅ ฑๅ‘ใ’้–ใใ',
+
+    warn:
+      '่ญฆๅ‘',
+
+    suspend24h:
+      '24ๆ้–“ๅๆญข',
+
+    suspend7d:
+      '7ๆ—ฅ้–“ๅๆญข',
+
+    deactivate:
+      'ใขใซใฆใณใๅๆญข',
+
+    resolve:
+      '่งฃๆฑบๆธใฟ',
+
+    hideReview:
+      'ใฌใ“ใฅใผใ’้่กจ็คบ',
+
+    acknowledge:
+      '็ขบ่ชๆธใฟ',
+
+    cancelDeletion:
+      'ๅ้คใ’ใญใฃใณใปใซ',
+  },
+
+
+  ko: {
+    management: '๊ด€๋ฆฌ์ ๊ด€๋ฆฌ',
+    managementEyebrow: 'ADMIN MANAGEMENT',
+    back: '๋’ค๋ก',
+
+    menu: '๊ด€๋ฆฌ์ ๋ฉ”๋ด',
+    workspace: '๊ด€๋ฆฌ ์‘์—… ๊ณต๊ฐ',
+
+    review: '๊ด€๋ฆฌ์ ๊ฒ€ํ  ์ผํฐ',
+    reviewDesc:
+      '๊ณ์ •, ์ฌ์ฉ์, ๋น์ฆ๋์ค, ๋ฌธ์ ๋ฐ ์ ๊ณ ๋ฅผ ๊ฒ€ํ ํ•ฉ๋๋ค.',
+
+    quest: 'Quest ๋ฐ Reward ๊ด€๋ฆฌ',
+    questDesc:
+      'Melo Quest์€ ๋ณด์์ ๊ด€๋ฆฌํ•ฉ๋๋ค.',
+
+    live: '์ค์๊ฐ ๊ณต์ง€',
+    liveDesc:
+      'Melo Live Notice๋ฅผ ๊ด€๋ฆฌํ•ฉ๋๋ค.',
+
+    access: '๊ด€๋ฆฌ์ ๊ถํ•',
+    accessDesc:
+      '๊ด€๋ฆฌ์ ์—ญํ• ๊ณผ ๊ฐ ๊ด€๋ฆฌ์์ ์กฐํ ๋ฐ ์ฒ๋ฆฌ ๊ถํ•์ ์ค์ •ํ•ฉ๋๋ค.',
+
+    checkingAccess:
+      '๊ถํ• ํ•์ธ ์ค‘...',
+
+    accessDenied:
+      '์ ‘๊ทผ ๊ถํ• ์—์',
+
+    accessDeniedDesc:
+      '๊ด€๋ฆฌ์ ๊ถํ•์ด ํ•์”ํ•ฉ๋๋ค.',
+
+    pendingTotal:
+      '์ ์ฒด ๋€๊ธฐ',
+
+    currentQueue:
+      'ํ์ฌ ๋€๊ธฐ์—ด',
+
+    visibleResults:
+      'ํ‘์ ๊ฒฐ๊ณผ',
+
+    refresh:
+      '์๋ก๊ณ ์นจ',
+
+    searchPlaceholder:
+      '์ด๋ฆ, ์ด๋ฉ”์ผ, ๋น์ฆ๋์ค ๋๋” ๊ด€๋ จ ์ •๋ณด ๊ฒ€์...',
+
+    pending:
+      '๋€๊ธฐ ์ค‘',
+
+    all:
+      '์ ์ฒด',
+
+    loading:
+      '๋ถ๋ฌ์ค๋” ์ค‘...',
+
+    retry:
+      '๋ค์ ์๋',
+
+    empty:
+      'ํ•ญ๋ชฉ์ด ์—์ต๋๋ค',
+
+    emptySearch:
+      '๊ฒ€์ ๊ฒฐ๊ณผ๊ฐ€ ์—์ต๋๋ค',
+
+    reviewButton:
+      '๊ฒ€ํ ',
+
+    submitted:
+      '์ ์ถ ์๊ฐ',
+
+    status:
+      '์ํ',
+
+    email:
+      '์ด๋ฉ”์ผ',
+
+    backToList:
+      '๋ชฉ๋ก์ผ๋ก ๋์•๊ฐ€๊ธฐ',
+
+    detailTitle:
+      '๊ฒ€ํ  ์์ธ',
+
+    importantData:
+      '์ค‘์” ๊ฒ€ํ  ์ •๋ณด',
+
+    checklist:
+      '์ฒดํฌ๋ฆฌ์คํธ',
+
+    complete:
+      '์๋ฃ',
+
+    shouldCheck:
+      'ํ•์ธ ํ•์”',
+
+    evidence:
+      '๋ฌธ์ ๋ฐ ์ฆ๊ฑฐ',
+
+    evidencePrivate:
+      '๊ด€๋ฆฌ์ ๊ฒ€ํ  ์ ์ฉ ๋น๊ณต๊ฐ ๋ฐ์ดํฐ',
+
+    evidenceLoading:
+      '๋ฌธ์ ๋ถ๋ฌ์ค๋” ์ค‘...',
+
+    noEvidence:
+      '์ฒจ๋ถ€ ๋ฌธ์๊ฐ€ ์—์ต๋๋ค',
+
+    openFile:
+      'ํ์ผ ์—ด๊ธฐ',
+
+    adminNote:
+      '๊ด€๋ฆฌ์ ๋ฉ”๋ชจ',
+
+    adminNotePlaceholder:
+      '๊ฒ€ํ  ๊ฒฐ๊ณผ, ์ฌ์  ๋๋” ์์ • ๋ด์ฉ์ ์…๋ ฅํ•์ธ์”.',
+
+    readOnly:
+      '๋ณด๊ธฐ ๊ถํ•๋ง ์์ต๋๋ค.',
+
+    updated:
+      '๊ฒ€ํ  ํ•ญ๋ชฉ์ ์—…๋ฐ์ดํธํ–์ต๋๋ค.',
+
+    requiredNote:
+      '์์ • ๋ด์ฉ์ ์…๋ ฅํ•ด ์ฃผ์ธ์”.',
+
+    queueReports:
+      '์ฌ์ฉ์ ์ ๊ณ ',
+
+    queueVerification:
+      '๋ณธ์ธ ์ธ์ฆ',
+
+    queueBusiness:
+      '๋น์ฆ๋์ค ์ธ์ฆ',
+
+    queuePayout:
+      '์ •์ฐ ๊ณ์ข',
+
+    queueReverification:
+      '์ฌ์ธ์ฆ',
+
+    queueDeletions:
+      '๊ณ์ • ์ญ์ ',
+
+    queueReviewCases:
+      '๋ฆฌ๋ทฐ ๋ถ์',
+
+    approve:
+      '์น์ธ',
+
+    reject:
+      '๊ฑฐ์ ',
+
+    requestInfo:
+      '์์ • / ์ถ”๊ฐ€ ์ •๋ณด ์”์ฒญ',
+
+    suspend:
+      '์ •์ง€',
+
+    dismiss:
+      '์ ๊ณ  ์ข…๋ฃ',
+
+    warn:
+      '์ฌ์ฉ์ ๊ฒฝ๊ณ ',
+
+    suspend24h:
+      '24์๊ฐ ์ •์ง€',
+
+    suspend7d:
+      '7์ผ ์ •์ง€',
+
+    deactivate:
+      '๊ณ์ • ๋นํ์ฑํ”',
+
+    resolve:
+      'ํ•ด๊ฒฐ',
+
+    hideReview:
+      '๋ฆฌ๋ทฐ ์จ๊ธฐ๊ธฐ',
+
+    acknowledge:
+      'ํ•์ธ',
+
+    cancelDeletion:
+      '์ญ์  ์ทจ์',
+  },
+};
+
+
+/* =========================================================
+   HELPERS
+   ========================================================= */
+
+function localeTag(
+  locale: string,
+) {
+  const map:
+    Record<string, string> = {
+      th: 'th-TH',
+      en: 'en-US',
+      de: 'de-DE',
+      zh: 'zh-CN',
+      ja: 'ja-JP',
+      ko: 'ko-KR',
+    };
+
+  return (
+    map[locale] ??
+    'en-US'
+  );
+}
+
+
+function formatDate(
+  value: string,
+  locale: string,
+) {
+  if (!value) {
+    return 'โ€”';
+  }
+
+  const date =
+    new Date(value);
+
+  if (
+    Number.isNaN(
+      date.getTime(),
+    )
+  ) {
+    return value;
+  }
+
+  return new Intl.DateTimeFormat(
+    localeTag(locale),
+    {
+      dateStyle: 'medium',
+      timeStyle: 'short',
+    },
+  ).format(date);
+}
+
+
+function valueText(
+  value: unknown,
+  locale: string,
+) {
+  if (
+    value === null ||
+    value === undefined ||
+    value === ''
+  ) {
+    return 'โ€”';
+  }
+
+  if (
+    typeof value === 'boolean'
+  ) {
+    if (locale === 'th') {
+      return value
+        ? 'เนเธเน'
+        : 'เนเธกเนเนเธเน';
+    }
+
+    if (locale === 'de') {
+      return value
+        ? 'Ja'
+        : 'Nein';
+    }
+
+    if (locale === 'zh') {
+      return value
+        ? 'ๆฏ'
+        : 'ๅฆ';
+    }
+
+    if (locale === 'ja') {
+      return value
+        ? 'ใฏใ'
+        : 'ใใใ';
+    }
+
+    if (locale === 'ko') {
+      return value
+        ? '์'
+        : '์•๋์”';
+    }
+
+    return value
+      ? 'Yes'
+      : 'No';
+  }
+
+  if (
+    Array.isArray(value)
+  ) {
+    return (
+      value
+        .map(String)
+        .filter(Boolean)
+        .join(', ') ||
+      'โ€”'
+    );
+  }
+
+  if (
+    typeof value === 'object'
+  ) {
+    try {
+      return JSON.stringify(
+        value,
+      );
+    } catch {
+      return 'โ€”';
+    }
+  }
+
+  return String(value);
+}
+
+
+function searchableText(
+  item: AdminReviewItemWeb,
+) {
+  return [
+    item.title,
+    item.subtitle,
+    item.ownerEmail,
+    item.status,
+    item.id,
+    ...Object.values(
+      item.details,
+    ),
+  ]
+    .flatMap(
+      (value) => {
+        if (
+          Array.isArray(value)
+        ) {
+          return value.map(
+            String,
+          );
+        }
+
+        if (
+          value &&
+          typeof value === 'object'
+        ) {
+          return Object.values(
+            value as Record<
+              string,
+              unknown
+            >,
+          ).map(String);
+        }
+
+        return [
+          String(
+            value ?? '',
+          ),
+        ];
+      },
+    )
+    .join(' ')
+    .toLowerCase();
+}
+
+
+function canEnter(
+  account:
+    SettingsAccountSnapshot |
+    null,
+) {
+  return Boolean(
+    account &&
+    (
+      account.adminHasReviewAccess ||
+      account.canQuestRewardAdmin ||
+      account.canModerate
+    ),
+  );
+}
+
+
+/* =========================================================
+   FIELD LABELS
+   ========================================================= */
+
+const FIELD_LABELS:
+Record<
+  string,
+  Record<string, string>
+> = {
+  displayName: {
+    th: 'เธเธทเนเธญ',
+    en: 'Name',
+    de: 'Name',
+    zh: 'ๅง“ๅ',
+    ja: 'ๅๅ',
+    ko: '์ด๋ฆ',
+  },
+
+  email: {
+    th: 'เธญเธตเน€เธกเธฅ',
+    en: 'Email',
+    de: 'E-Mail',
+    zh: '้ฎ็ฎฑ',
+    ja: 'ใกใผใซ',
+    ko: '์ด๋ฉ”์ผ',
+  },
+
+  phone: {
+    th: 'เน€เธเธญเธฃเนเนเธ—เธฃเธจเธฑเธเธ—เน',
+    en: 'Phone',
+    de: 'Telefon',
+    zh: '็”ต่ฏ',
+    ja: '้ป่ฉฑ',
+    ko: '์ ํ”',
+  },
+
+  legalFirstNameEn: {
+    th: 'เธเธทเนเธญเธ•เธฒเธกเน€เธญเธเธชเธฒเธฃ',
+    en: 'Legal first name',
+    de: 'Vorname laut Dokument',
+    zh: '่ฏไปถๅๅญ—',
+    ja: 'ๆธ้กไธใฎๅ',
+    ko: '๋ฒ•์  ์ด๋ฆ',
+  },
+
+  legalLastNameEn: {
+    th: 'เธเธฒเธกเธชเธเธธเธฅเธ•เธฒเธกเน€เธญเธเธชเธฒเธฃ',
+    en: 'Legal last name',
+    de: 'Nachname laut Dokument',
+    zh: '่ฏไปถๅง“ๆฐ',
+    ja: 'ๆธ้กไธใฎๅง“',
+    ko: '๋ฒ•์  ์ฑ',
+  },
+
+  documentType: {
+    th: 'เธเธฃเธฐเน€เธ เธ—เน€เธญเธเธชเธฒเธฃ',
+    en: 'Document type',
+    de: 'Dokumenttyp',
+    zh: 'ๆ–ไปถ็ฑปๅ',
+    ja: 'ๆธ้ก็จฎๅฅ',
+    ko: '๋ฌธ์ ์ ํ•',
+  },
+
+  documentNumber: {
+    th: 'เน€เธฅเธเน€เธญเธเธชเธฒเธฃ',
+    en: 'Document number',
+    de: 'Dokumentnummer',
+    zh: 'ๆ–ไปถๅท็ ',
+    ja: 'ๆธ้ก็•ชๅท',
+    ko: '๋ฌธ์ ๋ฒํธ',
+  },
+
+  selfieStatus: {
+    th: 'เธชเธ–เธฒเธเธฐ Selfie',
+    en: 'Selfie status',
+    de: 'Selfie-Status',
+    zh: '่ชๆ็ถๆ€',
+    ja: 'Selfie ็ถๆ…',
+    ko: '์…€ํ”ผ ์ํ',
+  },
+
+  identityStatus: {
+    th: 'เธชเธ–เธฒเธเธฐเน€เธญเธเธชเธฒเธฃเธขเธทเธเธขเธฑเธเธ•เธฑเธงเธ•เธ',
+    en: 'Identity status',
+    de: 'Identitรคtsstatus',
+    zh: '่บซไปฝ็ถๆ€',
+    ja: 'ๆฌไบบ็ขบ่ช็ถๆ…',
+    ko: '์ ์ ์ํ',
+  },
+
+  businessDisplayName: {
+    th: 'เธเธทเนเธญเธฃเนเธฒเธเธเนเธฒ',
+    en: 'Business name',
+    de: 'Unternehmensname',
+    zh: 'ๅ•ๅฎถๅ็งฐ',
+    ja: 'ๅบ—่—ๅ',
+    ko: '๋น์ฆ๋์ค๋ช…',
+  },
+
+  legalName: {
+    th: 'เธเธทเนเธญเธเธ”เธ—เธฐเน€เธเธตเธขเธ',
+    en: 'Legal name',
+    de: 'Firmenname',
+    zh: 'ๆณ•ๅฎๅ็งฐ',
+    ja: 'ๆณ•ไบบๅ',
+    ko: '๋ฒ•์  ์ด๋ฆ',
+  },
+
+  businessType: {
+    th: 'เธเธฃเธฐเน€เธ เธ—เธเธธเธฃเธเธดเธ',
+    en: 'Business type',
+    de: 'Unternehmenstyp',
+    zh: 'ๅ•ๅฎถ็ฑปๅ',
+    ja: 'ไบๆฅญ็จฎๅฅ',
+    ko: '๋น์ฆ๋์ค ์ ํ•',
+  },
+
+  entityType: {
+    th: 'เธฃเธนเธเนเธเธเธเธดเธ•เธดเธเธธเธเธเธฅ',
+    en: 'Entity type',
+    de: 'Rechtsform',
+    zh: 'ๅฎไฝ“็ฑปๅ',
+    ja: 'ๆณ•ไบบๅฝขๆ…',
+    ko: '๋ฒ•์ธ ์ ํ•',
+  },
+
+  ownerName: {
+    th: 'เน€เธเนเธฒเธเธญเธเธเธฑเธเธเธต',
+    en: 'Owner',
+    de: 'Inhaber',
+    zh: 'ๆ€ๆ่€…',
+    ja: 'ใชใผใใผ',
+    ko: '์์ ์',
+  },
+
+  ownerEmail: {
+    th: 'เธญเธตเน€เธกเธฅเน€เธเนเธฒเธเธญเธ',
+    en: 'Owner email',
+    de: 'Inhaber-E-Mail',
+    zh: 'ๆ€ๆ่€…้ฎ็ฎฑ',
+    ja: 'ใชใผใใผใกใผใซ',
+    ko: '์์ ์ ์ด๋ฉ”์ผ',
+  },
+
+  description: {
+    th: 'เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”เธฃเนเธฒเธเธเนเธฒ',
+    en: 'Description',
+    de: 'Beschreibung',
+    zh: 'ๆ่ฟฐ',
+    ja: '่ชฌๆ',
+    ko: '์ค๋ช…',
+  },
+
+  partnershipModes: {
+    th: 'เธฃเธนเธเนเธเธเธเธงเธฒเธกเธฃเนเธงเธกเธกเธทเธญ',
+    en: 'Partnership modes',
+    de: 'Partnerschaftsarten',
+    zh: 'ๅไฝๆ–นๅผ',
+    ja: 'ๆๆบๅฝขๆ…',
+    ko: 'ํํธ๋์ญ ๋ฐฉ์',
+  },
+
+  address: {
+    th: 'เธ—เธตเนเธญเธขเธนเน',
+    en: 'Address',
+    de: 'Adresse',
+    zh: 'ๅฐๅ€',
+    ja: 'ไฝๆ€',
+    ko: '์ฃผ์',
+  },
+
+  city: {
+    th: 'เน€เธกเธทเธญเธ',
+    en: 'City',
+    de: 'Stadt',
+    zh: 'ๅๅธ',
+    ja: '้ฝๅธ',
+    ko: '๋์',
+  },
+
+  country: {
+    th: 'เธเธฃเธฐเน€เธ—เธจ',
+    en: 'Country',
+    de: 'Land',
+    zh: 'ๅฝๅฎถ',
+    ja: 'ๅฝ',
+    ko: '๊ตญ๊ฐ€',
+  },
+
+  coordinates: {
+    th: 'เธเธดเธเธฑเธ”',
+    en: 'Coordinates',
+    de: 'Koordinaten',
+    zh: 'ๅๆ ',
+    ja: 'ๅบงๆจ',
+    ko: '์ขํ‘',
+  },
+
+  businessPhone: {
+    th: 'เน€เธเธญเธฃเนเธฃเนเธฒเธเธเนเธฒ',
+    en: 'Business phone',
+    de: 'Geschรคftstelefon',
+    zh: 'ๅ•ๅฎถ็”ต่ฏ',
+    ja: 'ๅบ—่—้ป่ฉฑ',
+    ko: '๋น์ฆ๋์ค ์ ํ”',
+  },
+
+  businessEmail: {
+    th: 'เธญเธตเน€เธกเธฅเธฃเนเธฒเธเธเนเธฒ',
+    en: 'Business email',
+    de: 'Geschรคfts-E-Mail',
+    zh: 'ๅ•ๅฎถ้ฎ็ฎฑ',
+    ja: 'ๅบ—่—ใกใผใซ',
+    ko: '๋น์ฆ๋์ค ์ด๋ฉ”์ผ',
+  },
+
+  registrationNumber: {
+    th: 'เน€เธฅเธเธ—เธฐเน€เธเธตเธขเธเธเธฃเธดเธฉเธฑเธ—',
+    en: 'Registration number',
+    de: 'Registrierungsnummer',
+    zh: 'ๆณจๅๅท',
+    ja: '็ป้ฒ็•ชๅท',
+    ko: '๋“ฑ๋ก ๋ฒํธ',
+  },
+
+  taxId: {
+    th: 'เน€เธฅเธเธเธฃเธฐเธเธณเธ•เธฑเธงเธเธนเนเน€เธชเธตเธขเธ เธฒเธฉเธต',
+    en: 'Tax ID',
+    de: 'Steuer-ID',
+    zh: '็จๅท',
+    ja: '็ด็จ่€…็•ชๅท',
+    ko: '์ธ๊ธ ๋ฒํธ',
+  },
+
+  contactPersonName: {
+    th: 'เธเธนเนเธ•เธดเธ”เธ•เนเธญ',
+    en: 'Contact person',
+    de: 'Kontaktperson',
+    zh: '่”็ณปไบบ',
+    ja: 'ๆ…ๅฝ“่€…',
+    ko: '๋ด๋น์',
+  },
+
+  contactPersonPhone: {
+    th: 'เน€เธเธญเธฃเนเธ•เธดเธ”เธ•เนเธญ',
+    en: 'Contact phone',
+    de: 'Kontakttelefon',
+    zh: '่”็ณป็”ต่ฏ',
+    ja: '้€ฃ็ตกๅ…้ป่ฉฑ',
+    ko: '์—ฐ๋ฝ์ฒ',
+  },
+
+  bankName: {
+    th: 'เธเธเธฒเธเธฒเธฃ',
+    en: 'Bank',
+    de: 'Bank',
+    zh: '้“ถ่ก',
+    ja: '้€่ก',
+    ko: '์€ํ–',
+  },
+
+  bankCountry: {
+    th: 'เธเธฃเธฐเน€เธ—เธจเธเธเธฒเธเธฒเธฃ',
+    en: 'Bank country',
+    de: 'Bankland',
+    zh: '้“ถ่กๅฝๅฎถ',
+    ja: '้€่กๆ€ๅจๅฝ',
+    ko: '์€ํ– ๊ตญ๊ฐ€',
+  },
+
+  payoutCurrency: {
+    th: 'เธชเธเธธเธฅเน€เธเธดเธ',
+    en: 'Currency',
+    de: 'Wรคhrung',
+    zh: '่ดงๅธ',
+    ja: '้€่ฒจ',
+    ko: 'ํตํ”',
+  },
+
+  accountHolderName: {
+    th: 'เธเธทเนเธญเธเธฑเธเธเธต',
+    en: 'Account holder',
+    de: 'Kontoinhaber',
+    zh: '่ดฆๆทๆๆไบบ',
+    ja: 'ๅฃๅบงๅ็พฉ',
+    ko: '์๊ธ์ฃผ',
+  },
+
+  accountNumber: {
+    th: 'เน€เธฅเธเธเธฑเธเธเธต',
+    en: 'Account / IBAN',
+    de: 'Konto / IBAN',
+    zh: '่ดฆๆท / IBAN',
+    ja: 'ๅฃๅบง / IBAN',
+    ko: '๊ณ์ข / IBAN',
+  },
+
+  reverificationReason: {
+    th: 'เน€เธซเธ•เธธเธเธฅเธเธฒเธฃเธขเธทเธเธขเธฑเธเนเธซเธกเน',
+    en: 'Re-verification reason',
+    de: 'Grund der erneuten Prรผfung',
+    zh: '้ๆ–ฐ้ช่ฏๅๅ ',
+    ja: 'ๅ็ขบ่ช็็”ฑ',
+    ko: '์ฌ์ธ์ฆ ์ฌ์ ',
+  },
+
+  documentKind: {
+    th: 'เน€เธญเธเธชเธฒเธฃ',
+    en: 'Document',
+    de: 'Dokument',
+    zh: 'ๆ–ไปถ',
+    ja: 'ๆธ้ก',
+    ko: '๋ฌธ์',
+  },
+
+  dueAt: {
+    th: 'เธเธณเธซเธเธ”เธ•เธฃเธงเธ',
+    en: 'Due',
+    de: 'Fรคllig',
+    zh: 'ๆชๆญขๆ—ถ้—ด',
+    ja: 'ๆ้',
+    ko: '๊ธฐํ•',
+  },
+
+  reportedName: {
+    th: 'เธเธนเนเธ–เธนเธเธฃเธฒเธขเธเธฒเธ',
+    en: 'Reported user',
+    de: 'Gemeldeter Nutzer',
+    zh: '่ขซไธพๆฅ็”จๆท',
+    ja: 'ๅ ฑๅ‘ๅฏพ่ฑกใฆใผใถใผ',
+    ko: '์ ๊ณ  ๋€์',
+  },
+
+  reporterName: {
+    th: 'เธเธนเนเธฃเธฒเธขเธเธฒเธ',
+    en: 'Reporter',
+    de: 'Meldender Nutzer',
+    zh: 'ไธพๆฅไบบ',
+    ja: 'ๅ ฑๅ‘่€…',
+    ko: '์ ๊ณ ์',
+  },
+
+  reason: {
+    th: 'เน€เธซเธ•เธธเธเธฅ',
+    en: 'Reason',
+    de: 'Grund',
+    zh: 'ๅๅ ',
+    ja: '็็”ฑ',
+    ko: '์ฌ์ ',
+  },
+
+  details: {
+    th: 'เธฃเธฒเธขเธฅเธฐเน€เธญเธตเธขเธ”',
+    en: 'Details',
+    de: 'Details',
+    zh: '่ฏฆๆ…',
+    ja: '่ฉณ็ดฐ',
+    ko: '์์ธ',
+  },
+
+  accountReportCount: {
+    th: 'เธเธณเธเธงเธเธฃเธฒเธขเธเธฒเธเธเธฑเธเธเธต',
+    en: 'Account reports',
+    de: 'Kontomeldungen',
+    zh: '่ดฆๆทไธพๆฅๆ•ฐ',
+    ja: 'ใขใซใฆใณใๅ ฑๅ‘ๆ•ฐ',
+    ko: '๊ณ์ • ์ ๊ณ  ์',
+  },
+
+  moderationStatus: {
+    th: 'เธชเธ–เธฒเธเธฐ Moderation',
+    en: 'Moderation status',
+    de: 'Moderationsstatus',
+    zh: 'ๅฎกๆ ธ็ถๆ€',
+    ja: 'ใขใใฌใผใทใงใณ็ถๆ…',
+    ko: '๊ด€๋ฆฌ ์ํ',
+  },
+
+  scheduledFor: {
+    th: 'เธเธณเธซเธเธ”เธฅเธเธเธฑเธเธเธต',
+    en: 'Scheduled deletion',
+    de: 'Geplante Lรถschung',
+    zh: '่ฎกๅ’ๅ ้ค',
+    ja: 'ๅ้คไบๅฎ',
+    ko: '์ญ์  ์์ •',
+  },
+
+  caseType: {
+    th: 'เธเธฃเธฐเน€เธ เธ—เน€เธเธช',
+    en: 'Case type',
+    de: 'Falltyp',
+    zh: 'ๆกไปถ็ฑปๅ',
+    ja: 'ใฑใผใน็จฎๅฅ',
+    ko: '์ผ€์ด์ค ์ ํ•',
+  },
+
+  reviewComment: {
+    th: 'เธเนเธญเธเธงเธฒเธกเธฃเธตเธงเธดเธง',
+    en: 'Review comment',
+    de: 'Bewertungstext',
+    zh: '่ฏไปทๅ…ๅฎน',
+    ja: 'ใฌใ“ใฅใผๅ…ๅฎน',
+    ko: '๋ฆฌ๋ทฐ ๋ด์ฉ',
+  },
+
+  rating: {
+    th: 'เธเธฐเนเธเธเธฃเธตเธงเธดเธง',
+    en: 'Rating',
+    de: 'Bewertung',
+    zh: '่ฏๅ',
+    ja: '่ฉ•ไพก',
+    ko: 'ํ์ ',
+  },
+
+  reviewerNotes: {
+    th: 'เธซเธกเธฒเธขเน€เธซเธ•เธธเธเธฒเธเธเธฒเธฃเธ•เธฃเธงเธเธเธฃเธฑเนเธเธเนเธญเธ',
+    en: 'Previous reviewer note',
+    de: 'Vorherige Prรผfernotiz',
+    zh: 'ไนๅ็ๅฎกๆ ธๅคๆณจ',
+    ja: 'ๅๅใฎๅฏฉๆปใกใข',
+    ko: '์ด์  ๊ฒ€ํ  ๋ฉ”๋ชจ',
+  },
+};
+
+
+function fieldLabel(
+  key: string,
+  locale: string,
+) {
+  return (
+    FIELD_LABELS[key]?.[locale] ??
+    FIELD_LABELS[key]?.en ??
+    key
+  );
+}
+
+
+/* =========================================================
+   IMPORTANT FIELD SETS
+   ========================================================= */
+
+function importantFields(
+  queue: AdminReviewQueueType,
+): string[] {
+  if (
+    queue === 'verification'
+  ) {
+    return [
+      'displayName',
+      'email',
+      'phone',
+      'legalFirstNameEn',
+      'legalLastNameEn',
+      'documentType',
+      'documentNumber',
+      'selfieStatus',
+      'identityStatus',
+      'reviewerNotes',
+    ];
+  }
+
+  if (
+    queue === 'business'
+  ) {
+    return [
+      'businessDisplayName',
+      'legalName',
+      'businessType',
+      'entityType',
+      'ownerName',
+      'ownerEmail',
+      'description',
+      'partnershipModes',
+      'address',
+      'city',
+      'country',
+      'coordinates',
+      'businessPhone',
+      'businessEmail',
+      'registrationNumber',
+      'taxId',
+      'contactPersonName',
+      'contactPersonPhone',
+      'reviewerNotes',
+    ];
+  }
+
+  if (
+    queue === 'payout'
+  ) {
+    return [
+      'businessDisplayName',
+      'legalName',
+      'bankCountry',
+      'payoutCurrency',
+      'bankName',
+      'accountHolderName',
+      'accountNumber',
+      'reviewerNotes',
+    ];
+  }
+
+  if (
+    queue === 'reverification'
+  ) {
+    return [
+      'businessDisplayName',
+      'legalName',
+      'country',
+      'reverificationReason',
+      'documentKind',
+      'dueAt',
+      'reviewerNotes',
+    ];
+  }
+
+  if (
+    queue === 'user_reports'
+  ) {
+    return [
+      'reportedName',
+      'reporterName',
+      'reason',
+      'details',
+      'accountReportCount',
+      'moderationStatus',
+    ];
+  }
+
+  if (
+    queue === 'account_deletions'
+  ) {
+    return [
+      'displayName',
+      'email',
+      'reason',
+      'scheduledFor',
+    ];
+  }
+
+  return [
+    'caseType',
+    'reason',
+    'details',
+    'rating',
+    'reviewComment',
+  ];
+}
+
+
+/* =========================================================
+   QUEUE DEFINITIONS
+   ========================================================= */
+
+function queueDefinitions(
+  t: AdminCopy,
+) {
+  return [
+    {
+      key:
+        'user_reports' as const,
+
+      label:
+        t.queueReports,
+
+      icon:
+        '!',
+    },
+
+    {
+      key:
+        'verification' as const,
+
+      label:
+        t.queueVerification,
+
+      icon:
+        'โ“',
+    },
+
+    {
+      key:
+        'business' as const,
+
+      label:
+        t.queueBusiness,
+
+      icon:
+        'B',
+    },
+
+    {
+      key:
+        'payout' as const,
+
+      label:
+        t.queuePayout,
+
+      icon:
+        'เธฟ',
+    },
+
+    {
+      key:
+        'reverification' as const,
+
+      label:
+        t.queueReverification,
+
+      icon:
+        'โป',
+    },
+
+    {
+      key:
+        'account_deletions' as const,
+
+      label:
+        t.queueDeletions,
+
+      icon:
+        'ร—',
+    },
+
+    {
+      key:
+        'review_cases' as const,
+
+      label:
+        t.queueReviewCases,
+
+      icon:
+        'R',
+    },
+  ];
+}
+
+
+function actionLabel(
+  action:
+    AdminReviewAction,
+
+  t:
+    AdminCopy,
+) {
+  const labels:
+    Record<
+      AdminReviewAction,
+      string
+    > = {
+      approve:
+        t.approve,
+
+      reject:
+        t.reject,
+
+      request_info:
+        t.requestInfo,
+
+      suspend:
+        t.suspend,
+
+      dismiss:
+        t.dismiss,
+
+      warn:
+        t.warn,
+
+      suspend_24h:
+        t.suspend24h,
+
+      suspend_7d:
+        t.suspend7d,
+
+      deactivate:
+        t.deactivate,
+
+      resolve:
+        t.resolve,
+
+      hide_review:
+        t.hideReview,
+
+      acknowledge:
+        t.acknowledge,
+
+      cancel_deletion:
+        t.cancelDeletion,
+    };
+
+  return labels[action];
+}
+
+
+/* =========================================================
+   CHECKLIST
+   ========================================================= */
+
+function businessChecklist(
+  item:
+    AdminReviewItemWeb,
+) {
+  const data =
+    item.details;
+
+  function has(
+    key:
+      string,
+  ) {
+    const value =
+      data[key];
+
+    if (
+      Array.isArray(value)
+    ) {
+      return (
+        value.length >
+        0
+      );
+    }
+
+    return Boolean(
+      String(
+        value ?? '',
+      ).trim(),
+    );
+  }
+
+  return [
+    {
+      label:
+        'Business profile',
+
+      ok:
+        has(
+          'logoPath',
+        ),
+    },
+
+    {
+      label:
+        'Business type',
+
+      ok:
+        has(
+          'businessType',
+        ) &&
+        has(
+          'entityType',
+        ),
+    },
+
+    {
+      label:
+        'Business name',
+
+      ok:
+        has(
+          'businessDisplayName',
+        ) &&
+        has(
+          'legalName',
+        ),
+    },
+
+    {
+      label:
+        'Description',
+
+      ok:
+        has(
+          'description',
+        ),
+    },
+
+    {
+      label:
+        'Partnership mode',
+
+      ok:
+        has(
+          'partnershipModes',
+        ),
+    },
+
+    {
+      label:
+        'Address & location',
+
+      ok:
+        has(
+          'address',
+        ) &&
+        has(
+          'city',
+        ) &&
+        has(
+          'country',
+        ),
+    },
+
+    {
+      label:
+        'Phone & email',
+
+      ok:
+        has(
+          'businessPhone',
+        ) &&
+        has(
+          'businessEmail',
+        ),
+    },
+
+    {
+      label:
+        'Review contact',
+
+      ok:
+        has(
+          'contactPersonName',
+        ) &&
+        has(
+          'contactPersonPhone',
+        ),
+    },
+
+    {
+      label:
+        'Business documents',
+
+      ok:
+        has(
+          'registrationNumber',
+        ) ||
+        has(
+          'registrationDocumentPath',
+        ),
+    },
+  ];
+}
+
+
+function payoutChecklist(
+  item:
+    AdminReviewItemWeb,
+) {
+  const data =
+    item.details;
+
+  function has(
+    key:
+      string,
+  ) {
+    return Boolean(
+      String(
+        data[key] ??
+        '',
+      ).trim(),
+    );
+  }
+
+  return [
+    {
+      label:
+        'Account holder',
+
+      ok:
+        has(
+          'accountHolderName',
+        ),
+    },
+
+    {
+      label:
+        'Bank',
+
+      ok:
+        has(
+          'bankName',
+        ),
+    },
+
+    {
+      label:
+        'Country & currency',
+
+      ok:
+        has(
+          'bankCountry',
+        ) &&
+        has(
+          'payoutCurrency',
+        ),
+    },
+
+    {
+      label:
+        'Account / IBAN',
+
+      ok:
+        has(
+          'accountNumber',
+        ),
+    },
+
+    {
+      label:
+        'Bank evidence',
+
+      ok:
+        has(
+          'payoutDocumentPath',
+        ),
+    },
+  ];
+}
+
+
+/* =========================================================
+   ADMIN MANAGEMENT
+   ========================================================= */
+
+export default function AdminManagementExperience() {
+  const {
+    locale,
+  } =
+    useLocale();
+
+  const t =
+    COPY[locale] ??
+    COPY.en;
+
+  const [
+    account,
+    setAccount,
+  ] =
+    useState<
+      SettingsAccountSnapshot |
+      null
+    >(null);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    activeSection,
+    setActiveSection,
+  ] =
+    useState<
+      AdminSection
+    >(
+      'review',
+    );
+
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      void loadSettingsAccountSnapshot()
+        .then(
+          (value) => {
+            if (
+              active
+            ) {
+              setAccount(
+                value,
+              );
+            }
+          },
+        )
+        .catch(
+          () => {
+            if (
+              active
+            ) {
+              setAccount(
+                null,
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              active
+            ) {
+              setLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [],
+  );
+
+
+  const sections =
+    useMemo(
+      () => [
+        {
+          id:
+            'review' as const,
+
+          icon:
+            'โ“',
+
+          title:
+            t.review,
+
+          description:
+            t.reviewDesc,
+
+          allowed:
+            Boolean(
+              account?.adminHasReviewAccess ||
+              account?.canModerate,
+            ),
+        },
+
+        {
+          id:
+            'quest' as const,
+
+          icon:
+            'Q',
+
+          title:
+            t.quest,
+
+          description:
+            t.questDesc,
+
+          allowed:
+            Boolean(
+              account?.canQuestRewardAdmin,
+            ),
+        },
+
+        {
+          id:
+            'live' as const,
+
+          icon:
+            'โ—',
+
+          title:
+            t.live,
+
+          description:
+            t.liveDesc,
+
+          allowed:
+            Boolean(
+              account?.canQuestRewardAdmin,
+            ),
+        },
+
+        {
+          id:
+            'access' as const,
+
+          icon:
+            'A',
+
+          title:
+            t.access,
+
+          description:
+            t.accessDesc,
+
+          /*
+           * เนเธชเธ”เธเน€เธกเธเธนเนเธซเนเธเธฑเธเธเธตเธ—เธตเนเน€เธเนเธฒเธเธทเนเธเธ—เธตเน Admin เนเธ”เน
+           * เนเธฅเนเธง AdminAccessWorkspace เธเธฐเธ•เธฃเธงเธ manage_admins
+           * เธเธฒเธ Backend เธญเธตเธเธเธฑเนเธเธเนเธญเธเนเธซเนเนเธเนเนเธเธเนเธญเธกเธนเธฅเธเธฃเธดเธ
+           */
+          allowed:
+            Boolean(
+              account?.adminHasReviewAccess ||
+              account?.canQuestRewardAdmin ||
+              account?.canModerate,
+            ),
+        },
+      ],
+      [
+        account,
+        t,
+      ],
+    );
+
+
+  const availableSections =
+    useMemo(
+      () =>
+        sections.filter(
+          (item) =>
+            item.allowed,
+        ),
+      [
+        sections,
+      ],
+    );
+
+
+  useEffect(
+    () => {
+      if (
+        loading ||
+        !account
+      ) {
+        return;
+      }
+
+      const valid =
+        sections.some(
+          (item) =>
+            item.id ===
+              activeSection &&
+            item.allowed,
+        );
+
+      if (
+        !valid
+      ) {
+        const first =
+          sections.find(
+            (item) =>
+              item.allowed,
+          );
+
+        if (
+          first
+        ) {
+          setActiveSection(
+            first.id,
+          );
+        }
+      }
+    },
+    [
+      account,
+      activeSection,
+      loading,
+      sections,
+    ],
+  );
+
+
+  const activeMeta =
+    sections.find(
+      (item) =>
+        item.id ===
+        activeSection,
+    ) ??
+    availableSections[0];
+
+
+  return (
+    <main
+      className={
+        styles.page
+      }
+    >
+      <Header />
+
+      <section
+        className={
+          styles.shell
+        }
+      >
+        <header
+          className={
+            styles.top
+          }
+        >
+          <Link
+            href="/account"
+            className={
+              styles.back
+            }
+          >
+            โ {t.back}
+          </Link>
+
+          <div
+            className={
+              styles.head
+            }
+          >
+            <small>
+              {
+                t.managementEyebrow
+              }
+            </small>
+
+            <h1>
+              {
+                t.management
+              }
+            </h1>
+          </div>
+
+          <div
+            className={
+              styles.spacer
+            }
+            aria-hidden="true"
+          />
+        </header>
+
+        {loading ? (
+          <div
+            className={
+              styles.pageState
+            }
+          >
+            {
+              t.checkingAccess
+            }
+          </div>
+        ) : !canEnter(
+            account,
+          ) ? (
+          <div
+            className={
+              styles.pageState
+            }
+          >
+            <strong>
+              {
+                t.accessDenied
+              }
+            </strong>
+
+            <span>
+              {
+                t.accessDeniedDesc
+              }
+            </span>
+          </div>
+        ) : (
+          <section
+            className={
+              styles.workspace
+            }
+          >
+            <aside
+              className={
+                styles.sidebar
+              }
+            >
+              <div
+                className={
+                  styles.sidebarHead
+                }
+              >
+                <small>
+                  MELO ADMIN
+                </small>
+
+                <strong>
+                  {t.menu}
+                </strong>
+              </div>
+
+              <nav
+                className={
+                  styles.adminNav
+                }
+              >
+                {sections
+                  .filter(
+                    (item) =>
+                      item.allowed,
+                  )
+                  .map(
+                    (item) => (
+                      <button
+                        key={
+                          item.id
+                        }
+                        type="button"
+                        data-active={
+                          activeSection ===
+                          item.id
+                        }
+                        onClick={() =>
+                          setActiveSection(
+                            item.id,
+                          )
+                        }
+                      >
+                        <span
+                          className={
+                            styles.menuIcon
+                          }
+                        >
+                          {
+                            item.icon
+                          }
+                        </span>
+
+                        <span
+                          className={
+                            styles.menuCopy
+                          }
+                        >
+                          <strong>
+                            {
+                              item.title
+                            }
+                          </strong>
+
+                          <small>
+                            {
+                              item.description
+                            }
+                          </small>
+                        </span>
+                      </button>
+                    ),
+                  )}
+              </nav>
+            </aside>
+
+            <section
+              className={
+                styles.contentPanel
+              }
+            >
+              <header
+                className={
+                  styles.contentHead
+                }
+              >
+                <small>
+                  {
+                    t.workspace
+                  }
+                </small>
+
+                <h2>
+                  {
+                    activeMeta?.title
+                  }
+                </h2>
+
+                <p>
+                  {
+                    activeMeta?.description
+                  }
+                </p>
+              </header>
+
+              <div
+                className={
+                  styles.contentBody
+                }
+              >
+                {activeSection ===
+                'review' ? (
+                  <AdminReviewWorkspace
+                    locale={
+                      locale
+                    }
+                    t={
+                      t
+                    }
+                  />
+                ) : null}
+
+                {activeSection ===
+                'quest' ? (
+                  <SettingsUtilityExperience
+                    mode="quest-admin"
+                    embedded
+                  />
+                ) : null}
+
+                {activeSection ===
+                'live' ? (
+                  <AdminLiveNoticeWorkspace />
+                ) : null}
+
+                {activeSection ===
+                'access' ? (
+                  <AdminAccessWorkspace />
+                ) : null}
+              </div>
+            </section>
+          </section>
+        )}
+      </section>
+    </main>
+  );
+}
+
+
+/* =========================================================
+   ADMIN REVIEW WORKSPACE
+   ========================================================= */
+
+function AdminReviewWorkspace({
+  locale,
+  t,
+}: {
+  locale:
+    string;
+
+  t:
+    AdminCopy;
+}) {
+  const queueDefs =
+    useMemo(
+      () =>
+        queueDefinitions(
+          t,
+        ),
+      [
+        t,
+      ],
+    );
+
+  const [
+    access,
+    setAccess,
+  ] =
+    useState<
+      AdminReviewAccessWeb |
+      null
+    >(null);
+
+  const [
+    queue,
+    setQueue,
+  ] =
+    useState<
+      AdminReviewQueueType
+    >(
+      'user_reports',
+    );
+
+  const [
+    statusFilter,
+    setStatusFilter,
+  ] =
+    useState<
+      AdminReviewStatusFilter
+    >(
+      'pending',
+    );
+
+  const [
+    items,
+    setItems,
+  ] =
+    useState<
+      AdminReviewItemWeb[]
+    >([]);
+
+  const [
+    counts,
+    setCounts,
+  ] =
+    useState<
+      Partial<
+        Record<
+          AdminReviewQueueType,
+          number
+        >
+      >
+    >({});
+
+  const [
+    search,
+    setSearch,
+  ] =
+    useState('');
+
+  const [
+    selected,
+    setSelected,
+  ] =
+    useState<
+      AdminReviewItemWeb |
+      null
+    >(null);
+
+  const [
+    loading,
+    setLoading,
+  ] =
+    useState(true);
+
+  const [
+    error,
+    setError,
+  ] =
+    useState('');
+
+  const [
+    success,
+    setSuccess,
+  ] =
+    useState('');
+
+  const [
+    note,
+    setNote,
+  ] =
+    useState('');
+
+  const [
+    acting,
+    setActing,
+  ] =
+    useState(false);
+
+  const [
+    evidence,
+    setEvidence,
+  ] =
+    useState<
+      AdminReviewEvidenceWeb[]
+    >([]);
+
+  const [
+    evidenceLoading,
+    setEvidenceLoading,
+  ] =
+    useState(false);
+
+  const [
+    evidenceError,
+    setEvidenceError,
+  ] =
+    useState('');
+
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      async function initialize() {
+        setLoading(
+          true,
+        );
+
+        setError('');
+
+        try {
+          const currentAccess =
+            await getAdminReviewAccessWeb();
+
+          if (
+            !active
+          ) {
+            return;
+          }
+
+          setAccess(
+            currentAccess,
+          );
+
+          if (
+            !currentAccess
+              .hasAnyReviewAccess
+          ) {
+            setItems([]);
+            setCounts({});
+
+            return;
+          }
+
+          const allowed =
+            queueDefs.filter(
+              (entry) =>
+                canViewAdminReviewQueue(
+                  currentAccess,
+                  entry.key,
+                ),
+            );
+
+          const nextQueue =
+            allowed.find(
+              (entry) =>
+                entry.key ===
+                queue,
+            )?.key ??
+            allowed[0]?.key;
+
+          if (
+            !nextQueue
+          ) {
+            setItems([]);
+            setCounts({});
+
+            return;
+          }
+
+          const [
+            nextCounts,
+            nextItems,
+          ] =
+            await Promise.all([
+              getAdminReviewQueueCountsWeb(
+                currentAccess,
+              ),
+
+              listAdminReviewQueueWeb(
+                nextQueue,
+                statusFilter,
+                200,
+              ),
+            ]);
+
+          if (
+            !active
+          ) {
+            return;
+          }
+
+          setQueue(
+            nextQueue,
+          );
+
+          setCounts(
+            nextCounts,
+          );
+
+          setItems(
+            nextItems,
+          );
+        } catch (
+          cause
+        ) {
+          if (
+            active
+          ) {
+            setError(
+              cause instanceof Error
+                ? cause.message
+                : String(
+                    cause,
+                  ),
+            );
+          }
+        } finally {
+          if (
+            active
+          ) {
+            setLoading(
+              false,
+            );
+          }
+        }
+      }
+
+      void initialize();
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [
+      locale,
+    ],
+  );
+
+
+  async function refreshCurrent() {
+    setLoading(
+      true,
+    );
+
+    setError('');
+
+    try {
+      const currentAccess =
+        access ??
+        await getAdminReviewAccessWeb();
+
+      setAccess(
+        currentAccess,
+      );
+
+      if (
+        !currentAccess
+          .hasAnyReviewAccess
+      ) {
+        setItems([]);
+        setCounts({});
+
+        return;
+      }
+
+      const [
+        nextCounts,
+        nextItems,
+      ] =
+        await Promise.all([
+          getAdminReviewQueueCountsWeb(
+            currentAccess,
+          ),
+
+          listAdminReviewQueueWeb(
+            queue,
+            statusFilter,
+            200,
+          ),
+        ]);
+
+      setCounts(
+        nextCounts,
+      );
+
+      setItems(
+        nextItems,
+      );
+    } catch (
+      cause
+    ) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : String(
+              cause,
+            ),
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  async function selectQueue(
+    nextQueue:
+      AdminReviewQueueType,
+  ) {
+    if (
+      !access ||
+      nextQueue ===
+        queue
+    ) {
+      return;
+    }
+
+    setQueue(
+      nextQueue,
+    );
+
+    setSelected(
+      null,
+    );
+
+    setSearch('');
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const rows =
+        await listAdminReviewQueueWeb(
+          nextQueue,
+          statusFilter,
+          200,
+        );
+
+      setItems(
+        rows,
+      );
+    } catch (
+      cause
+    ) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : String(
+              cause,
+            ),
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  async function selectStatus(
+    nextStatus:
+      AdminReviewStatusFilter,
+  ) {
+    if (
+      !access ||
+      nextStatus ===
+        statusFilter
+    ) {
+      return;
+    }
+
+    setStatusFilter(
+      nextStatus,
+    );
+
+    setSelected(
+      null,
+    );
+
+    setError('');
+    setSuccess('');
+    setLoading(true);
+
+    try {
+      const rows =
+        await listAdminReviewQueueWeb(
+          queue,
+          nextStatus,
+          200,
+        );
+
+      setItems(
+        rows,
+      );
+    } catch (
+      cause
+    ) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : String(
+              cause,
+            ),
+      );
+    } finally {
+      setLoading(
+        false,
+      );
+    }
+  }
+
+
+  const allowedQueues =
+    useMemo(
+      () =>
+        access
+          ? queueDefs.filter(
+              (entry) =>
+                canViewAdminReviewQueue(
+                  access,
+                  entry.key,
+                ),
+            )
+          : [],
+      [
+        access,
+        queueDefs,
+      ],
+    );
+
+
+  const filteredItems =
+    useMemo(
+      () => {
+        const query =
+          search
+            .trim()
+            .toLowerCase();
+
+        if (
+          !query
+        ) {
+          return items;
+        }
+
+        return items.filter(
+          (item) =>
+            searchableText(
+              item,
+            ).includes(
+              query,
+            ),
+        );
+      },
+      [
+        items,
+        search,
+      ],
+    );
+
+
+  const pendingTotal =
+    useMemo(
+      () =>
+        Object.values(
+          counts,
+        ).reduce(
+          (
+            total,
+            value,
+          ) =>
+            total +
+            Number(
+              value ?? 0,
+            ),
+          0,
+        ),
+      [
+        counts,
+      ],
+    );
+
+
+  const currentQueueName =
+    queueDefs.find(
+      (entry) =>
+        entry.key ===
+        queue,
+    )?.label ??
+    queue;
+
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      setEvidence([]);
+      setEvidenceError('');
+
+      if (
+        !selected
+      ) {
+        setEvidenceLoading(
+          false,
+        );
+
+        return () => {
+          active =
+            false;
+        };
+      }
+
+      setEvidenceLoading(
+        true,
+      );
+
+      void loadAdminReviewEvidenceWeb(
+        selected,
+      )
+        .then(
+          (rows) => {
+            if (
+              active
+            ) {
+              setEvidence(
+                rows,
+              );
+            }
+          },
+        )
+        .catch(
+          (cause) => {
+            if (
+              active
+            ) {
+              setEvidenceError(
+                cause instanceof Error
+                  ? cause.message
+                  : String(
+                      cause,
+                    ),
+              );
+            }
+          },
+        )
+        .finally(
+          () => {
+            if (
+              active
+            ) {
+              setEvidenceLoading(
+                false,
+              );
+            }
+          },
+        );
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [
+      selected,
+    ],
+  );
+
+
+  async function runAction(
+    action:
+      AdminReviewAction,
+  ) {
+    if (
+      !selected ||
+      !access ||
+      acting
+    ) {
+      return;
+    }
+
+    if (
+      action ===
+        'request_info' &&
+      !note.trim()
+    ) {
+      setError(
+        t.requiredNote,
+      );
+
+      return;
+    }
+
+    const destructive =
+      action ===
+        'reject' ||
+      action ===
+        'deactivate' ||
+      action ===
+        'cancel_deletion';
+
+    if (
+      destructive &&
+      !window.confirm(
+        `${actionLabel(
+          action,
+          t,
+        )}?`,
+      )
+    ) {
+      return;
+    }
+
+    setActing(
+      true,
+    );
+
+    setError('');
+    setSuccess('');
+
+    try {
+      await resolveAdminReviewItemWeb(
+        selected,
+        action,
+        note,
+      );
+
+      setSelected(
+        null,
+      );
+
+      setNote('');
+      setEvidence([]);
+
+      const [
+        nextCounts,
+        nextItems,
+      ] =
+        await Promise.all([
+          getAdminReviewQueueCountsWeb(
+            access,
+          ),
+
+          listAdminReviewQueueWeb(
+            queue,
+            statusFilter,
+            200,
+          ),
+        ]);
+
+      setCounts(
+        nextCounts,
+      );
+
+      setItems(
+        nextItems,
+      );
+
+      setSuccess(
+        t.updated,
+      );
+
+      window.setTimeout(
+        () => {
+          setSuccess('');
+        },
+        3500,
+      );
+    } catch (
+      cause
+    ) {
+      setError(
+        cause instanceof Error
+          ? cause.message
+          : String(
+              cause,
+            ),
+      );
+    } finally {
+      setActing(
+        false,
+      );
+    }
+  }
+
+
+  if (
+    !loading &&
+    access &&
+    !access.hasAnyReviewAccess
+  ) {
+    return (
+      <div
+        className={
+          styles.reviewState
+        }
+      >
+        <strong>
+          {
+            t.accessDenied
+          }
+        </strong>
+
+        <span>
+          {
+            t.accessDeniedDesc
+          }
+        </span>
+      </div>
+    );
+  }
+
+
+  if (
+    selected
+  ) {
+    return (
+      <ReviewDetail
+        item={
+          selected
+        }
+        locale={
+          locale
+        }
+        t={
+          t
+        }
+        access={
+          access
+        }
+        note={
+          note
+        }
+        setNote={
+          setNote
+        }
+        acting={
+          acting
+        }
+        evidence={
+          evidence
+        }
+        evidenceLoading={
+          evidenceLoading
+        }
+        evidenceError={
+          evidenceError
+        }
+        error={
+          error
+        }
+        onBack={() => {
+          setSelected(
+            null,
+          );
+
+          setNote('');
+          setError('');
+          setEvidence([]);
+        }}
+        onAction={
+          runAction
+        }
+      />
+    );
+  }
+
+
+  return (
+    <section
+      className={
+        styles.reviewWorkspace
+      }
+    >
+      <div
+        className={
+          styles.reviewTopSearch
+        }
+      >
+        <span>
+          โ•
+        </span>
+
+        <input
+          value={
+            search
+          }
+          onChange={(
+            event,
+          ) =>
+            setSearch(
+              event
+                .target
+                .value,
+            )
+          }
+          placeholder={
+            t.searchPlaceholder
+          }
+        />
+
+        {search ? (
+          <button
+            type="button"
+            onClick={() =>
+              setSearch('')
+            }
+            aria-label="Clear search"
+          >
+            ร—
+          </button>
+        ) : null}
+      </div>
+
+      <div
+        className={
+          styles.reviewStats
+        }
+      >
+        <div>
+          <span>
+            {
+              t.pendingTotal
+            }
+          </span>
+
+          <strong>
+            {
+              pendingTotal
+            }
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            {
+              t.currentQueue
+            }
+          </span>
+
+          <strong>
+            {
+              currentQueueName
+            }
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            {
+              t.visibleResults
+            }
+          </span>
+
+          <strong>
+            {
+              filteredItems.length
+            }
+          </strong>
+        </div>
+      </div>
+
+      <nav
+        className={
+          styles.queueTabs
+        }
+      >
+        {allowedQueues.map(
+          (entry) => {
+            const pendingCount =
+              counts[
+                entry.key
+              ] ?? 0;
+
+            return (
+              <button
+                key={
+                  entry.key
+                }
+                type="button"
+                data-active={
+                  entry.key ===
+                  queue
+                }
+                data-has-pending={
+                  pendingCount >
+                  0
+                }
+                onClick={() =>
+                  void selectQueue(
+                    entry.key,
+                  )
+                }
+              >
+                <span>
+                  {
+                    entry.icon
+                  }
+                </span>
+
+                <strong>
+                  {
+                    entry.label
+                  }
+                </strong>
+
+                <b>
+                  {
+                    pendingCount
+                  }
+                </b>
+              </button>
+            );
+          },
+        )}
+      </nav>
+
+      <div
+        className={
+          styles.reviewToolbar
+        }
+      >
+        <div
+          className={
+            styles.statusFilter
+          }
+        >
+          <button
+            type="button"
+            data-active={
+              statusFilter ===
+              'pending'
+            }
+            onClick={() =>
+              void selectStatus(
+                'pending',
+              )
+            }
+          >
+            {
+              t.pending
+            }
+          </button>
+
+          <button
+            type="button"
+            data-active={
+              statusFilter ===
+              'all'
+            }
+            onClick={() =>
+              void selectStatus(
+                'all',
+              )
+            }
+          >
+            {
+              t.all
+            }
+          </button>
+        </div>
+
+        <button
+          type="button"
+          className={
+            styles.refreshButton
+          }
+          disabled={
+            loading
+          }
+          onClick={() =>
+            void refreshCurrent()
+          }
+        >
+          โป {t.refresh}
+        </button>
+      </div>
+
+      {success ? (
+        <div
+          className={
+            styles.reviewSuccess
+          }
+        >
+          โ“ {success}
+        </div>
+      ) : null}
+
+      {error ? (
+        <div
+          className={
+            styles.reviewError
+          }
+        >
+          <span>
+            {
+              error
+            }
+          </span>
+
+          <button
+            type="button"
+            onClick={() =>
+              void refreshCurrent()
+            }
+          >
+            {
+              t.retry
+            }
+          </button>
+        </div>
+      ) : null}
+
+      {loading ? (
+        <div
+          className={
+            styles.reviewState
+          }
+        >
+          <span
+            className={
+              styles.spinner
+            }
+          />
+
+          <strong>
+            {
+              t.loading
+            }
+          </strong>
+        </div>
+      ) : filteredItems.length ? (
+        <div
+          className={
+            styles.reviewList
+          }
+        >
+          {filteredItems.map(
+            (item) => (
+              <button
+                key={`${item.queueType}-${item.id}`}
+                type="button"
+                className={
+                  styles.reviewRow
+                }
+                onClick={() => {
+                  setSelected(
+                    item,
+                  );
+
+                  setError('');
+                  setSuccess('');
+                }}
+              >
+                <ReviewAvatar
+                  item={
+                    item
+                  }
+                />
+
+                <div
+                  className={
+                    styles.reviewRowCopy
+                  }
+                >
+                  <div
+                    className={
+                      styles.reviewRowTitle
+                    }
+                  >
+                    <strong>
+                      {
+                        item.title
+                      }
+                    </strong>
+
+                    <span>
+                      {
+                        item.status
+                      }
+                    </span>
+                  </div>
+
+                  <p>
+                    {
+                      item.subtitle
+                    }
+                  </p>
+
+                  <small>
+                    {item.ownerEmail
+                      ? `${item.ownerEmail} ยท `
+                      : ''}
+
+                    {formatDate(
+                      item.submittedAt,
+                      locale,
+                    )}
+                  </small>
+                </div>
+
+                <div
+                  className={
+                    styles.reviewRowAction
+                  }
+                >
+                  {
+                    t.reviewButton
+                  } โ€บ
+                </div>
+              </button>
+            ),
+          )}
+        </div>
+      ) : (
+        <div
+          className={
+            styles.reviewEmpty
+          }
+        >
+          <span>
+            โ•
+          </span>
+
+          <strong>
+            {search.trim()
+              ? t.emptySearch
+              : t.empty}
+          </strong>
+        </div>
+      )}
+    </section>
+  );
+}
+
+
+/* =========================================================
+   REVIEW DETAIL
+   ========================================================= */
+
+function ReviewDetail({
+  item,
+  locale,
+  t,
+  access,
+  note,
+  setNote,
+  acting,
+  evidence,
+  evidenceLoading,
+  evidenceError,
+  error,
+  onBack,
+  onAction,
+}: {
+  item:
+    AdminReviewItemWeb;
+
+  locale:
+    string;
+
+  t:
+    AdminCopy;
+
+  access:
+    AdminReviewAccessWeb |
+    null;
+
+  note:
+    string;
+
+  setNote:
+    (
+      value:
+        string,
+    ) => void;
+
+  acting:
+    boolean;
+
+  evidence:
+    AdminReviewEvidenceWeb[];
+
+  evidenceLoading:
+    boolean;
+
+  evidenceError:
+    string;
+
+  error:
+    string;
+
+  onBack:
+    () => void;
+
+  onAction:
+    (
+      action:
+        AdminReviewAction,
+    ) => void;
+}) {
+  const fields =
+    importantFields(
+      item.queueType,
+    );
+
+  const canAct =
+    Boolean(
+      access &&
+      canActOnAdminReviewQueue(
+        access,
+        item.queueType,
+      ),
+    );
+
+  const checklist =
+    item.queueType ===
+      'business'
+      ? businessChecklist(
+          item,
+        )
+      : item.queueType ===
+          'payout'
+        ? payoutChecklist(
+            item,
+          )
+        : [];
+
+
+  return (
+    <section
+      className={
+        styles.reviewWorkspace
+      }
+    >
+      <div
+        className={
+          styles.detailToolbar
+        }
+      >
+        <button
+          type="button"
+          onClick={
+            onBack
+          }
+        >
+          โ {t.backToList}
+        </button>
+
+        <span>
+          {
+            item.queueType
+          }
+        </span>
+      </div>
+
+      <header
+        className={
+          styles.detailHero
+        }
+      >
+        <div
+          className={
+            styles.detailIdentity
+          }
+        >
+          <ReviewAvatar
+            item={
+              item
+            }
+            large
+          />
+
+          <div>
+            <small>
+              {
+                t.detailTitle
+              }
+            </small>
+
+            <h3>
+              {
+                item.title
+              }
+            </h3>
+
+            <p>
+              {
+                item.subtitle
+              }
+            </p>
+          </div>
+        </div>
+
+        <div
+          className={
+            styles.detailStatus
+          }
+        >
+          <span>
+            {
+              t.status
+            }
+          </span>
+
+          <strong>
+            {
+              item.status
+            }
+          </strong>
+        </div>
+      </header>
+
+      <div
+        className={
+          styles.detailSummary
+        }
+      >
+        <div>
+          <span>
+            {
+              t.submitted
+            }
+          </span>
+
+          <strong>
+            {formatDate(
+              item.submittedAt,
+              locale,
+            )}
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            {
+              t.email
+            }
+          </span>
+
+          <strong>
+            {
+              item.ownerEmail ||
+              'โ€”'
+            }
+          </strong>
+        </div>
+
+        <div>
+          <span>
+            ID
+          </span>
+
+          <strong
+            className={
+              styles.mono
+            }
+          >
+            {
+              item.id
+            }
+          </strong>
+        </div>
+      </div>
+
+      {checklist.length ? (
+        <section
+          className={
+            styles.reviewCard
+          }
+        >
+          <header
+            className={
+              styles.reviewSectionHead
+            }
+          >
+            <small>
+              REVIEW
+            </small>
+
+            <h4>
+              {
+                t.checklist
+              }
+            </h4>
+          </header>
+
+          <div
+            className={
+              styles.checklistGrid
+            }
+          >
+            {checklist.map(
+              (row) => (
+                <div
+                  key={
+                    row.label
+                  }
+                  data-ok={
+                    row.ok
+                  }
+                >
+                  <b>
+                    {row.ok
+                      ? 'โ“'
+                      : '!'}
+                  </b>
+
+                  <span>
+                    {
+                      row.label
+                    }
+                  </span>
+
+                  <strong>
+                    {row.ok
+                      ? t.complete
+                      : t.shouldCheck}
+                  </strong>
+                </div>
+              ),
+            )}
+          </div>
+        </section>
+      ) : null}
+
+      <section
+        className={
+          styles.reviewCard
+        }
+      >
+        <header
+          className={
+            styles.reviewSectionHead
+          }
+        >
+          <small>
+            DATA
+          </small>
+
+          <h4>
+            {
+              t.importantData
+            }
+          </h4>
+        </header>
+
+        <div
+          className={
+            styles.dataGrid
+          }
+        >
+          {fields.map(
+            (key) => (
+              <div
+                className={
+                  styles.dataField
+                }
+                key={
+                  key
+                }
+              >
+                <span>
+                  {fieldLabel(
+                    key,
+                    locale,
+                  )}
+                </span>
+
+                <strong>
+                  {valueText(
+                    item.details[
+                      key
+                    ],
+                    locale,
+                  )}
+                </strong>
+              </div>
+            ),
+          )}
+        </div>
+      </section>
+
+      <section
+        className={
+          styles.reviewCard
+        }
+      >
+        <header
+          className={
+            styles.reviewSectionHead
+          }
+        >
+          <small>
+            PRIVATE
+          </small>
+
+          <h4>
+            {
+              t.evidence
+            }
+          </h4>
+
+          <p>
+            {
+              t.evidencePrivate
+            }
+          </p>
+        </header>
+
+        {evidenceLoading ? (
+          <div
+            className={
+              styles.evidenceState
+            }
+          >
+            <span
+              className={
+                styles.spinner
+              }
+            />
+
+            {
+              t.evidenceLoading
+            }
+          </div>
+        ) : evidenceError ? (
+          <div
+            className={
+              styles.evidenceError
+            }
+          >
+            {
+              evidenceError
+            }
+          </div>
+        ) : evidence.length ? (
+          <div
+            className={
+              styles.evidenceGrid
+            }
+          >
+            {evidence.map(
+              (file) => (
+                <a
+                  key={
+                    file.id
+                  }
+                  href={
+                    file.signedUrl
+                  }
+                  target="_blank"
+                  rel="noreferrer"
+                  className={
+                    styles.evidenceItem
+                  }
+                >
+                  {file.image ? (
+                    <img
+                      src={
+                        file.signedUrl
+                      }
+                      alt=""
+                    />
+                  ) : (
+                    <div
+                      className={
+                        styles.fileIcon
+                      }
+                    >
+                      โ–ค
+                    </div>
+                  )}
+
+                  <div>
+                    <strong>
+                      {
+                        file.label
+                      }
+                    </strong>
+
+                    <small>
+                      {
+                        t.openFile
+                      } โ—
+                    </small>
+                  </div>
+                </a>
+              ),
+            )}
+          </div>
+        ) : (
+          <div
+            className={
+              styles.evidenceState
+            }
+          >
+            {
+              t.noEvidence
+            }
+          </div>
+        )}
+      </section>
+
+      {canAct ? (
+        <section
+          className={
+            styles.reviewCard
+          }
+        >
+          <label
+            className={
+              styles.noteLabel
+            }
+          >
+            {
+              t.adminNote
+            }
+          </label>
+
+          <textarea
+            className={
+              styles.adminNote
+            }
+            value={
+              note
+            }
+            onChange={(
+              event,
+            ) =>
+              setNote(
+                event
+                  .target
+                  .value,
+              )
+            }
+            placeholder={
+              t.adminNotePlaceholder
+            }
+            rows={
+              4
+            }
+          />
+
+          <div
+            className={
+              styles.actionGrid
+            }
+          >
+            {adminReviewActionsFor(
+              item.queueType,
+            ).map(
+              (action) => {
+                const kind =
+                  action ===
+                    'approve' ||
+                  action ===
+                    'resolve' ||
+                  action ===
+                    'acknowledge'
+                    ? 'positive'
+                    : action ===
+                        'reject' ||
+                      action ===
+                        'deactivate' ||
+                      action ===
+                        'cancel_deletion'
+                      ? 'danger'
+                      : action ===
+                          'request_info' ||
+                        action ===
+                          'warn' ||
+                        action ===
+                          'suspend' ||
+                        action ===
+                          'suspend_24h' ||
+                        action ===
+                          'suspend_7d'
+                        ? 'warning'
+                        : 'neutral';
+
+                return (
+                  <button
+                    key={
+                      action
+                    }
+                    type="button"
+                    data-kind={
+                      kind
+                    }
+                    disabled={
+                      acting
+                    }
+                    onClick={() =>
+                      onAction(
+                        action,
+                      )
+                    }
+                  >
+                    {acting
+                      ? 'โ€ฆ'
+                      : actionLabel(
+                          action,
+                          t,
+                        )}
+                  </button>
+                );
+              },
+            )}
+          </div>
+        </section>
+      ) : (
+        <div
+          className={
+            styles.readOnly
+          }
+        >
+          {
+            t.readOnly
+          }
+        </div>
+      )}
+
+      {error ? (
+        <div
+          className={
+            styles.reviewInlineError
+          }
+        >
+          {
+            error
+          }
+        </div>
+      ) : null}
+    </section>
+  );
+}
+
+
+/* =========================================================
+   BUSINESS AVATAR
+   Business uses Business logo only.
+   Never fall back to owner's user profile photo.
+   ========================================================= */
+
+const businessAvatarCache =
+  new Map<
+    string,
+    string
+  >();
+
+
+function ReviewAvatar({
+  item,
+  large = false,
+}: {
+  item:
+    AdminReviewItemWeb;
+
+  large?:
+    boolean;
+}) {
+  const isBusiness =
+    item.queueType ===
+    'business';
+
+  const [
+    resolvedUrl,
+    setResolvedUrl,
+  ] =
+    useState(
+      isBusiness
+        ? (
+            businessAvatarCache.get(
+              item.id,
+            ) ??
+            ''
+          )
+        : item.profilePhotoUrl,
+    );
+
+
+  useEffect(
+    () => {
+      let active =
+        true;
+
+      if (
+        !isBusiness
+      ) {
+        setResolvedUrl(
+          item.profilePhotoUrl,
+        );
+
+        return () => {
+          active =
+            false;
+        };
+      }
+
+      const cached =
+        businessAvatarCache.get(
+          item.id,
+        );
+
+      if (
+        cached
+      ) {
+        setResolvedUrl(
+          cached,
+        );
+
+        return () => {
+          active =
+            false;
+        };
+      }
+
+      /*
+       * Business intentionally starts empty.
+       * Do not use item.profilePhotoUrl because it may be
+       * the owner's personal profile photo.
+       */
+      setResolvedUrl('');
+
+      void loadAdminReviewEvidenceWeb(
+        item,
+      )
+        .then(
+          (files) => {
+            if (
+              !active
+            ) {
+              return;
+            }
+
+            const businessLogo =
+              files.find(
+                (file) =>
+                  file.id ===
+                  'logo',
+              ) ??
+              files.find(
+                (file) =>
+                  file.label
+                    .toLowerCase()
+                    .includes(
+                      'business profile',
+                    ),
+              );
+
+            if (
+              businessLogo?.signedUrl
+            ) {
+              businessAvatarCache.set(
+                item.id,
+                businessLogo.signedUrl,
+              );
+
+              setResolvedUrl(
+                businessLogo.signedUrl,
+              );
+            }
+          },
+        )
+        .catch(
+          () => {
+            if (
+              active
+            ) {
+              setResolvedUrl('');
+            }
+          },
+        );
+
+      return () => {
+        active =
+          false;
+      };
+    },
+    [
+      isBusiness,
+      item.id,
+      item.profilePhotoUrl,
+    ],
+  );
+
+
+  if (
+    resolvedUrl
+  ) {
+    return (
+      <img
+        src={
+          resolvedUrl
+        }
+        alt=""
+        className={
+          large
+            ? styles.reviewAvatarLarge
+            : styles.reviewAvatar
+        }
+      />
+    );
+  }
+
+  return (
+    <div
+      className={
+        large
+          ? styles.reviewAvatarFallbackLarge
+          : styles.reviewAvatarFallback
+      }
+    >
+      {item.title
+        .trim()
+        .slice(
+          0,
+          1,
+        )
+        .toUpperCase() ||
+        'M'}
+    </div>
+  );
+}
+
