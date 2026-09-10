@@ -14,3 +14,18 @@
 @media(prefers-reduced-motion:reduce){.marqueeTrack,.spinner{animation:none}.dealCard,.featureImage{transition:none}}
 
 @media(max-width:620px){.dealFooter{align-items:flex-start;flex-direction:column}.dealActions{width:100%}.dealActions button{flex:1}.dealFooter>span{max-width:100%}}
+
+/* MELO MOBILE COMPACT PAGE HEADER — mobile only */
+@media(max-width:760px){
+  .pageHeader>div:first-child>p{display:none!important}
+  .countPill{display:none!important}
+}
+
+
+/* MELO WEB MOBILE ROUND 4 — compact page spacing */
+@media(max-width:760px){
+  .shell{padding-top:16px!important}
+  .pageHeader{gap:7px!important;padding-bottom:12px!important}
+  .pageHeader h1{margin-bottom:0!important}
+  .categoryNav{margin-top:9px!important;margin-bottom:18px!important}
+}

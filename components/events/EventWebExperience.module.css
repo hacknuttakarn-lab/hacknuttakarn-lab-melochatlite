@@ -40,3 +40,18 @@
 @media(max-width:1080px){.eventGrid{grid-template-columns:repeat(2,minmax(0,1fr))}}
 @media(max-width:760px){.shell{width:min(100% - 20px,1320px);padding-top:14px}.pageHead{align-items:flex-start;flex-direction:column}.headActions{width:100%;flex-wrap:wrap}.modeTabs{flex:1 1 100%}.modeTabs button{flex:1;min-width:0}.createButton{width:100%}.footer{grid-template-columns:1fr}.footer button{width:100%}}
 @media(max-width:680px){.eventGrid{grid-template-columns:1fr}.image{height:220px;min-height:220px}}
+
+/* MELO MOBILE COMPACT PAGE HEADER — mobile only */
+@media(max-width:760px){
+  .pageHead>div:first-child>p{display:none!important}
+  .countPill{display:none!important}
+}
+
+
+/* MELO WEB MOBILE ROUND 4 — compact page spacing */
+@media(max-width:760px){
+  .shell{padding-top:8px!important}
+  .pageHead{padding-top:8px!important;padding-bottom:12px!important}
+  .pageHead h1{margin-bottom:0!important}
+  .section{margin-top:17px!important}
+}

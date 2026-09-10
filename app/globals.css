@@ -71,7 +71,6 @@ button { color: inherit; }
 .desktopNav a { color: var(--text-secondary); font-size: 14px; font-weight: 700; transition: color .2s ease, background .2s ease; }
 .desktopNav a:hover { color: var(--primary); }
 .desktopNav .navDownload { color: var(--text); border: 1px solid var(--border); background: var(--surface); border-radius: 12px; padding: 9px 13px; box-shadow: 0 8px 24px var(--shadow); }
-.publicHeaderControls { display: inline-flex; align-items: center; gap: 8px; }
 .headerTools { display: flex; align-items: center; gap: 8px; }
 .languageSelect, .countrySelect, .themeButton {
   height: 40px;
@@ -91,8 +90,6 @@ button { color: inherit; }
 .countrySelect select { max-width: 118px; }
 .languageSelect option, .countrySelect option { background: var(--surface); color: var(--text); }
 .themeButton { width: 40px; justify-content: center; cursor: pointer; font-size: 19px; }
-.publicThemeButton { flex: 0 0 40px; padding: 0; transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease; }
-.publicThemeButton:hover { transform: translateY(-1px); border-color: color-mix(in srgb, var(--primary) 35%, var(--border)); }
 .menuButton { display: none; width: 40px; height: 40px; border: 0; background: transparent; padding: 9px; cursor: pointer; }
 .menuButton span { display: block; height: 2px; background: var(--text); margin: 5px 0; border-radius: 99px; transition: transform .2s ease, opacity .2s ease; }
 .menuButton.isOpen span:first-child { transform: translateY(7px) rotate(45deg); }
@@ -113,7 +110,6 @@ button { color: inherit; }
 .pulseDot { width: 7px; height: 7px; border-radius: 50%; background: var(--success); box-shadow: 0 0 0 5px color-mix(in srgb, var(--success) 13%, transparent); }
 .heroV2 h1 { font-size: clamp(58px, 6.5vw, 88px); line-height: .96; letter-spacing: -.064em; margin: 24px 0; max-width: 720px; }
 .heroV2 h1 span { color: var(--primary); }
-.heroV2 h1 .heroTitlePrimaryLine { color: inherit; white-space: nowrap; }
 .heroLead { max-width: 650px; color: var(--text-secondary); font-size: 18px; line-height: 1.78; }
 .heroActions { display: flex; gap: 12px; margin-top: 31px; flex-wrap: wrap; }
 .button { min-height: 49px; padding: 0 21px; border-radius: 15px; display: inline-flex; align-items: center; justify-content: center; font-weight: 800; font-size: 14px; transition: transform .2s ease, box-shadow .2s ease; border: 0; }
@@ -209,8 +205,6 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
   .desktopNav { position: fixed; left: 20px; right: 20px; top: 82px; display: none; flex-direction: column; align-items: stretch; gap: 4px; padding: 10px; border: 1px solid var(--border); border-radius: 18px; background: var(--surface); box-shadow: 0 20px 60px var(--shadow); }
   .desktopNav.mobileOpen { display: flex; }
   .desktopNav a { padding: 13px 12px; border-radius: 12px; }.desktopNav a:hover { background: var(--surface-2); }.desktopNav .navDownload { box-shadow: none; }
-  .desktopNav .publicHeaderControls { width: 100%; padding: 4px 0; }
-  .desktopNav .publicHeaderControls .publicThemeButton { box-shadow: none; }
   .menuButton { display: block; }
   .heroV2 { grid-template-columns: 1fr; padding-top: 64px; text-align: center; }
   .heroV2Copy { max-width: 760px; margin-inline: auto; }.heroLead { margin-inline: auto; }.heroActions, .heroTrust { justify-content: center; }.meloStage { width: min(620px, 100%); margin-inline: auto; min-height: 600px; }
@@ -383,5 +377,701 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
     [class*="_pageHeader__"]
   ):first-child {
     padding-top: 12px !important;
+  }
+}
+
+
+/* Public mobile left drawer — Landing + Login only */
+.publicMobileDrawerControls,
+.publicMenuBackdrop {
+  display: none;
+}
+
+@media (max-width: 900px) {
+  .publicAuthSiteHeader .desktopNav {
+    position: absolute;
+    left: 0;
+    right: auto;
+    top: 100%;
+    bottom: auto;
+    width: min(84vw, 330px);
+    height: calc(100dvh - 74px);
+    max-height: calc(100dvh - 74px);
+    margin: 0;
+    padding: 16px 14px max(22px, env(safe-area-inset-bottom));
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    gap: 5px;
+    overflow-x: hidden;
+    overflow-y: auto;
+    border: 0;
+    border-right: 1px solid var(--border);
+    border-radius: 0 22px 22px 0;
+    background: color-mix(in srgb, var(--surface) 97%, transparent);
+    box-shadow: 18px 0 52px color-mix(in srgb, var(--shadow) 88%, transparent);
+    backdrop-filter: blur(22px) saturate(140%);
+    transform: translateX(-104%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition:
+      transform .24s ease,
+      opacity .2s ease,
+      visibility 0s linear .24s;
+    z-index: 95;
+  }
+
+  .publicAuthSiteHeader .desktopNav.mobileOpen {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition:
+      transform .24s ease,
+      opacity .2s ease,
+      visibility 0s linear 0s;
+  }
+
+  .publicAuthSiteHeader .desktopNav > a {
+    width: 100%;
+    min-height: 48px;
+    padding: 0 14px;
+    display: flex;
+    align-items: center;
+    border-radius: 13px;
+    color: var(--text);
+    font-size: 14px;
+    font-weight: 800;
+  }
+
+  .publicAuthSiteHeader .desktopNav > a:hover,
+  .publicAuthSiteHeader .desktopNav > a:focus-visible {
+    background: var(--surface-2);
+    color: var(--primary);
+  }
+
+  .publicAuthSiteHeader .desktopNav .navDownload {
+    min-height: 48px;
+    padding: 0 14px;
+    border: 0;
+    background: transparent;
+    box-shadow: none;
+  }
+
+  .publicAuthSiteHeader .mobileLoginLink {
+    display: flex;
+    color: var(--primary) !important;
+    font-weight: 900 !important;
+  }
+
+  .publicMobileDrawerControls {
+    display: grid;
+    gap: 8px;
+    margin-top: 8px;
+    padding-top: 14px;
+    border-top: 1px solid var(--border);
+  }
+
+  .publicMobileLanguageControl,
+  .publicMobileThemeControl {
+    width: 100%;
+    min-height: 56px;
+    padding: 8px 11px;
+    display: grid;
+    grid-template-columns: 34px minmax(0, 1fr) auto;
+    gap: 10px;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-2);
+    color: var(--text);
+    box-shadow: none;
+  }
+
+  .publicMobileThemeControl {
+    grid-template-columns: 34px minmax(0, 1fr);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .publicMobileControlIcon {
+    width: 34px;
+    height: 34px;
+    display: grid;
+    place-items: center;
+    border-radius: 11px;
+    background: var(--primary-soft);
+    color: var(--primary);
+    font-size: 16px;
+    line-height: 1;
+  }
+
+  .publicMobileControlCopy {
+    min-width: 0;
+  }
+
+  .publicMobileControlCopy strong,
+  .publicMobileControlCopy small {
+    display: block;
+  }
+
+  .publicMobileControlCopy strong {
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .publicMobileControlCopy small {
+    margin-top: 3px;
+    color: var(--text-secondary);
+    font-size: 9px;
+    font-weight: 700;
+  }
+
+  .publicMobileLanguageControl select {
+    min-width: 104px;
+    max-width: 132px;
+    height: 38px;
+    padding: 0 8px;
+    border: 0;
+    outline: 0;
+    border-radius: 10px;
+    background: var(--surface);
+    color: var(--text);
+    font: inherit;
+    font-size: 11px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .publicMobileLanguageControl option {
+    background: var(--surface);
+    color: var(--text);
+  }
+
+  .publicMobileThemeControl:hover,
+  .publicMobileThemeControl:focus-visible,
+  .publicMobileLanguageControl:focus-within {
+    border-color: color-mix(in srgb, var(--primary) 45%, var(--border));
+    background: color-mix(in srgb, var(--primary-soft) 52%, var(--surface));
+  }
+
+  .publicMenuBackdrop {
+    position: fixed;
+    inset: 74px 0 0;
+    z-index: 70;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(5, 12, 20, .42);
+    backdrop-filter: blur(2px);
+    cursor: default;
+  }
+
+  .publicMenuBackdrop {
+    display: block;
+  }
+}
+
+@media (max-width: 640px) {
+  .publicAuthSiteHeader .desktopNav {
+    top: 100%;
+    width: min(86vw, 320px);
+    height: calc(100dvh - 66px);
+    max-height: calc(100dvh - 66px);
+    padding-inline: 12px;
+    border-radius: 0 20px 20px 0;
+  }
+
+  .publicMenuBackdrop {
+    inset: 66px 0 0;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .publicAuthSiteHeader .desktopNav {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   MELO WEB MOBILE MEMBER NAVIGATION
+   Mobile only. Desktop/tablet layouts above 760px are unchanged.
+   ========================================================= */
+.memberMobileMenuTrigger,
+.memberMobileNavContent,
+.memberMobileMenuBackdrop,
+.meloMobileBottomNav {
+  display: none;
+}
+
+.memberDesktopNavContent {
+  display: contents;
+}
+
+@media (max-width: 760px) {
+  body.meloMemberBottomNavVisible {
+    padding-bottom: calc(74px + env(safe-area-inset-bottom));
+  }
+
+  .memberSiteHeader .headerInner {
+    position: relative;
+    width: calc(100% - 28px) !important;
+    min-height: 66px;
+    gap: 8px;
+  }
+
+  .memberSiteHeader .brand {
+    flex: 0 0 auto;
+  }
+
+  .memberSiteHeader .brand img {
+    width: 40px;
+    height: 40px;
+  }
+
+  .memberMobileMenuTrigger {
+    width: 40px;
+    height: 40px;
+    flex: 0 0 40px;
+    padding: 8px;
+    display: block;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    cursor: pointer;
+  }
+
+  .memberMobileMenuTrigger span {
+    display: block;
+    width: 22px;
+    height: 2px;
+    margin: 5px auto;
+    border-radius: 999px;
+    background: var(--text);
+    transition: transform .2s ease, opacity .2s ease;
+  }
+
+  .memberMobileMenuTrigger.isOpen span:first-child {
+    transform: translateY(7px) rotate(45deg);
+  }
+
+  .memberMobileMenuTrigger.isOpen span:nth-child(2) {
+    opacity: 0;
+  }
+
+  .memberMobileMenuTrigger.isOpen span:last-child {
+    transform: translateY(-7px) rotate(-45deg);
+  }
+
+  .memberSiteHeader .headerTools {
+    margin-left: auto;
+    gap: 7px;
+  }
+
+  .memberSiteHeader .headerTools > .menuButton {
+    display: none !important;
+  }
+
+  .memberDesktopNavContent {
+    display: none !important;
+  }
+
+  .memberSiteHeader .desktopNav {
+    position: absolute !important;
+    left: calc((100% - 100vw) / 2) !important;
+    right: auto !important;
+    top: 100% !important;
+    bottom: auto !important;
+    width: min(88vw, 342px) !important;
+    height: calc(100dvh - 66px) !important;
+    max-height: calc(100dvh - 66px) !important;
+    margin: 0 !important;
+    padding: 14px 12px calc(34px + env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    border: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    border-radius: 0 22px 22px 0 !important;
+    background: color-mix(in srgb, var(--surface) 97%, transparent) !important;
+    box-shadow: 18px 0 52px color-mix(in srgb, var(--shadow) 88%, transparent) !important;
+    backdrop-filter: blur(22px) saturate(140%);
+    transform: translateX(-104%);
+    opacity: 0;
+    visibility: hidden;
+    pointer-events: none;
+    transition: transform .24s ease, opacity .2s ease, visibility 0s linear .24s;
+    z-index: 95;
+  }
+
+  .memberSiteHeader .desktopNav.mobileOpen {
+    transform: translateX(0);
+    opacity: 1;
+    visibility: visible;
+    pointer-events: auto;
+    transition: transform .24s ease, opacity .2s ease, visibility 0s linear 0s;
+  }
+
+  .memberMobileNavContent {
+    display: flex;
+    min-height: 100%;
+    padding-bottom: 10px;
+    flex-direction: column;
+    gap: 12px;
+  }
+
+  .memberMobileDrawerTitle {
+    padding: 4px 8px 8px;
+    display: grid;
+    gap: 2px;
+  }
+
+  .memberMobileDrawerTitle strong {
+    color: var(--text);
+    font-size: 18px;
+    font-weight: 900;
+  }
+
+  .memberMobileDrawerTitle small {
+    max-width: 100%;
+    overflow: hidden;
+    color: var(--text-secondary);
+    font-size: 11px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .memberMobileDrawerSearch {
+    min-height: 46px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 9px;
+    border: 1px solid var(--border);
+    border-radius: 14px;
+    background: var(--surface-2);
+  }
+
+  .memberMobileDrawerSearch > span {
+    color: var(--primary);
+    font-size: 16px;
+  }
+
+  .memberMobileDrawerSearch input {
+    min-width: 0;
+    flex: 1;
+    border: 0;
+    outline: 0;
+    background: transparent;
+    color: var(--text);
+    font-size: 13px;
+  }
+
+  .memberMobileDrawerSearch input::placeholder {
+    color: var(--text-secondary);
+  }
+
+  .memberMobileDrawerLinks,
+  .memberMobileDrawerUtility {
+    display: grid;
+    gap: 3px;
+  }
+
+  .memberMobileDrawerUtility {
+    padding-top: 10px;
+    border-top: 1px solid var(--border);
+  }
+
+  .memberMobileDrawerLinks > a,
+  .memberMobileDrawerLinks > button,
+  .memberMobileDrawerUtility > a,
+  .memberMobileDrawerUtility > button {
+    width: 100%;
+    min-height: 44px;
+    padding: 0 12px;
+    display: grid;
+    grid-template-columns: 28px minmax(0, 1fr) auto;
+    gap: 8px;
+    align-items: center;
+    border: 0;
+    border-radius: 12px;
+    background: transparent;
+    color: var(--text);
+    text-align: left;
+    font-size: 13px;
+    font-weight: 800;
+    cursor: pointer;
+  }
+
+  .memberMobileDrawerLinks > a > span:first-child,
+  .memberMobileDrawerLinks > button > span:first-child,
+  .memberMobileDrawerUtility > a > span:first-child,
+  .memberMobileDrawerUtility > button > span:first-child {
+    width: 28px;
+    display: grid;
+    place-items: center;
+    color: var(--primary);
+    font-size: 17px;
+  }
+
+  .memberMobileDrawerLinks > a:hover,
+  .memberMobileDrawerLinks > button:hover,
+  .memberMobileDrawerUtility > a:hover,
+  .memberMobileDrawerUtility > button:hover,
+  .memberMobileDrawerLinks > .isActive {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .memberMobileDrawerLinks > button b {
+    min-width: 22px;
+    height: 22px;
+    padding: 0 6px;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: #ef5f6c;
+    color: #fff;
+    font-size: 10px;
+  }
+
+  .memberMobileDrawerControls {
+    padding-top: 10px;
+    display: grid;
+    gap: 7px;
+    border-top: 1px solid var(--border);
+  }
+
+  .memberMobileDrawerControls > label,
+  .memberMobileDrawerControls > button {
+    width: 100%;
+    min-height: 52px;
+    padding: 7px 10px;
+    display: grid;
+    grid-template-columns: 30px minmax(0, 1fr) auto;
+    gap: 9px;
+    align-items: center;
+    border: 1px solid var(--border);
+    border-radius: 13px;
+    background: var(--surface-2);
+    color: var(--text);
+  }
+
+  .memberMobileDrawerControls > button {
+    grid-template-columns: 30px minmax(0, 1fr);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .memberMobileDrawerControls > label > span,
+  .memberMobileDrawerControls > button > span:first-child {
+    width: 30px;
+    height: 30px;
+    display: grid;
+    place-items: center;
+    border-radius: 9px;
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .memberMobileDrawerControls strong {
+    font-size: 12px;
+    font-weight: 900;
+  }
+
+  .memberMobileDrawerControls select {
+    max-width: 122px;
+    height: 36px;
+    padding: 0 8px;
+    border: 0;
+    outline: 0;
+    border-radius: 9px;
+    background: var(--surface);
+    color: var(--text);
+    font-size: 11px;
+    font-weight: 800;
+  }
+
+  .memberMobileDrawerControlCopy {
+    display: grid;
+    gap: 2px;
+  }
+
+  .memberMobileDrawerControlCopy small {
+    color: var(--text-secondary);
+    font-size: 10px;
+    font-weight: 700;
+  }
+
+  .memberMobileDrawerLogout {
+    width: 100%;
+    min-height: 46px;
+    margin-top: auto;
+    margin-bottom: 12px;
+    padding: 0 12px;
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    border: 0;
+    border-radius: 12px;
+    background: color-mix(in srgb, #ef5f6c 9%, var(--surface));
+    color: #df5260;
+    font-size: 13px;
+    font-weight: 900;
+    cursor: pointer;
+  }
+
+  .memberMobileMenuBackdrop {
+    position: fixed;
+    inset: 66px 0 0;
+    z-index: 70;
+    display: block;
+    width: auto;
+    height: auto;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: rgba(5, 12, 20, .42);
+    backdrop-filter: blur(2px);
+  }
+
+  .meloMobileBottomNav {
+    position: fixed;
+    left: 0;
+    right: 0;
+    bottom: 0;
+    z-index: 68;
+    height: calc(66px + env(safe-area-inset-bottom));
+    padding: 6px 8px env(safe-area-inset-bottom);
+    display: grid;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    align-items: stretch;
+    border-top: 1px solid var(--border);
+    background: color-mix(in srgb, var(--surface) 96%, transparent);
+    box-shadow: 0 -12px 34px var(--shadow);
+    backdrop-filter: blur(20px) saturate(140%);
+  }
+
+  .meloMobileBottomNav > a,
+  .meloMobileBottomNav > button {
+    position: relative;
+    min-width: 0;
+    padding: 3px 2px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 3px;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: var(--text-secondary);
+    cursor: pointer;
+  }
+
+  .meloMobileBottomNav > a > span,
+  .meloMobileBottomNav > button > span {
+    min-height: 23px;
+    display: grid;
+    place-items: center;
+    font-size: 20px;
+    line-height: 1;
+  }
+
+  .meloMobileBottomNav small {
+    max-width: 100%;
+    overflow: hidden;
+    font-size: 9px;
+    font-weight: 800;
+    line-height: 1.15;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .meloMobileBottomNav > .isActive {
+    background: var(--primary-soft);
+    color: var(--primary);
+  }
+
+  .meloMobileBottomNav > button b {
+    position: absolute;
+    top: 2px;
+    left: calc(50% + 8px);
+    min-width: 17px;
+    height: 17px;
+    padding: 0 4px;
+    display: grid;
+    place-items: center;
+    border: 2px solid var(--surface);
+    border-radius: 999px;
+    background: #ef5f6c;
+    color: #fff;
+    font-size: 8px;
+    font-weight: 900;
+  }
+}
+
+@media (max-width: 390px) {
+  .memberSiteHeader .headerInner {
+    width: calc(100% - 20px) !important;
+  }
+
+  .memberMobileMenuTrigger {
+    width: 36px;
+    height: 36px;
+    flex-basis: 36px;
+    padding: 6px;
+  }
+
+  .meloMobileBottomNav small {
+    font-size: 8px;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .memberSiteHeader .desktopNav,
+  .memberMobileMenuTrigger span {
+    transition: none !important;
+  }
+}
+
+/* =========================================================
+   MELO WEB MOBILE LISTING HEADERS — compact only on exact list pages
+   Deals / Partners / Trips / Events / Community. Desktop stays unchanged.
+   ========================================================= */
+@media (max-width: 760px) {
+  body[data-melo-mobile-listing-page] :is(
+    header[class*="pageHeader"],
+    header[class*="pageHead"],
+    header[class*="hero"]
+  ) > div:first-child > p {
+    display: none !important;
+  }
+
+  body[data-melo-mobile-listing-page] :is(
+    header[class*="pageHeader"],
+    header[class*="pageHead"],
+    header[class*="hero"]
+  ) > [class*="count"] {
+    display: none !important;
+  }
+}
+
+/* MELO WEB MOBILE HOME ROUTE FIX — extra drawer bottom safe space */
+@media (max-width: 900px) {
+  .memberMobileNavContent {
+    padding-bottom: calc(148px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .memberMobileDrawerLogout {
+    flex-shrink: 0;
+    margin-bottom: 56px !important;
   }
 }

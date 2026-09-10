@@ -1,11 +1,5 @@
-import SocialFeedExperience from "@/components/feed/SocialFeedExperience";
-import HomeActivityRecommendationGuard from "@/components/feed/HomeActivityRecommendationGuard";
+import ResponsiveAccountHome from "@/components/home/ResponsiveAccountHome";
 
 export default function AccountPage() {
-  return (
-    <>
-      <SocialFeedExperience />
-      <HomeActivityRecommendationGuard />
-    </>
-  );
+  return <ResponsiveAccountHome />;
 }

@@ -1,83 +1,37 @@
 'use client';
 
 import Link from 'next/link';
-import {
-  FormEvent,
-  useEffect,
-  useState,
-} from 'react';
+import { FormEvent, useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
-import {
-  AuthFrame,
-  authStyles as styles,
-} from '@/components/auth/AuthFrame';
-
+import { Header } from '@/components/Header';
+import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
-
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-
-import {
-  isSupabaseConfigured,
-  signInWithPassword,
-} from '@/lib/supabase/browser';
+import { isSupabaseConfigured, signInWithPassword } from '@/lib/supabase/browser';
 
 function createNumericCaptcha() {
-  return String(
-    Math.floor(
-      100000 +
-        Math.random() * 900000,
-    ),
-  );
+  return String(Math.floor(100000 + Math.random() * 900000));
 }
 
 export default function LoginPage() {
   const { locale } = useLocale();
+  const copy = authCopy[locale];
+  const router = useRouter();
 
-  const copy =
-    authCopy[locale];
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [captchaCode, setCaptchaCode] = useState('');
+  const [captchaInput, setCaptchaInput] = useState('');
+  const [busy, setBusy] = useState(false);
+  const [error, setError] = useState('');
 
-  const router =
-    useRouter();
-
-  const [email, setEmail] =
-    useState('');
-
-  const [
-    password,
-    setPassword,
-  ] = useState('');
-
-  const [
-    showPassword,
-    setShowPassword,
-  ] = useState(false);
-
-  const [
-    captchaCode,
-    setCaptchaCode,
-  ] = useState('');
-
-  const [
-    captchaInput,
-    setCaptchaInput,
-  ] = useState('');
-
-  const [busy, setBusy] =
-    useState(false);
-
-  const [error, setError] =
-    useState('');
-
-  const supabaseReady =
-    isSupabaseConfigured();
+  const supabaseReady = isSupabaseConfigured();
 
   function refreshCaptcha() {
-    setCaptchaCode(
-      createNumericCaptcha(),
-    );
-
+    setCaptchaCode(createNumericCaptcha());
     setCaptchaInput('');
   }
 
@@ -85,420 +39,224 @@ export default function LoginPage() {
     refreshCaptcha();
   }, []);
 
-  async function submit(
-    event: FormEvent<HTMLFormElement>,
-  ) {
+  async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
 
-    if (
-      !supabaseReady ||
-      busy
-    ) {
+    if (!supabaseReady || busy) return;
+
+    if (!captchaCode || !captchaInput.trim()) {
+      setError(copy.captchaRequired);
       return;
     }
 
-    if (
-      !captchaCode ||
-      !captchaInput.trim()
-    ) {
-      setError(
-        copy.captchaRequired,
-      );
-
-      return;
-    }
-
-    if (
-      captchaInput.trim() !==
-      captchaCode
-    ) {
-      setError(
-        copy.captchaIncorrect,
-      );
-
+    if (captchaInput.trim() !== captchaCode) {
+      setError(copy.captchaIncorrect);
       refreshCaptcha();
-
       return;
     }
 
     setBusy(true);
-
     setError('');
 
-    const {
-      error: signInError,
-    } =
-      await signInWithPassword(
-        email.trim(),
-        password,
-      );
+    const { error: signInError } = await signInWithPassword(
+      email.trim(),
+      password,
+    );
 
     setBusy(false);
 
     if (signInError) {
-      setError(
-        signInError ||
-          copy.loginFailed,
-      );
-
+      setError(signInError || copy.loginFailed);
       refreshCaptcha();
-
       return;
     }
 
-    router.replace(
-      '/account',
-    );
-
+    router.replace('/account');
     router.refresh();
   }
 
-  return (
-    <>
-      <PublicLanguageSwitcher />
+  function renderLoginContent(prefix: 'desktop' | 'mobile') {
+    const emailId = `${prefix}-email`;
+    const passwordId = `${prefix}-password`;
+    const captchaId = `${prefix}-captcha`;
 
-      <AuthFrame
-        title={copy.login}
-        body={copy.webAccess}
-      >
+    return (
+      <>
         <form
-          className={styles.form}
+          className={`${styles.form} ${prefix === 'mobile' ? 'mobileLoginForm' : ''}`}
           onSubmit={submit}
         >
-          {!supabaseReady && (
-            <div
-              className={
-                styles.notice
-              }
-            >
-              {copy.envMissing}
-            </div>
-          )}
+          {!supabaseReady && <div className={styles.notice}>{copy.envMissing}</div>}
+          {error && <div className={styles.error}>{error}</div>}
 
-          {error && (
-            <div
-              className={
-                styles.error
-              }
-            >
-              {error}
-            </div>
-          )}
-
-          <div
-            className={
-              styles.field
-            }
-          >
-            <label
-              htmlFor="email"
-            >
-              {copy.email}
-            </label>
-
+          <div className={styles.field}>
+            <label htmlFor={emailId}>{copy.email}</label>
             <input
-              id="email"
+              id={emailId}
               type="email"
               autoComplete="email"
               value={email}
-              onChange={(
-                event,
-              ) =>
-                setEmail(
-                  event.target
-                    .value,
-                )
-              }
+              onChange={(event) => setEmail(event.target.value)}
               required
             />
           </div>
 
-          <div
-            className={
-              styles.field
-            }
-          >
-            <div
-              className={
-                styles.row
-              }
-            >
-              <label
-                htmlFor="password"
-              >
-                {
-                  copy.password
-                }
-              </label>
-
-              <Link
-                className={
-                  styles.link
-                }
-                href="/forgot-password"
-              >
-                {
-                  copy.forgotPassword
-                }
+          <div className={styles.field}>
+            <div className={styles.row}>
+              <label htmlFor={passwordId}>{copy.password}</label>
+              <Link className={styles.link} href="/forgot-password">
+                {copy.forgotPassword}
               </Link>
             </div>
 
-            <div
-              className={
-                styles.passwordWrap
-              }
-            >
+            <div className={styles.passwordWrap}>
               <input
-                id="password"
-                type={
-                  showPassword
-                    ? 'text'
-                    : 'password'
-                }
+                id={passwordId}
+                type={showPassword ? 'text' : 'password'}
                 autoComplete="current-password"
-                value={
-                  password
-                }
-                onChange={(
-                  event,
-                ) =>
-                  setPassword(
-                    event
-                      .target
-                      .value,
-                  )
-                }
+                value={password}
+                onChange={(event) => setPassword(event.target.value)}
                 required
               />
-
               <button
-                className={
-                  styles.reveal
-                }
+                className={styles.reveal}
                 type="button"
-                onClick={() =>
-                  setShowPassword(
-                    (value) =>
-                      !value,
-                  )
-                }
-                aria-label={
-                  showPassword
-                    ? copy.hidePassword
-                    : copy.showPassword
-                }
+                onClick={() => setShowPassword((value) => !value)}
+                aria-label={showPassword ? copy.hidePassword : copy.showPassword}
               >
-                {showPassword
-                  ? '◉'
-                  : '○'}
+                {showPassword ? '◉' : '○'}
               </button>
             </div>
           </div>
 
-          <div
-            className={
-              styles.field
-            }
-          >
-            <div
-              className={
-                styles.row
-              }
-            >
-              <label
-                htmlFor="captcha"
-              >
-                {
-                  copy.captchaLabel
-                }
-              </label>
-
+          <div className={styles.field}>
+            <div className={styles.row}>
+              <label htmlFor={captchaId}>{copy.captchaLabel}</label>
               <button
                 className="captchaRefreshButton"
                 type="button"
-                onClick={
-                  refreshCaptcha
-                }
+                onClick={refreshCaptcha}
               >
-                ↻{' '}
-                {
-                  copy.captchaRefresh
-                }
+                ↻ {copy.captchaRefresh}
               </button>
             </div>
 
             <div className="captchaGrid">
-              <div
-                className="captchaCode"
-                aria-label={
-                  copy.captchaCodeAria
-                }
-              >
-                {captchaCode ||
-                  '••••••'}
+              <div className="captchaCode" aria-label={copy.captchaCodeAria}>
+                {captchaCode || '••••••'}
               </div>
-
               <input
-                id="captcha"
+                id={captchaId}
                 className="captchaInput"
                 type="text"
                 inputMode="numeric"
                 pattern="[0-9]*"
                 autoComplete="off"
                 maxLength={6}
-                value={
-                  captchaInput
-                }
-                onChange={(
-                  event,
-                ) =>
+                value={captchaInput}
+                onChange={(event) =>
                   setCaptchaInput(
-                    event.target.value
-                      .replace(
-                        /\D/g,
-                        '',
-                      )
-                      .slice(
-                        0,
-                        6,
-                      ),
+                    event.target.value.replace(/\D/g, '').slice(0, 6),
                   )
                 }
-                placeholder={
-                  copy.captchaPlaceholder
-                }
+                placeholder={copy.captchaPlaceholder}
                 required
               />
             </div>
 
-            <small className="captchaHint">
-              {
-                copy.captchaHint
-              }
-            </small>
+            <small className="captchaHint">{copy.captchaHint}</small>
           </div>
 
           <button
-            className={
-              styles.submit
-            }
+            className={styles.submit}
             type="submit"
-            disabled={
-              !supabaseReady ||
-              busy ||
-              !captchaCode
-            }
+            disabled={!supabaseReady || busy || !captchaCode}
           >
-            {busy
-              ? copy.signingIn
-              : copy.signIn}
+            {busy ? copy.signingIn : copy.signIn}
           </button>
         </form>
 
-        <p
-          className={
-            styles.bottomText
-          }
-        >
+        <p className={`${styles.bottomText} ${prefix === 'mobile' ? 'mobileLoginBottomText' : ''}`}>
           {copy.noAccount}
-
-          <Link href="/register">
-            {
-              copy.createAccount
-            }
-          </Link>
+          <Link href="/register">{copy.createAccount}</Link>
         </p>
-      </AuthFrame>
+      </>
+    );
+  }
+
+  return (
+    <>
+      <div className="desktopLoginOnly">
+        <PublicLanguageSwitcher />
+        <AuthFrame title={copy.login} body={copy.webAccess}>
+          {renderLoginContent('desktop')}
+        </AuthFrame>
+      </div>
+
+      <div className="mobileLoginOnly">
+        <Header />
+        <main className="mobileLoginMain">
+          <section className="mobileLoginCard" aria-labelledby="mobile-login-title">
+            <h1 id="mobile-login-title">{copy.login}</h1>
+            {renderLoginContent('mobile')}
+          </section>
+        </main>
+      </div>
 
       <style jsx>{`
+        .desktopLoginOnly {
+          display: contents;
+        }
+
+        .mobileLoginOnly {
+          display: none;
+        }
+
         .captchaGrid {
           display: grid;
-
-          grid-template-columns:
-            168px minmax(
-              0,
-              1fr
-            );
-
+          grid-template-columns: 168px minmax(0, 1fr);
           gap: 12px;
-
           align-items: stretch;
         }
 
         .captchaCode {
           display: flex;
-
           align-items: center;
           justify-content: center;
-
           min-height: 50px;
-
-          border: 1px solid
-            rgba(
-              59,
-              130,
-              246,
-              0.22
-            );
-
+          border: 1px solid rgba(59, 130, 246, 0.22);
           border-radius: 14px;
-
           background:
             repeating-linear-gradient(
               -14deg,
-              rgba(
-                  59,
-                  130,
-                  246,
-                  0.04
-                )
-                0,
-              rgba(
-                  59,
-                  130,
-                  246,
-                  0.04
-                )
-                8px,
+              rgba(59, 130, 246, 0.04) 0,
+              rgba(59, 130, 246, 0.04) 8px,
               transparent 8px,
               transparent 16px
             ),
             #eef5ff;
-
           color: #172033;
-
           font-size: 22px;
           font-weight: 900;
-
           letter-spacing: 8px;
-
           user-select: none;
         }
 
         .captchaInput {
           min-width: 0;
-
           text-align: center;
-
           letter-spacing: 4px;
-
           font-weight: 800;
         }
 
         .captchaRefreshButton {
           border: 0;
-
           padding: 0;
-
           background: transparent;
-
           color: #3b82f6;
-
           font: inherit;
-
           font-size: 12px;
           font-weight: 800;
-
           cursor: pointer;
         }
 
@@ -508,66 +266,77 @@ export default function LoginPage() {
 
         .captchaHint {
           display: block;
-
           margin-top: 8px;
-
           color: #778197;
-
           font-size: 12px;
-
           line-height: 1.45;
         }
 
-        :global(
-            html[data-theme='dark']
-          )
-          .captchaCode {
-          border-color:
-            rgba(
-              96,
-              165,
-              250,
-              0.28
-            );
-
+        :global(html[data-theme='dark']) .captchaCode {
+          border-color: rgba(96, 165, 250, 0.28);
           background:
             repeating-linear-gradient(
               -14deg,
-              rgba(
-                  96,
-                  165,
-                  250,
-                  0.06
-                )
-                0,
-              rgba(
-                  96,
-                  165,
-                  250,
-                  0.06
-                )
-                8px,
+              rgba(96, 165, 250, 0.06) 0,
+              rgba(96, 165, 250, 0.06) 8px,
               transparent 8px,
               transparent 16px
             ),
             #1e293b;
-
           color: #f8fafc;
         }
 
-        :global(
-            html[data-theme='dark']
-          )
-          .captchaHint {
+        :global(html[data-theme='dark']) .captchaHint {
           color: #a8b2c5;
         }
 
-        @media (
-          max-width: 560px
-        ) {
+        @media (max-width: 760px) {
+          .desktopLoginOnly {
+            display: none;
+          }
+
+          .mobileLoginOnly {
+            display: block;
+            min-height: 100dvh;
+            background: var(--background);
+          }
+
+          .mobileLoginMain {
+            width: 100%;
+            min-height: calc(100dvh - 66px);
+            padding: 22px 16px 36px;
+            display: flex;
+            align-items: flex-start;
+            justify-content: center;
+          }
+
+          .mobileLoginCard {
+            width: min(100%, 480px);
+            padding: 24px 20px 22px;
+            border: 1px solid var(--border);
+            border-radius: 24px;
+            background: var(--surface);
+            box-shadow: 0 18px 50px var(--shadow);
+          }
+
+          .mobileLoginCard h1 {
+            margin: 0 0 22px;
+            color: var(--text);
+            font-size: clamp(30px, 9vw, 40px);
+            line-height: 1.05;
+            letter-spacing: -0.04em;
+          }
+
+          :global(.mobileLoginForm) {
+            gap: 18px;
+          }
+
+          :global(.mobileLoginBottomText) {
+            margin-top: 18px;
+          }
+
           .captchaGrid {
-            grid-template-columns:
-              1fr;
+            grid-template-columns: 1fr;
           }
 
           .captchaCode {

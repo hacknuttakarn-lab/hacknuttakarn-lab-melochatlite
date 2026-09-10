@@ -8,6 +8,7 @@ import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import LiveNoticeRail from "@/components/live-notice/LiveNoticeRail";
 import { useLocale } from "@/components/SiteProviders";
 import { loadFriendSnapshot, type FriendCandidateWeb } from "@/components/connect/connectData";
+import { loadTripsWeb } from "@/components/trips/tripWebData";
 import { getCurrentUser, isSupabaseConfigured, publicStorageUrl, restSelect, rpcRequest } from "@/lib/supabase/browser";
 import { GLOBAL_COUNTRY_SCOPE, matchesCountryScope } from "@/lib/discoveryCountry";
 import styles from "./HomeDashboardExperience.module.css";
@@ -246,10 +247,10 @@ export default function HomeDashboardExperience() {
 
       const friendPromise = loadFriendSnapshot();
 
-      const tripPromise = Promise.all([
-        rpcRequest<Row[]>("get_public_trips"),
-        rpcRequest<Row[]>("get_my_trips"),
-      ]);
+      // Use the same normalized Trip loader as the main Trips page/Header.
+      // It resolves activity-images into a usable imageUrl and merges membership
+      // fallbacks, while the legacy Home RPC rows can omit image_path.
+      const tripPromise = loadTripsWeb();
 
       const eventPromise = Promise.all([
         rpcRequest<Row[]>("get_public_events"),
@@ -284,12 +285,19 @@ export default function HomeDashboardExperience() {
       }
 
       if (tripResult.status === "fulfilled") {
-        const merged = [
-          ...rowsOf(tripResult.value[0].data),
-          ...rowsOf(tripResult.value[1].data),
-        ];
-        const unique = Array.from(new Map(merged.map((row) => [text(row, "id"), row])).values());
-        setTrips(unique.map((row, index) => makeDiscoverItem(row, "trip", index)));
+        setTrips(
+          (tripResult.value.trips ?? []).map((trip) => ({
+            id: trip.id,
+            title: trip.title || "Trip",
+            description: "",
+            city: trip.destination || "",
+            country: trip.country || "",
+            category: trip.category || "",
+            imageUrl: trip.imageUrl || "",
+            memberCount: Number(trip.memberCount || 0),
+            startDate: trip.startDate || "",
+          })),
+        );
       }
 
       if (eventResult.status === "fulfilled") {
@@ -406,7 +414,9 @@ export default function HomeDashboardExperience() {
       <Header />
 
       <section className={styles.shell}>
-        <LiveNoticeRail />
+        <div className={styles.liveNoticeWrap}>
+          <LiveNoticeRail />
+        </div>
         <section className={styles.blueHero}>
           <div className={styles.welcome}>
             <span className={styles.brandSmall}>MELO CHAT</span>

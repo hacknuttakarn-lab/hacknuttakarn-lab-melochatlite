@@ -1,23 +1,75 @@
 'use client';
 
-import { useCallback, useEffect, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { useLocale } from '@/components/SiteProviders';
 import { resolveCommerceMediaList } from '@/components/commerce/commerceMedia';
 import { GLOBAL_COUNTRY_SCOPE, matchesCountryScope } from '@/lib/discoveryCountry';
 import { getCurrentUser, isSupabaseConfigured, rpcRequest } from '@/lib/supabase/browser';
-import { partnersCopy } from '@/i18n/partnersUi';
+import { getPartnerCategoryLabel, partnersCopy, type PartnerBusinessCategory } from '@/i18n/partnersUi';
 import styles from './PartnersExperience.module.css';
 
 type Row = Record<string, unknown>;
 type User = { id: string; email?: string };
+
+type PartnerCategoryFilter = '' | PartnerBusinessCategory | 'activity_outdoor';
+type CategoryGroupKey = 'groupTravelStay' | 'groupActivityTransport' | 'groupFoodLifestyle' | 'groupShoppingServices';
+
+const BUSINESS_TYPES: PartnerBusinessCategory[] = [
+  'accommodation', 'food_drink', 'tours_guides', 'transport_rental',
+  'activities_experiences', 'sports_outdoor', 'attractions', 'events_entertainment',
+  'wellness_lifestyle', 'shopping_equipment', 'traveler_services', 'local_other',
+];
+
+const CATEGORY_META: Record<PartnerBusinessCategory, { icon: string; accent: string }> = {
+  accommodation: { icon: '🏨', accent: '#2F8FFF' },
+  food_drink: { icon: '☕', accent: '#FF5C72' },
+  tours_guides: { icon: '✈', accent: '#FF9E2C' },
+  transport_rental: { icon: '🚗', accent: '#17A7BE' },
+  activities_experiences: { icon: '🎯', accent: '#8B63E8' },
+  sports_outdoor: { icon: '🏕️', accent: '#32B979' },
+  attractions: { icon: '📍', accent: '#F25C5C' },
+  events_entertainment: { icon: '🎉', accent: '#FF4F87' },
+  wellness_lifestyle: { icon: '🧘', accent: '#20B7A6' },
+  shopping_equipment: { icon: '🛍️', accent: '#A970FF' },
+  traveler_services: { icon: '🧳', accent: '#2E9DEB' },
+  local_other: { icon: '◎', accent: '#6B7A90' },
+};
+
+const QUICK_CATEGORY_SHORTCUTS: Array<{ key: Exclude<PartnerCategoryFilter, ''>; icon: string; accent: string }> = [
+  { key: 'accommodation', icon: CATEGORY_META.accommodation.icon, accent: CATEGORY_META.accommodation.accent },
+  { key: 'food_drink', icon: CATEGORY_META.food_drink.icon, accent: CATEGORY_META.food_drink.accent },
+  { key: 'tours_guides', icon: CATEGORY_META.tours_guides.icon, accent: CATEGORY_META.tours_guides.accent },
+  { key: 'transport_rental', icon: CATEGORY_META.transport_rental.icon, accent: CATEGORY_META.transport_rental.accent },
+  { key: 'activity_outdoor', icon: '🏕️', accent: CATEGORY_META.sports_outdoor.accent },
+  { key: 'attractions', icon: CATEGORY_META.attractions.icon, accent: CATEGORY_META.attractions.accent },
+  { key: 'events_entertainment', icon: CATEGORY_META.events_entertainment.icon, accent: CATEGORY_META.events_entertainment.accent },
+  { key: 'wellness_lifestyle', icon: CATEGORY_META.wellness_lifestyle.icon, accent: CATEGORY_META.wellness_lifestyle.accent },
+  { key: 'shopping_equipment', icon: CATEGORY_META.shopping_equipment.icon, accent: CATEGORY_META.shopping_equipment.accent },
+];
+
+const CATEGORY_GROUPS: Array<{ titleKey: CategoryGroupKey; types: PartnerBusinessCategory[] }> = [
+  { titleKey: 'groupTravelStay', types: ['accommodation', 'tours_guides', 'attractions'] },
+  { titleKey: 'groupActivityTransport', types: ['transport_rental', 'activities_experiences', 'sports_outdoor', 'events_entertainment'] },
+  { titleKey: 'groupFoodLifestyle', types: ['food_drink', 'wellness_lifestyle'] },
+  { titleKey: 'groupShoppingServices', types: ['shopping_equipment', 'traveler_services', 'local_other'] },
+];
+
+const LEGACY_CATEGORY_MAP: Record<string, PartnerBusinessCategory> = {
+  hotel: 'accommodation', accommodation: 'accommodation', cafe: 'food_drink', restaurant: 'food_drink', food: 'food_drink',
+  tour_company: 'tours_guides', tour: 'tours_guides', car_rental: 'transport_rental', transport: 'transport_rental',
+  event_venue: 'events_entertainment', venue: 'events_entertainment', local_business: 'local_other',
+};
 
 type PartnerItem = {
   id: string;
   name: string;
   description: string;
   category: string;
+  address: string;
+  province: string;
+  district: string;
   city: string;
   country: string;
   verified: boolean;
@@ -74,6 +126,141 @@ function categoryLabel(value: string) {
     .trim()
     .replace(/\b[a-z]/g, (letter) => letter.toUpperCase());
 }
+
+function normalizePartnerCategory(value: string): PartnerBusinessCategory | null {
+  const normalized = normalizeCategory(value);
+  if (BUSINESS_TYPES.includes(normalized as PartnerBusinessCategory)) return normalized as PartnerBusinessCategory;
+  return LEGACY_CATEGORY_MAP[normalized] ?? null;
+}
+
+function displayCategoryLabel(value: string, locale: Parameters<typeof getPartnerCategoryLabel>[1]) {
+  const normalized = normalizePartnerCategory(value);
+  return normalized ? getPartnerCategoryLabel(normalized, locale) : categoryLabel(value);
+}
+
+function partnerMatchesCategory(partner: PartnerItem, filter: PartnerCategoryFilter) {
+  if (!filter) return true;
+  const normalized = normalizePartnerCategory(partner.category);
+  if (filter === 'activity_outdoor') return normalized === 'activities_experiences' || normalized === 'sports_outdoor';
+  return normalized === filter;
+}
+
+
+type LocationFilterCopy = {
+  title: string;
+  hint: string;
+  province: string;
+  district: string;
+  keyword: string;
+  allProvince: string;
+  allDistrict: string;
+  clear: string;
+  results: (count: number) => string;
+};
+
+const LOCATION_FILTER_COPY: Record<'th' | 'en' | 'de' | 'zh' | 'ja' | 'ko', LocationFilterCopy> = {
+  th: {
+    title: 'ค้นหาในหมวดนี้',
+    hint: 'เลือกพื้นที่และใส่คำค้น เพื่อหาพาร์ทเนอร์ที่ตรงกับสิ่งที่ต้องการมากขึ้น',
+    province: 'จังหวัด / รัฐ',
+    district: 'อำเภอ / เขต / เมือง',
+    keyword: 'ค้นหาชื่อร้าน สถานที่ หรือคำสำคัญ',
+    allProvince: 'ทุกจังหวัด / รัฐ',
+    allDistrict: 'ทุกอำเภอ / เมือง',
+    clear: 'ล้างตัวกรอง',
+    results: (count) => `พบ ${count} แห่ง`,
+  },
+  en: {
+    title: 'Search this category',
+    hint: 'Choose an area and add keywords to find the most relevant Partners.',
+    province: 'Province / State',
+    district: 'District / City',
+    keyword: 'Search business, place, or keyword',
+    allProvince: 'All provinces / states',
+    allDistrict: 'All districts / cities',
+    clear: 'Clear filters',
+    results: (count) => `${count} results`,
+  },
+  de: {
+    title: 'In dieser Kategorie suchen',
+    hint: 'Region auswählen und Suchbegriffe eingeben, um passende Partner zu finden.',
+    province: 'Region / Bundesland',
+    district: 'Bezirk / Stadt',
+    keyword: 'Geschäft, Ort oder Stichwort suchen',
+    allProvince: 'Alle Regionen / Bundesländer',
+    allDistrict: 'Alle Bezirke / Städte',
+    clear: 'Filter löschen',
+    results: (count) => `${count} Ergebnisse`,
+  },
+  zh: {
+    title: '搜索此类别',
+    hint: '选择地区并输入关键词，更准确地查找合作商家。',
+    province: '省 / 州 / 地区',
+    district: '区 / 市',
+    keyword: '搜索商家、地点或关键词',
+    allProvince: '所有省 / 州',
+    allDistrict: '所有区 / 市',
+    clear: '清除筛选',
+    results: (count) => `找到 ${count} 个`,
+  },
+  ja: {
+    title: 'このカテゴリーから検索',
+    hint: 'エリアとキーワードを指定して、目的に合うパートナーを探せます。',
+    province: '都道府県 / 州',
+    district: '市区町村 / 都市',
+    keyword: '店舗名・場所・キーワードを検索',
+    allProvince: 'すべての都道府県 / 州',
+    allDistrict: 'すべての市区町村 / 都市',
+    clear: 'フィルターを解除',
+    results: (count) => `${count} 件`,
+  },
+  ko: {
+    title: '이 카테고리에서 검색',
+    hint: '지역과 검색어를 선택해 원하는 파트너를 더 정확하게 찾아보세요.',
+    province: '도 / 주 / 지역',
+    district: '구 / 시',
+    keyword: '업체명, 장소 또는 키워드 검색',
+    allProvince: '모든 도 / 주',
+    allDistrict: '모든 구 / 시',
+    clear: '필터 지우기',
+    results: (count) => `${count}개 결과`,
+  },
+};
+
+function normalizeArea(value: string) {
+  return value.trim().toLocaleLowerCase();
+}
+
+function partnerProvince(partner: PartnerItem) {
+  return (partner.province || partner.city || '').trim();
+}
+
+function partnerDistrict(partner: PartnerItem) {
+  if (partner.district.trim()) return partner.district.trim();
+  if (!partner.province.trim()) return '';
+  const city = partner.city.trim();
+  return city && normalizeArea(city) !== normalizeArea(partner.province) ? city : '';
+}
+
+function uniqueAreas(values: string[]) {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const raw of values) {
+    const value = raw.trim();
+    if (!value) continue;
+    const key = normalizeArea(value);
+    if (seen.has(key)) continue;
+    seen.add(key);
+    result.push(value);
+  }
+  return result.sort((left, right) => left.localeCompare(right));
+}
+
+function partnerLocationText(partner: PartnerItem) {
+  const parts = [partnerDistrict(partner), partnerProvince(partner), partner.country].filter(Boolean);
+  return parts.filter((part, index) => parts.findIndex((item) => normalizeArea(item) === normalizeArea(part)) === index).join(' · ');
+}
+
 
 async function imageRows(row: Row, detail: Row, services: Row[]) {
   const logoSource: Row = {
@@ -135,7 +322,12 @@ export function PartnersExperience() {
   const localeTag = useMemo(() => ({ th: 'th-TH', en: 'en-US', de: 'de-DE', zh: 'zh-CN', ja: 'ja-JP', ko: 'ko-KR' }[locale]), [locale]);
   const [user, setUser] = useState<User | null>(null);
   const [partners, setPartners] = useState<PartnerItem[]>([]);
-  const [selectedCategory, setSelectedCategory] = useState('');
+  const [selectedCategory, setSelectedCategory] = useState<PartnerCategoryFilter>('');
+  const [categorySheetOpen, setCategorySheetOpen] = useState(false);
+  const [selectedProvince, setSelectedProvince] = useState('');
+  const [selectedDistrict, setSelectedDistrict] = useState('');
+  const [categoryQuery, setCategoryQuery] = useState('');
+  const categorySearchRef = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -205,6 +397,9 @@ export function PartnersExperience() {
           name: text(detail, 'display_name', 'legal_name') || text(row, 'display_name', 'legal_name') || 'Melo Partner',
           description: text(detail, 'description', 'about', 'bio') || text(row, 'description', 'about', 'bio'),
           category,
+          address: text(detail, 'address') || text(row, 'address'),
+          province: text(detail, 'province') || text(row, 'province'),
+          district: text(detail, 'district') || text(row, 'district'),
           city: text(detail, 'city') || text(row, 'city'),
           country: text(detail, 'country') || text(row, 'country'),
           verified,
@@ -251,11 +446,35 @@ export function PartnersExperience() {
   }, [configured, load, router]);
 
   const scoped = useMemo(() => partners.filter((partner) => countryScope === GLOBAL_COUNTRY_SCOPE || matchesCountryScope(partner.country, countryScope)), [countryScope, partners]);
-  const categories = useMemo(() => [...new Set(scoped.map((partner) => partner.category).filter(Boolean))].slice(0, 16), [scoped]);
-  const filtered = useMemo(() => scoped.filter((partner) =>
-    !selectedCategory || normalizeCategory(partner.category) === normalizeCategory(selectedCategory)
-  ), [scoped, selectedCategory]);
-
+  const categoryBase = useMemo(() => scoped.filter((partner) => partnerMatchesCategory(partner, selectedCategory)), [scoped, selectedCategory]);
+  const provinceOptions = useMemo(() => uniqueAreas(categoryBase.map(partnerProvince)), [categoryBase]);
+  const districtOptions = useMemo(() => uniqueAreas(
+    categoryBase
+      .filter((partner) => !selectedProvince || normalizeArea(partnerProvince(partner)) === normalizeArea(selectedProvince))
+      .map(partnerDistrict),
+  ), [categoryBase, selectedProvince]);
+  const filtered = useMemo(() => {
+    const query = categoryQuery.trim().toLocaleLowerCase();
+    return categoryBase
+      .filter((partner) => !selectedProvince || normalizeArea(partnerProvince(partner)) === normalizeArea(selectedProvince))
+      .filter((partner) => !selectedDistrict || normalizeArea(partnerDistrict(partner)) === normalizeArea(selectedDistrict))
+      .filter((partner) => {
+        if (!query) return true;
+        const haystack = [
+          partner.name,
+          partner.description,
+          partner.address,
+          partner.province,
+          partner.district,
+          partner.city,
+          partner.country,
+          partner.category,
+          partner.featuredService,
+          ...partner.serviceCategories,
+        ].join(' ').toLocaleLowerCase();
+        return haystack.includes(query);
+      });
+  }, [categoryBase, categoryQuery, selectedDistrict, selectedProvince]);
   const recommended = useMemo(() => {
     const flagged = filtered.filter((partner) => partner.recommended);
     return (flagged.length ? flagged : filtered).slice(0, 6);
@@ -264,6 +483,28 @@ export function PartnersExperience() {
 
   const money = (value: number | null, currency: string) => value === null ? '' : `${value.toLocaleString(localeTag, { maximumFractionDigits: 2 })} ${currency || 'THB'}`;
   const openPartner = (partner: PartnerItem) => router.push(`/partners/${partner.id}`);
+  const selectCategory = (category: PartnerCategoryFilter) => {
+    setSelectedCategory(category);
+    setSelectedProvince('');
+    setSelectedDistrict('');
+    setCategoryQuery('');
+    setCategorySheetOpen(false);
+    if (category) {
+      window.setTimeout(() => categorySearchRef.current?.scrollIntoView({ behavior: 'smooth', block: 'start' }), 40);
+    }
+  };
+  const categoryLabelForFilter = (category: Exclude<PartnerCategoryFilter, ''>) => category === 'activity_outdoor'
+    ? copy.activityOutdoor
+    : getPartnerCategoryLabel(category, locale);
+  const isCategoryActive = (category: PartnerBusinessCategory) => selectedCategory === category
+    || (selectedCategory === 'activity_outdoor' && (category === 'activities_experiences' || category === 'sports_outdoor'));
+  const locationCopy = LOCATION_FILTER_COPY[locale] ?? LOCATION_FILTER_COPY.en;
+  const selectedCategoryLabel = selectedCategory ? categoryLabelForFilter(selectedCategory) : '';
+  const selectedCategoryIcon = selectedCategory === 'activity_outdoor'
+    ? '🏕️'
+    : selectedCategory
+      ? CATEGORY_META[selectedCategory].icon
+      : '📍';
 
   return (
     <main className={styles.page}>
@@ -278,12 +519,124 @@ export function PartnersExperience() {
           <span className={styles.countPill}>{filtered.length.toLocaleString(localeTag)} {copy.partnerCount}</span>
         </header>
 
-        <nav className={styles.categoryNav} aria-label={copy.title}>
-          <button type="button" className={!selectedCategory ? styles.categoryActive : ''} onClick={() => setSelectedCategory('')}>{copy.all}</button>
-          {categories.map((category) => (
-            <button type="button" key={category} className={selectedCategory === category ? styles.categoryActive : ''} onClick={() => setSelectedCategory(category)}>{categoryLabel(category)}</button>
-          ))}
-        </nav>
+        <section className={styles.categoryBrowser} aria-label={copy.categoriesTitle}>
+          <div className={styles.categoryBrowserHeader}>
+            <div>
+              <strong>{copy.categoriesTitle}</strong>
+              <p>{copy.categoriesSubtitle}</p>
+            </div>
+            <button type="button" className={!selectedCategory ? styles.categoryAllActive : styles.categoryAllButton} onClick={() => selectCategory('')}>
+              {copy.all}
+            </button>
+          </div>
+
+          <div className={styles.desktopCategoryGrid}>
+            {BUSINESS_TYPES.map((category) => (
+              <button type="button" key={category} className={`${styles.categoryTile} ${isCategoryActive(category) ? styles.categoryTileActive : ''}`} onClick={() => selectCategory(category)}>
+                <span className={styles.categoryTileIcon} style={{ background: CATEGORY_META[category].accent }}>{CATEGORY_META[category].icon}</span>
+                <span className={styles.categoryTileCopy}>
+                  <strong>{getPartnerCategoryLabel(category, locale)}</strong>
+                </span>
+              </button>
+            ))}
+          </div>
+
+          <div className={styles.mobileCategoryGrid}>
+            {QUICK_CATEGORY_SHORTCUTS.map((item) => {
+              const active = item.key === 'activity_outdoor' ? selectedCategory === 'activity_outdoor' : selectedCategory === item.key;
+              return (
+                <button type="button" key={item.key} className={`${styles.mobileCategoryButton} ${active ? styles.mobileCategoryButtonActive : ''}`} onClick={() => selectCategory(item.key)}>
+                  <span className={styles.mobileCategoryIcon} style={{ background: item.accent }}>{item.icon}</span>
+                  <strong>{categoryLabelForFilter(item.key)}</strong>
+                </button>
+              );
+            })}
+            <button type="button" className={styles.mobileCategoryButton} onClick={() => setCategorySheetOpen(true)}>
+              <span className={`${styles.mobileCategoryIcon} ${styles.mobileCategoryMore}`}>•••</span>
+              <strong>{copy.otherCategories}</strong>
+            </button>
+          </div>
+        </section>
+
+        {selectedCategory ? (
+          <section ref={categorySearchRef} className={styles.categorySearchPanel} aria-label={locationCopy.title}>
+            <div className={styles.categorySearchHeading}>
+              <span className={styles.categorySearchIcon}>{selectedCategoryIcon}</span>
+              <div>
+                <small>{locationCopy.title}</small>
+                <h2>{selectedCategoryLabel}</h2>
+                <p>{locationCopy.hint}</p>
+              </div>
+              <strong className={styles.categorySearchCount}>{locationCopy.results(filtered.length)}</strong>
+            </div>
+            <div className={styles.categorySearchFilters}>
+              <label>
+                <span>{locationCopy.province}</span>
+                <select
+                  value={selectedProvince}
+                  onChange={(event) => {
+                    setSelectedProvince(event.target.value);
+                    setSelectedDistrict('');
+                  }}
+                >
+                  <option value="">{locationCopy.allProvince}</option>
+                  {provinceOptions.map((province) => <option value={province} key={province}>{province}</option>)}
+                </select>
+              </label>
+              <label>
+                <span>{locationCopy.district}</span>
+                <select value={selectedDistrict} onChange={(event) => setSelectedDistrict(event.target.value)}>
+                  <option value="">{locationCopy.allDistrict}</option>
+                  {districtOptions.map((district) => <option value={district} key={district}>{district}</option>)}
+                </select>
+              </label>
+              <label className={styles.categorySearchKeyword}>
+                <span>{locationCopy.keyword}</span>
+                <input value={categoryQuery} onChange={(event) => setCategoryQuery(event.target.value)} placeholder={locationCopy.keyword} />
+              </label>
+              <button
+                type="button"
+                className={styles.categorySearchClear}
+                disabled={!selectedProvince && !selectedDistrict && !categoryQuery.trim()}
+                onClick={() => {
+                  setSelectedProvince('');
+                  setSelectedDistrict('');
+                  setCategoryQuery('');
+                }}
+              >
+                {locationCopy.clear}
+              </button>
+            </div>
+          </section>
+        ) : null}
+
+        {categorySheetOpen && (
+          <div className={styles.categoryModal} role="dialog" aria-modal="true" aria-label={copy.allCategories} onClick={() => setCategorySheetOpen(false)}>
+            <div className={styles.categorySheet} onClick={(event) => event.stopPropagation()}>
+              <div className={styles.categorySheetHandle} />
+              <div className={styles.categorySheetHeader}>
+                <div><h2>{copy.allCategories}</h2><p>{copy.categoriesSubtitle}</p></div>
+                <button type="button" aria-label={copy.closeCategories} onClick={() => setCategorySheetOpen(false)}>×</button>
+              </div>
+              <button type="button" className={styles.categorySheetAll} onClick={() => selectCategory('')}><span>☷</span><strong>{copy.all}</strong></button>
+              <div className={styles.categorySheetScroll}>
+                {CATEGORY_GROUPS.map((group) => (
+                  <section className={styles.categoryGroup} key={group.titleKey}>
+                    <h3>{copy[group.titleKey]}</h3>
+                    <div className={styles.categoryGroupGrid}>
+                      {group.types.map((category) => (
+                        <button type="button" key={category} onClick={() => selectCategory(category)}>
+                          <span style={{ background: CATEGORY_META[category].accent }}>{CATEGORY_META[category].icon}</span>
+                          <strong>{getPartnerCategoryLabel(category, locale)}</strong>
+                        </button>
+                      ))}
+                    </div>
+                  </section>
+                ))}
+              </div>
+            </div>
+          </div>
+        )}
 
         {loading ? (
           <section className={styles.state}><span className={styles.spinner} /><p>{copy.loading}</p></section>
@@ -312,9 +665,9 @@ export function PartnersExperience() {
                           <div className={styles.featureIdentity}>
                             <ActiveImage urls={partner.logoImages} alt={partner.name} className={styles.featureLogo} eager={index < 2} />
                             <div>
-                              <small>{categoryLabel(partner.category)}</small>
+                              <small>{displayCategoryLabel(partner.category, locale)}</small>
                               <h3>{partner.name}</h3>
-                              {(partner.city || partner.country) && <p>{[partner.city, partner.country].filter(Boolean).join(' · ')}</p>}
+                              {partnerLocationText(partner) && <p>{partnerLocationText(partner)}</p>}
                             </div>
                           </div>
                         </div>
@@ -344,9 +697,9 @@ export function PartnersExperience() {
                         <div className={styles.identityRow}>
                           <ActiveImage urls={partner.logoImages} alt={partner.name} className={styles.cardLogo} />
                           <div>
-                            <small>{categoryLabel(partner.category)}</small>
+                            <small>{displayCategoryLabel(partner.category, locale)}</small>
                             <h3>{partner.name}</h3>
-                            {(partner.city || partner.country) && <p className={styles.location}>{[partner.city, partner.country].filter(Boolean).join(' · ')}</p>}
+                            {partnerLocationText(partner) && <p className={styles.location}>{partnerLocationText(partner)}</p>}
                           </div>
                         </div>
 
@@ -372,7 +725,7 @@ export function PartnersExperience() {
                         </div>
 
                         <div className={styles.cardFooter}>
-                          <span>{partner.featuredService || categoryLabel(partner.category)}</span>
+                          <span>{partner.featuredService || displayCategoryLabel(partner.category, locale)}</span>
                           <b>{copy.viewPartner} →</b>
                         </div>
                       </div>

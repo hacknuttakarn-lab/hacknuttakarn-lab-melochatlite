@@ -334,6 +334,57 @@ export default function ProfileOverviewExperience() {
                 </button>
               </div>
               <p className={expanded ? styles.aboutExpanded : undefined}>{bio || t.noBio}</p>
+
+              <div className={styles.mobileProfileActions}>
+                {snapshot?.userId ? (
+                  <Link href={`/reputation/${snapshot.userId}`} className={styles.mobileProfileAction}>
+                    <span>★</span><strong>{t.reputation}</strong>
+                  </Link>
+                ) : (
+                  <span className={`${styles.mobileProfileAction} ${styles.mobileProfileActionDisabled}`}>
+                    <span>★</span><strong>{t.reputation}</strong>
+                  </span>
+                )}
+                <Link href="/passport" className={styles.mobileProfileAction}>
+                  <span>◎</span><strong>{t.passport}</strong>
+                </Link>
+              </div>
+
+              {expanded ? (
+                <section className={styles.mobileProfileDetails}>
+                  <div className={styles.mobileProfileDetailsHead}>
+                    <span>◉</span><strong>{t.profileInfo}</strong>
+                  </div>
+
+                  <div className={styles.profileQuickGrid}>
+                    <div><span>{t.languages}</span><strong>{languageValues.slice(0, 3).join(" · ") || t.noValue}</strong></div>
+                    <div><span>{t.nationality}</span><strong>{nationality || t.noValue}</strong></div>
+                    <div><span>{t.job}</span><strong>{job || t.noValue}</strong></div>
+                  </div>
+
+                  <div className={styles.expandedProfileDetails}>
+                    <section className={styles.infoSection}>
+                      <h3>{t.interests}</h3>
+                      <div className={styles.chips}>
+                        {interestValues.length
+                          ? interestValues.map((value) => <b key={value}>{value}</b>)
+                          : <span className={styles.emptyDetail}>{t.noValue}</span>}
+                      </div>
+                    </section>
+
+                    <div className={styles.detailTable}>
+                      {detailRows
+                        .filter((detail) => detail.label !== t.nationality && detail.label !== t.job)
+                        .map((detail) => (
+                          <div className={styles.detailRow} key={detail.label}>
+                            <span>{detail.label}</span>
+                            <strong>{detail.value}</strong>
+                          </div>
+                        ))}
+                    </div>
+                  </div>
+                </section>
+              ) : null}
             </section>
           </div>
         </section>
@@ -343,7 +394,6 @@ export default function ProfileOverviewExperience() {
             <section className={styles.composerCard}>
               <VerifiedUserAvatar userId={snapshot?.userId} name={name} src={avatar} country={country} nationality={nationality} verified={verified} className={styles.composerAvatar} badgeSize={17} objectPosition={`${avatarPosition.x}% ${avatarPosition.y}%`} alt="" />
               <button type="button" onClick={() => setComposerOpen(true)}>{t.composer}</button>
-              <button type="button" className={styles.createPostButton} aria-label={t.createPost} onClick={() => setComposerOpen(true)}>＋</button>
             </section>
 
             <section className={styles.postsSection}>

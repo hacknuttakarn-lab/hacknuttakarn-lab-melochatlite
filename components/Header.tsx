@@ -12,7 +12,6 @@ import { loadFriendSnapshot } from '@/components/connect/connectData';
 import { loadChatUnreadTotal } from '@/components/chat/chatData';
 import ChatDrawer from '@/components/chat/ChatDrawer';
 import VerifiedUserAvatar from '@/components/profile/VerifiedUserAvatar';
-import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { COUNTRY_PICKER_COUNTRIES, GLOBAL_COUNTRY_SCOPE, countryPickerLabel, countryScopeFlag, countryScopeLabel, matchesCountryScope, type CountryScope } from '@/lib/discoveryCountry';
 import { switchToPartnerMode } from '@/components/partner/partnerModeWeb';
 import { loadTripsWeb } from '@/components/trips/tripWebData';
@@ -936,7 +935,7 @@ async function loadOpenAttendanceHeaderNotifications(locale: string): Promise<He
 }
 
 export function Header() {
-  const { t, locale, countryScope, setCountryScope, theme, toggleTheme } = useLocale();
+  const { t, locale, setLocale, localeLabels, supportedLocales, countryScope, setCountryScope, theme, toggleTheme } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
 
@@ -1042,13 +1041,13 @@ export function Header() {
     !isPublicAuthPage;
 
   const memberMain = ({
-    th: { menu: 'เมนู', home: 'หน้าหลัก', connect: 'คอนเนค', deals: 'ดีลพิเศษ', partners: 'พาร์ทเนอร์', profile: 'โปรไฟล์', chats: 'แชท', trips: 'ทริป', events: 'กิจกรรม', communities: 'คอมมูนิตี้' },
-    en: { menu: 'Menu', home: 'Home', connect: 'Connect', deals: 'Special Deals', partners: 'Partners', profile: 'Profile', chats: 'Chats', trips: 'Trips', events: 'Events', communities: 'Communities' },
-    de: { menu: 'Menü', home: 'Startseite', connect: 'Connect', deals: 'Spezialangebote', partners: 'Partner', profile: 'Profil', chats: 'Chats', trips: 'Reisen', events: 'Events', communities: 'Communities' },
-    zh: { menu: '菜单', home: '首页', connect: 'Connect', deals: '特别优惠', partners: '合作伙伴', profile: '个人资料', chats: '聊天', trips: '旅行', events: '活动', communities: '社区' },
-    ja: { menu: 'メニュー', home: 'ホーム', connect: 'Connect', deals: '特別オファー', partners: 'パートナー', profile: 'プロフィール', chats: 'チャット', trips: 'Trip', events: 'Event', communities: 'Community' },
-    ko: { menu: '메뉴', home: '홈', connect: 'Connect', deals: '특별 딜', partners: '파트너', profile: '프로필', chats: '채팅', trips: '여행', events: '이벤트', communities: '커뮤니티' },
-  } as Record<string, { menu: string; home: string; connect: string; deals: string; partners: string; profile: string; chats: string; trips: string; events: string; communities: string }>)[locale];
+    th: { menu: 'เมนู', home: 'หน้าหลัก', feed: 'ฟีด', connect: 'คอนเนค', deals: 'ดีลพิเศษ', partners: 'พาร์ทเนอร์', profile: 'โปรไฟล์', chats: 'แชท', messenger: 'ข้อความ', trips: 'ทริป', events: 'กิจกรรม', communities: 'คอมมูนิตี้' },
+    en: { menu: 'Menu', home: 'Home', feed: 'Feed', connect: 'Connect', deals: 'Special Deals', partners: 'Partners', profile: 'Profile', chats: 'Chats', messenger: 'Messenger', trips: 'Trips', events: 'Events', communities: 'Communities' },
+    de: { menu: 'Menü', home: 'Startseite', feed: 'Feed', connect: 'Connect', deals: 'Spezialangebote', partners: 'Partner', profile: 'Profil', chats: 'Chats', messenger: 'Nachrichten', trips: 'Reisen', events: 'Events', communities: 'Communities' },
+    zh: { menu: '菜单', home: '首页', feed: '动态', connect: 'Connect', deals: '特别优惠', partners: '合作伙伴', profile: '个人资料', chats: '聊天', messenger: '消息', trips: '旅行', events: '活动', communities: '社区' },
+    ja: { menu: 'メニュー', home: 'ホーム', feed: 'フィード', connect: 'Connect', deals: '特別オファー', partners: 'パートナー', profile: 'プロフィール', chats: 'チャット', messenger: 'メッセージ', trips: 'Trip', events: 'Event', communities: 'Community' },
+    ko: { menu: '메뉴', home: '홈', feed: '피드', connect: 'Connect', deals: '특별 딜', partners: '파트너', profile: '프로필', chats: '채팅', messenger: '메시지', trips: '여행', events: '이벤트', communities: '커뮤니티' },
+  } as Record<string, { menu: string; home: string; feed: string; connect: string; deals: string; partners: string; profile: string; chats: string; messenger: string; trips: string; events: string; communities: string }>)[locale];
 
   const close = () => {
     setMenuOpen(false);
@@ -1068,6 +1067,31 @@ export function Header() {
   }
 
   const notificationUnreadCount = useMemo(() => notificationItems.filter((item) => item.unread).length, [notificationItems]);
+
+  useEffect(() => {
+    if (!signedIn) {
+      document.body.classList.remove('meloMemberBottomNavVisible');
+      return;
+    }
+
+    document.body.classList.add('meloMemberBottomNavVisible');
+    return () => {
+      document.body.classList.remove('meloMemberBottomNavVisible');
+    };
+  }, [signedIn]);
+
+  useEffect(() => {
+    const mobileCompactListingPages = new Set(['/deals', '/partners', '/trips', '/events', '/community']);
+    if (signedIn && mobileCompactListingPages.has(pathname)) {
+      document.body.setAttribute('data-melo-mobile-listing-page', pathname.slice(1));
+    } else {
+      document.body.removeAttribute('data-melo-mobile-listing-page');
+    }
+
+    return () => {
+      document.body.removeAttribute('data-melo-mobile-listing-page');
+    };
+  }, [pathname, signedIn]);
 
   useEffect(() => {
     if (!signedIn) {
@@ -1482,9 +1506,11 @@ export function Header() {
 
   const email = user?.email ?? '';
   const initial = (email || 'M').slice(0, 1).toUpperCase();
+  const mobilePathActive = (href: string) => pathname === href || pathname.startsWith(`${href}/`);
+
   return (
     <>
-    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''}`}>
+    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''} ${isPublicAuthPage ? 'publicAuthSiteHeader' : ''}`}>
       <div
         className={`headerInner shell ${signedIn ? accountStyles.memberHeaderInner : ""}`}
         style={
@@ -1503,6 +1529,22 @@ export function Header() {
           <span>Melo Chat</span>
         </Link>
 
+        {signedIn ? (
+          <button
+            type="button"
+            className={`memberMobileMenuTrigger ${menuOpen ? 'isOpen' : ''}`}
+            onClick={() => {
+              setMenuOpen((open) => !open);
+              setAccountOpen(false);
+              setMemberMenuOpen(false);
+            }}
+            aria-label={memberMain.menu}
+            aria-expanded={menuOpen}
+          >
+            <span /><span /><span />
+          </button>
+        ) : null}
+
         <nav className={`desktopNav ${signedIn ? accountStyles.memberNav : ''} ${menuOpen ? 'mobileOpen' : ''}`} aria-label="Primary navigation">
           {authPending ? (
             <div className={accountStyles.authNavSkeleton} aria-hidden="true">
@@ -1512,73 +1554,81 @@ export function Header() {
             </div>
           ) : signedIn ? (
             <>
-              <div className={accountStyles.memberMenuWrap} ref={memberMenuRef}>
+              <div className="memberDesktopNavContent">
+                <div className={accountStyles.memberMenuWrap} ref={memberMenuRef}>
+                  <button
+                    type="button"
+                    className={`${accountStyles.memberMenuButton} ${memberMenuOpen ? accountStyles.memberMenuButtonOpen : ''}`}
+                    onClick={() => {
+                      setMemberMenuOpen((open) => !open);
+                      setAccountOpen(false);
+                    }}
+                    aria-expanded={memberMenuOpen}
+                    aria-haspopup="menu"
+                  >
+                    <span>☰</span>{memberMain.menu}<b>⌄</b>
+                  </button>
+                  {memberMenuOpen && (
+                    <div className={accountStyles.memberSubmenu} role="menu">
+                      <Link href="/connect" onClick={close} role="menuitem"><span>☺</span>{memberMain.connect}</Link>
+                      <Link href="/deals" onClick={close} role="menuitem"><span>%</span>{memberMain.deals}</Link>
+                      <Link href="/partners" onClick={close} role="menuitem"><span>⌂</span>{memberMain.partners}</Link>
+                      <Link href="/trips" onClick={close} role="menuitem"><span>✈</span>{memberMain.trips}</Link>
+                      <Link href="/events" onClick={close} role="menuitem"><span>◇</span>{memberMain.events}</Link>
+                      <Link href="/community" onClick={close} role="menuitem"><span>◎</span>{memberMain.communities}</Link>
+                    </div>
+                  )}
+                </div>
+                <Link href="/account" onClick={close}>{memberMain.home}</Link>
+                <Link href="/profile" onClick={close}>{memberMain.profile}</Link>
                 <button
                   type="button"
-                  className={`${accountStyles.memberMenuButton} ${memberMenuOpen ? accountStyles.memberMenuButtonOpen : ''}`}
-                  onClick={() => {
-                    setMemberMenuOpen((open) => !open);
-                    setAccountOpen(false);
-                  }}
-                  aria-expanded={memberMenuOpen}
-                  aria-haspopup="menu"
+                  onClick={() => { close(); setChatDrawerOpen(true); }}
+                  className={`${accountStyles.chatNavLink} ${accountStyles.chatNavButton}`}
+                  aria-haspopup="dialog"
+                  aria-expanded={chatDrawerOpen}
                 >
-                  <span>☰</span>
-                  {memberMain.menu}
-                  <b>⌄</b>
+                  <span>{memberMain.chats}</span>
+                  {chatUnreadCount > 0 ? <b className={accountStyles.chatNavBadge}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
                 </button>
-                {memberMenuOpen && (
-                  <div className={accountStyles.memberSubmenu} role="menu">
-                    <Link href="/connect" onClick={close} role="menuitem"><span>☺</span>{memberMain.connect}</Link>
-                    <Link href="/deals" onClick={close} role="menuitem"><span>%</span>{memberMain.deals}</Link>
-                    <Link href="/partners" onClick={close} role="menuitem"><span>⌂</span>{memberMain.partners}</Link>
-                    <Link href="/trips" onClick={close} role="menuitem"><span>✈</span>{memberMain.trips}</Link>
-                    <Link href="/events" onClick={close} role="menuitem"><span>◇</span>{memberMain.events}</Link>
-                    <Link href="/community" onClick={close} role="menuitem"><span>◎</span>{memberMain.communities}</Link>
-                  </div>
-                )}
               </div>
-              <Link href="/account" onClick={close}>{memberMain.home}</Link>
-              <Link href="/profile" onClick={close}>{memberMain.profile}</Link>
-              <button
-                type="button"
-                onClick={() => {
-                  close();
-                  setChatDrawerOpen(true);
-                }}
-                className={`${accountStyles.chatNavLink} ${accountStyles.chatNavButton}`}
-                aria-haspopup="dialog"
-                aria-expanded={chatDrawerOpen}
-              >
-                <span>{memberMain.chats}</span>
-                {chatUnreadCount > 0 ? (
-                  <b className={accountStyles.chatNavBadge} aria-label={`${chatUnreadCount} ${memberMain.chats}`}>
-                    {chatUnreadCount > 99 ? "99+" : chatUnreadCount}
-                  </b>
-                ) : null}
-              </button>
+
+              <div className="memberMobileNavContent">
+                <div className="memberMobileDrawerTitle"><strong>{memberMain.menu}</strong><small>{email || 'Melo Chat'}</small></div>
+                <form className="memberMobileDrawerSearch" onSubmit={submitSearch} role="search">
+                  <span aria-hidden="true">⌕</span>
+                  <input value={searchQuery} onChange={(event) => setSearchQuery(event.target.value)} placeholder={searchCopy.placeholder} aria-label={searchCopy.label} />
+                </form>
+
+                <div className="memberMobileDrawerLinks">
+                  <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span>♡</span>{memberMain.connect}</Link>
+                  <Link className={mobilePathActive('/deals') ? 'isActive' : ''} href="/deals" onClick={close}><span>%</span>{memberMain.deals}</Link>
+                  <Link className={mobilePathActive('/partners') ? 'isActive' : ''} href="/partners" onClick={close}><span>▣</span>{memberMain.partners}</Link>
+                  <Link className={mobilePathActive('/trips') ? 'isActive' : ''} href="/trips" onClick={close}><span>✈</span>{memberMain.trips}</Link>
+                  <Link className={mobilePathActive('/events') ? 'isActive' : ''} href="/events" onClick={close}><span>◇</span>{memberMain.events}</Link>
+                  <Link className={mobilePathActive('/community') ? 'isActive' : ''} href="/community" onClick={close}><span>◎</span>{memberMain.communities}</Link>
+                </div>
+
+                <div className="memberMobileDrawerUtility">
+                  <Link href="/safety" onClick={close}><span>✚</span>{safetyCopy.label}</Link>
+                  <Link href="/settings" onClick={close}><span>⚙</span>{settingsLabel}</Link>
+                  <button type="button" onClick={() => void openPartnerMode()}><span>▣</span>{partnerModeLabel}</button>
+                </div>
+
+                <div className="memberMobileDrawerControls">
+                  <label htmlFor="melo-member-mobile-language"><span>🌐</span><strong>{t('common.language')}</strong><select id="melo-member-mobile-language" aria-label={t('common.language')} value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>{supportedLocales.map((item) => <option value={item} key={item}>{localeLabels[item]}</option>)}</select></label>
+                  <button type="button" onClick={toggleTheme}><span>{theme === 'dark' ? '☀' : '☾'}</span><span className="memberMobileDrawerControlCopy"><strong>{themeCopy.label}</strong><small>{theme === 'dark' ? themeCopy.dark : themeCopy.light}</small></span></button>
+                </div>
+
+                <button type="button" className="memberMobileDrawerLogout" onClick={logout}><span>↪</span>{auth.logout}</button>
+              </div>
             </>
           ) : (
             <>
               <Link href="/#features" onClick={close}>{t('nav.features')}</Link>
               <Link href="/#safety" onClick={close}>{t('nav.safety')}</Link>
               <Link href="/#partner" onClick={close}>{t('nav.partner')}</Link>
-              {pathname === '/' ? (
-                <div className="publicHeaderControls">
-                  <PublicLanguageSwitcher placement="header" />
-                  <button
-                    type="button"
-                    className="themeButton publicThemeButton"
-                    onClick={toggleTheme}
-                    title={theme === 'dark' ? themeCopy.light : themeCopy.dark}
-                    aria-label={theme === 'dark' ? themeCopy.light : themeCopy.dark}
-                  >
-                    <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
-                  </button>
-                </div>
-              ) : (
-                <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
-              )}
+              <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
             </>
           )}
 
@@ -1586,38 +1636,40 @@ export function Header() {
             <Link className="mobileLoginLink" href="/login" onClick={close}>{auth.login}</Link>
           )}
 
-          {signedIn && (
-            <div className={accountStyles.mobileAccountMenu}>
-              <form className={accountStyles.mobileSearch} onSubmit={submitSearch} role="search">
-                <span>⌕</span>
-                <input
-                  value={searchQuery}
-                  onChange={(event) => setSearchQuery(event.target.value)}
-                  placeholder={searchCopy.placeholder}
-                  aria-label={searchCopy.label}
-                />
-              </form>
-              <div className={accountStyles.mobileIdentity}>
-                <span className={accountStyles.mobileAvatar}>⚙</span>
-                <div>
-                  <strong>{settingsLabel}</strong>
-                  {email && <small>{email}</small>}
-                </div>
-              </div>
-              <button type="button" className={accountStyles.mobilePartnerModeButton} onClick={() => void openPartnerMode()}><span>▣</span>{partnerModeLabel}</button>
-              <Link href="/settings" onClick={close}>{settingsLabel}</Link>
+          {!signedIn && isPublicAuthPage && (
+            <div className="publicMobileDrawerControls">
+              <label className="publicMobileLanguageControl" htmlFor="melo-public-mobile-language">
+                <span className="publicMobileControlIcon" aria-hidden="true">🌐</span>
+                <span className="publicMobileControlCopy">
+                  <strong>{t('common.language')}</strong>
+                </span>
+                <select
+                  id="melo-public-mobile-language"
+                  aria-label={t('common.language')}
+                  value={locale}
+                  onChange={(event) => setLocale(event.target.value as typeof locale)}
+                >
+                  {supportedLocales.map((item) => (
+                    <option value={item} key={item}>{localeLabels[item]}</option>
+                  ))}
+                </select>
+              </label>
+
               <button
                 type="button"
-                className={accountStyles.mobileThemeButton}
+                className="publicMobileThemeControl"
                 onClick={toggleTheme}
+                aria-label={`${t('common.theme')}: ${theme === 'dark' ? themeCopy.dark : themeCopy.light}`}
               >
-                <span>{theme === 'dark' ? '☀' : '☾'}</span>
-                <span>{themeCopy.label}</span>
-                <small>{theme === 'dark' ? themeCopy.dark : themeCopy.light}</small>
+                <span className="publicMobileControlIcon" aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+                <span className="publicMobileControlCopy">
+                  <strong>{t('common.theme')}</strong>
+                  <small>{theme === 'dark' ? themeCopy.dark : themeCopy.light}</small>
+                </span>
               </button>
-              <button type="button" className={accountStyles.mobileLogout} onClick={logout}>{auth.logout}</button>
             </div>
           )}
+
         </nav>
 
         <div className={`headerTools ${signedIn ? accountStyles.memberHeaderTools : ""}`}>
@@ -1902,6 +1954,26 @@ export function Header() {
         </div>
       </div>
     </header>
+    {!signedIn && isPublicAuthPage && menuOpen ? (
+      <button type="button" className="publicMenuBackdrop" onClick={close} aria-label="Close menu" />
+    ) : null}
+
+    {signedIn && menuOpen ? (
+      <button type="button" className="memberMobileMenuBackdrop" onClick={close} aria-label="Close menu" />
+    ) : null}
+
+    {signedIn ? (
+      <nav className="meloMobileBottomNav" aria-label="Mobile primary navigation">
+        <Link className={mobilePathActive('/account') ? 'isActive' : ''} href="/account" onClick={close}><span aria-hidden="true">⌂</span><small>{memberMain.home}</small></Link>
+        <Link className={mobilePathActive('/feed') ? 'isActive' : ''} href="/feed" onClick={close}><span aria-hidden="true">▤</span><small>{memberMain.feed}</small></Link>
+        <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span aria-hidden="true">♡</span><small>{memberMain.connect}</small></Link>
+        <button type="button" className={chatDrawerOpen || pathname.startsWith('/chat') ? 'isActive' : ''} onClick={() => { close(); setChatDrawerOpen(true); }} aria-haspopup="dialog" aria-expanded={chatDrawerOpen}>
+          <span aria-hidden="true">✉</span><small>{memberMain.messenger}</small>{chatUnreadCount > 0 ? <b>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
+        </button>
+        <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span aria-hidden="true">○</span><small>{memberMain.profile}</small></Link>
+      </nav>
+    ) : null}
+
     {signedIn ? <ChatDrawer open={chatDrawerOpen} onClose={() => setChatDrawerOpen(false)} /> : null}
     </>
   );

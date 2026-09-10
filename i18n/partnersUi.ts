@@ -22,6 +22,16 @@ type PartnersCopy = {
   empty: string;
   partnerCount: string;
   noDescription: string;
+  categoriesTitle: string;
+  categoriesSubtitle: string;
+  otherCategories: string;
+  allCategories: string;
+  closeCategories: string;
+  activityOutdoor: string;
+  groupTravelStay: string;
+  groupActivityTransport: string;
+  groupFoodLifestyle: string;
+  groupShoppingServices: string;
 };
 
 export const partnersCopy: Record<Locale, PartnersCopy> = {
@@ -47,6 +57,16 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: 'ยังไม่มีพาร์ทเนอร์ในหมวดนี้',
     partnerCount: 'พาร์ทเนอร์',
     noDescription: 'ดูข้อมูลร้าน สินค้า บริการ และข้อเสนอจากพาร์ทเนอร์ Melo',
+    categoriesTitle: 'ค้นหาตามประเภท',
+    categoriesSubtitle: 'เลือกประเภทเพื่อกรองพาร์ทเนอร์ หรือดูทุกประเภทได้ในครั้งเดียว',
+    otherCategories: 'อื่นๆ',
+    allCategories: 'ประเภททั้งหมด',
+    closeCategories: 'ปิด',
+    activityOutdoor: 'กิจกรรม & Outdoor',
+    groupTravelStay: 'เที่ยว & ที่พัก',
+    groupActivityTransport: 'กิจกรรม & การเดินทาง',
+    groupFoodLifestyle: 'อาหาร & Lifestyle',
+    groupShoppingServices: 'สินค้า & บริการ',
   },
   en: {
     kicker: 'MELO PARTNERS',
@@ -70,6 +90,16 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: 'No partners are available in this category yet.',
     partnerCount: 'partners',
     noDescription: 'Explore this Melo partner, its services and available offers.',
+    categoriesTitle: 'Browse by category',
+    categoriesSubtitle: 'Choose a category to filter Partners or view every category at once.',
+    otherCategories: 'More',
+    allCategories: 'All categories',
+    closeCategories: 'Close',
+    activityOutdoor: 'Activities & Outdoor',
+    groupTravelStay: 'Travel & Stay',
+    groupActivityTransport: 'Activities & Transport',
+    groupFoodLifestyle: 'Food & Lifestyle',
+    groupShoppingServices: 'Shopping & Services',
   },
   de: {
     kicker: 'MELO PARTNERS',
@@ -93,6 +123,16 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: 'In dieser Kategorie sind noch keine Partner verfügbar.',
     partnerCount: 'Partner',
     noDescription: 'Entdecke diesen Melo-Partner, seine Services und Angebote.',
+    categoriesTitle: 'Nach Kategorie entdecken',
+    categoriesSubtitle: 'Wähle eine Kategorie zum Filtern oder zeige alle Kategorien auf einmal.',
+    otherCategories: 'Mehr',
+    allCategories: 'Alle Kategorien',
+    closeCategories: 'Schließen',
+    activityOutdoor: 'Aktivitäten & Outdoor',
+    groupTravelStay: 'Reisen & Unterkunft',
+    groupActivityTransport: 'Aktivitäten & Transport',
+    groupFoodLifestyle: 'Essen & Lifestyle',
+    groupShoppingServices: 'Shopping & Services',
   },
   zh: {
     kicker: 'MELO PARTNERS',
@@ -116,6 +156,16 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: '此分类暂时没有合作伙伴。',
     partnerCount: '个合作伙伴',
     noDescription: '查看此 Melo 合作伙伴的服务与可用优惠。',
+    categoriesTitle: '按类型查找',
+    categoriesSubtitle: '选择分类筛选合作商家，或一次查看全部类型。',
+    otherCategories: '更多',
+    allCategories: '全部类型',
+    closeCategories: '关闭',
+    activityOutdoor: '活动与户外',
+    groupTravelStay: '旅行与住宿',
+    groupActivityTransport: '活动与交通',
+    groupFoodLifestyle: '餐饮与生活方式',
+    groupShoppingServices: '购物与服务',
   },
   ja: {
     kicker: 'MELO PARTNERS',
@@ -139,6 +189,16 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: 'このカテゴリにはまだパートナーがありません。',
     partnerCount: '件',
     noDescription: 'この Melo パートナーのサービスやオファーを確認できます。',
+    categoriesTitle: 'カテゴリから探す',
+    categoriesSubtitle: 'カテゴリで絞り込むか、すべてのカテゴリを一覧できます。',
+    otherCategories: 'その他',
+    allCategories: 'すべてのカテゴリ',
+    closeCategories: '閉じる',
+    activityOutdoor: 'アクティビティ & アウトドア',
+    groupTravelStay: '旅行 & 宿泊',
+    groupActivityTransport: 'アクティビティ & 交通',
+    groupFoodLifestyle: 'グルメ & ライフスタイル',
+    groupShoppingServices: 'ショッピング & サービス',
   },
   ko: {
     kicker: 'MELO PARTNERS',
@@ -162,5 +222,49 @@ export const partnersCopy: Record<Locale, PartnersCopy> = {
     empty: '이 카테고리에는 아직 파트너가 없습니다.',
     partnerCount: '개 파트너',
     noDescription: '이 Melo 파트너의 서비스와 이용 가능한 혜택을 확인해보세요.',
+    categoriesTitle: '카테고리로 찾기',
+    categoriesSubtitle: '카테고리를 선택해 파트너를 필터링하거나 전체 카테고리를 한 번에 확인하세요.',
+    otherCategories: '더보기',
+    allCategories: '전체 카테고리',
+    closeCategories: '닫기',
+    activityOutdoor: '액티비티 & 아웃도어',
+    groupTravelStay: '여행 & 숙박',
+    groupActivityTransport: '액티비티 & 교통',
+    groupFoodLifestyle: '푸드 & 라이프스타일',
+    groupShoppingServices: '쇼핑 & 서비스',
   },
 };
+
+export type PartnerBusinessCategory =
+  | 'accommodation'
+  | 'food_drink'
+  | 'tours_guides'
+  | 'transport_rental'
+  | 'activities_experiences'
+  | 'sports_outdoor'
+  | 'attractions'
+  | 'events_entertainment'
+  | 'wellness_lifestyle'
+  | 'shopping_equipment'
+  | 'traveler_services'
+  | 'local_other';
+
+const partnerCategoryLabels: Record<PartnerBusinessCategory, Record<Locale, string>> = {
+  accommodation: { th: 'ที่พัก', en: 'Accommodation', de: 'Unterkunft', zh: '住宿', ja: '宿泊施設', ko: '숙박' },
+  food_drink: { th: 'อาหาร & เครื่องดื่ม', en: 'Food & Drink', de: 'Essen & Trinken', zh: '餐饮', ja: '飲食', ko: '음식 & 음료' },
+  tours_guides: { th: 'ทัวร์ & ไกด์', en: 'Tours & Guides', de: 'Touren & Guides', zh: '旅行团与导游', ja: 'ツアー & ガイド', ko: '투어 & 가이드' },
+  transport_rental: { th: 'เดินทาง & รถเช่า', en: 'Transport & Rental', de: 'Transport & Vermietung', zh: '交通与租赁', ja: '交通 & レンタル', ko: '교통 & 렌탈' },
+  activities_experiences: { th: 'กิจกรรม & ประสบการณ์', en: 'Activities & Experiences', de: 'Aktivitäten & Erlebnisse', zh: '活动与体验', ja: 'アクティビティ & 体験', ko: '액티비티 & 체험' },
+  sports_outdoor: { th: 'กีฬา & Outdoor', en: 'Sports & Outdoor', de: 'Sport & Outdoor', zh: '运动与户外', ja: 'スポーツ & アウトドア', ko: '스포츠 & 아웃도어' },
+  attractions: { th: 'สถานที่ท่องเที่ยว', en: 'Attractions', de: 'Sehenswürdigkeiten', zh: '景点', ja: '観光スポット', ko: '관광지' },
+  events_entertainment: { th: 'อีเวนต์ & ความบันเทิง', en: 'Events & Entertainment', de: 'Events & Unterhaltung', zh: '活动与娱乐', ja: 'イベント & エンタメ', ko: '이벤트 & 엔터테인먼트' },
+  wellness_lifestyle: { th: 'Wellness & Lifestyle', en: 'Wellness & Lifestyle', de: 'Wellness & Lifestyle', zh: '健康与生活方式', ja: 'ウェルネス & ライフスタイル', ko: '웰니스 & 라이프스타일' },
+  shopping_equipment: { th: 'ร้านค้า & อุปกรณ์', en: 'Shopping & Equipment', de: 'Shopping & Ausrüstung', zh: '购物与装备', ja: 'ショッピング & 装備', ko: '쇼핑 & 장비' },
+  traveler_services: { th: 'บริการนักท่องเที่ยว', en: 'Traveler Services', de: 'Reiseservices', zh: '旅行者服务', ja: '旅行者向けサービス', ko: '여행자 서비스' },
+  local_other: { th: 'ธุรกิจ / บริการอื่นๆ', en: 'Local Business & Others', de: 'Lokale Unternehmen & Sonstiges', zh: '本地商家及其他', ja: 'ローカルビジネス & その他', ko: '로컬 비즈니스 & 기타' },
+};
+
+export function getPartnerCategoryLabel(category: PartnerBusinessCategory, locale: Locale) {
+  return partnerCategoryLabels[category]?.[locale] ?? partnerCategoryLabels[category]?.en ?? category;
+}
+

@@ -14,3 +14,13 @@
 @media(max-width:900px){.shell{width:min(100% - 30px,1320px);padding-top:24px}.hero{align-items:flex-start;flex-direction:column}.modeSwitch{width:100%}.modeButton{flex:1;min-width:0}}
 @media(max-width:560px){.shell{width:min(100% - 20px,1320px);padding:18px 0 58px}.hero{padding:18px 0 20px;gap:20px}.hero h1{font-size:40px}.hero p{font-size:12px}.modeButton{min-height:44px;padding:0 12px}.contentStage{margin-top:16px}}
 @media(prefers-reduced-motion:reduce){.modeButton{transition:none}}
+
+
+/* Mobile: Connect starts directly with Friend / Love mode switch. */
+@media(max-width:760px){
+  .shell{padding-top:10px}
+  .hero{padding:0 0 10px!important;gap:0;border-bottom:0}
+  .heroCopy{display:none}
+  .modeSwitch{width:100%}
+  .contentStage{margin-top:10px}
+}

@@ -2,13 +2,7 @@
 
 import { useLocale } from '@/components/SiteProviders';
 
-type PublicLanguageSwitcherProps = {
-  placement?: 'floating' | 'header';
-};
-
-export default function PublicLanguageSwitcher({
-  placement = 'floating',
-}: PublicLanguageSwitcherProps) {
+export default function PublicLanguageSwitcher() {
   const {
     locale,
     setLocale,
@@ -17,17 +11,8 @@ export default function PublicLanguageSwitcher({
     t,
   } = useLocale();
 
-  const selectId =
-    placement === 'header'
-      ? 'melo-header-language'
-      : 'melo-public-language';
-
   return (
-    <div
-      className={`meloPublicLanguageSwitcher ${
-        placement === 'header' ? 'meloPublicLanguageSwitcherHeader' : ''
-      }`}
-    >
+    <div className="meloPublicLanguageSwitcher">
       <span
         className="meloPublicLanguageIcon"
         aria-hidden="true"
@@ -37,13 +22,13 @@ export default function PublicLanguageSwitcher({
 
       <label
         className="srOnly"
-        htmlFor={selectId}
+        htmlFor="melo-public-language"
       >
         {t('common.language')}
       </label>
 
       <select
-        id={selectId}
+        id="melo-public-language"
         aria-label={t('common.language')}
         value={locale}
         onChange={(event) =>
@@ -74,32 +59,16 @@ export default function PublicLanguageSwitcher({
           min-height: 42px;
           padding: 0 12px;
 
-          border: 1px solid var(--border);
+          border: 1px solid rgba(148, 163, 184, 0.24);
           border-radius: 14px;
 
-          background: color-mix(in srgb, var(--surface) 96%, transparent);
-          color: var(--text);
+          background: rgba(255, 255, 255, 0.96);
 
           box-shadow:
-            0 10px 28px color-mix(in srgb, var(--shadow) 82%, transparent),
-            0 2px 8px color-mix(in srgb, var(--shadow) 45%, transparent);
+            0 10px 28px rgba(15, 23, 42, 0.1),
+            0 2px 8px rgba(15, 23, 42, 0.05);
 
           backdrop-filter: blur(14px);
-        }
-
-        .meloPublicLanguageSwitcherHeader {
-          position: static;
-          top: auto;
-          right: auto;
-          z-index: auto;
-
-          min-height: 40px;
-          padding: 0 10px;
-
-          border-radius: 12px;
-          background: var(--surface);
-          box-shadow: 0 8px 24px var(--shadow);
-          backdrop-filter: none;
         }
 
         .meloPublicLanguageIcon {
@@ -118,23 +87,13 @@ export default function PublicLanguageSwitcher({
           outline: 0;
 
           background: transparent;
-          color: var(--text);
+          color: #172033;
 
           font: inherit;
           font-size: 14px;
           font-weight: 700;
 
           cursor: pointer;
-        }
-
-        .meloPublicLanguageSwitcherHeader select {
-          min-width: 88px;
-          max-width: 108px;
-        }
-
-        option {
-          color: var(--text);
-          background: var(--surface);
         }
 
         .srOnly {
@@ -154,33 +113,29 @@ export default function PublicLanguageSwitcher({
           border: 0;
         }
 
-        @media (max-width: 900px) {
-          .meloPublicLanguageSwitcherHeader {
-            flex: 1 1 auto;
-            width: 100%;
-            min-width: 0;
-            box-shadow: none;
-          }
+        :global(html[data-theme='dark'])
+          .meloPublicLanguageSwitcher {
+          border-color: rgba(148, 163, 184, 0.22);
 
-          .meloPublicLanguageSwitcherHeader select {
-            flex: 1 1 auto;
-            min-width: 0;
-            max-width: none;
-          }
+          background: rgba(20, 27, 40, 0.94);
+
+          box-shadow:
+            0 12px 30px rgba(0, 0, 0, 0.28),
+            0 2px 8px rgba(0, 0, 0, 0.18);
         }
 
-        @media (max-width: 760px) {
-          .meloPublicLanguageSwitcher:not(.meloPublicLanguageSwitcherHeader) {
-            top: 76px;
-            right: 12px;
+        :global(html[data-theme='dark']) select {
+          color: #f8fafc;
+        }
 
-            min-height: 40px;
+        :global(html[data-theme='dark']) option {
+          color: #0f172a;
+          background: #ffffff;
+        }
 
-            padding: 0 10px;
-          }
-
-          select {
-            font-size: 13px;
+        @media (max-width: 900px) {
+          .meloPublicLanguageSwitcher {
+            display: none;
           }
         }
       `}</style>
