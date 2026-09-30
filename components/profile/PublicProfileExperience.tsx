@@ -7,7 +7,7 @@ import { Header } from "@/components/Header";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import { loadSocialFeedWeb, toggleSocialPostLikeWeb, type SocialFeedPost } from "@/components/feed/socialFeedWebData";
 import { useLocale } from "@/components/SiteProviders";
-import { getCurrentUser, isSupabaseConfigured, restSelect, rpcRequest } from "@/lib/supabase/browser";
+import { createSignedStorageUrl, getCurrentUser, isSupabaseConfigured, restSelect, rpcRequest } from "@/lib/supabase/browser";
 import {
   ageFrom,
   arrayOf,
@@ -124,6 +124,8 @@ export function PublicProfileExperience() {
   const [signedIn, setSignedIn] = useState(false);
   const [profile, setProfile] = useState<Row | null>(null);
   const [reputation, setReputation] = useState<Row | null>(null);
+  const [verified, setVerified] = useState(false);
+  const [publicCoverUrl, setPublicCoverUrl] = useState("");
   const [posts, setPosts] = useState<SocialFeedPost[]>([]);
   const [expanded, setExpanded] = useState(false);
   const [error, setError] = useState("");
@@ -150,17 +152,36 @@ export function PublicProfileExperience() {
         return;
       }
 
-      const [profileResult, reputationResult, postsResult] = await Promise.all([
+      const [profileResult, reputationResult, verificationResult, postsResult] = await Promise.all([
         restSelect<Row[]>("profiles", `select=*&id=eq.${encodeURIComponent(userId)}&limit=1`),
         rpcRequest<Row[] | Row>("get_reputation_summary", { p_user_id: userId }),
+        rpcRequest<boolean>("get_public_identity_verification", { p_user_id: userId }),
         loadSocialFeedWeb({ limit: 30, offset: 0, authorId: userId }).catch(() => [] as SocialFeedPost[]),
       ]);
 
       if (!active) return;
       const profileRows = Array.isArray(profileResult.data) ? profileResult.data : [];
-      setProfile(profileRows[0] || null);
+      const publicProfile = profileRows[0] || null;
+      setProfile(publicProfile);
       const rep = reputationResult.data;
       setReputation(Array.isArray(rep) ? rep[0] || null : rep || null);
+      // The public verification RPC is the single source of truth for the check mark.
+      setVerified(!verificationResult.error && verificationResult.data === true);
+
+      // Cover is stored on profiles.cover_path. Resolve it with an authenticated
+      // signed URL so this also works when the profile-photos bucket is private.
+      const coverPath = String(firstValue(publicProfile, ["cover_path", "cover_url", "cover_image_url", "profile_cover_url"]) || "").trim();
+      if (coverPath) {
+        if (/^https?:\/\//i.test(coverPath)) {
+          setPublicCoverUrl(coverPath);
+        } else {
+          const signedCover = await createSignedStorageUrl("profile-photos", coverPath, 3600);
+          if (!active) return;
+          setPublicCoverUrl(!signedCover.error && signedCover.data ? signedCover.data : profileCoverUrl(publicProfile, null));
+        }
+      } else {
+        setPublicCoverUrl(profileCoverUrl(publicProfile, null));
+      }
       setPosts(Array.isArray(postsResult) ? postsResult : []);
 
       const errors = [profileResult.error, reputationResult.error].filter(Boolean);
@@ -172,16 +193,15 @@ export function PublicProfileExperience() {
     return () => { active = false; };
   }, [router, t.error, userId]);
 
-  const displayName = String(firstValue(profile, ["display_name", "full_name", "name", "username"]) || firstValue(reputation, ["display_name"]) || "Melo User");
+  const displayName = String(firstValue(profile, ["display_name", "first_name", "full_name", "name", "username"]) || firstValue(reputation, ["display_name"]) || "Melo User");
   const age = ageFrom(firstValue(profile, ["date_of_birth", "birth_date", "birthday"]));
   const city = String(firstValue(profile, ["city", "province", "location_city"]) || "");
   const country = String(firstValue(profile, ["country", "country_name", "nationality"]) || "");
   const nationality = String(firstValue(profile, ["nationality"]) || "");
   const bio = String(firstValue(profile, ["bio", "about_me", "about"]) || "");
   const avatar = profilePhotoUrl(profile, 0) || profilePhotoUrl({ photo_paths: [firstValue(reputation, ["photo_path"])] }, 0);
-  const cover = profileCoverUrl(profile, null);
-  const verified = Boolean(firstValue(reputation, ["is_verified"]) || firstValue(profile, ["is_verified", "verified"]));
-  const rating = Number(firstValue(reputation, ["average_rating", "reputation_score"]) || 0);
+  const cover = publicCoverUrl || profileCoverUrl(profile, null);
+    const rating = Number(firstValue(reputation, ["average_rating", "reputation_score"]) || 0);
   const reviewCount = Number(firstValue(reputation, ["review_count"]) || 0);
   const completedTrips = Number(firstValue(reputation, ["completed_trips"]) || 0);
   const completedEvents = Number(firstValue(reputation, ["completed_events"]) || 0);

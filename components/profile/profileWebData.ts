@@ -292,6 +292,8 @@ export async function uploadProfileCoverWeb(file: File) {
   const path = `${user.id}/cover/${Date.now()}-${suffix}.${extensionFromFile(file)}`;
   await uploadProfileFile(path, file);
   await updateUserMetadata({ [COVER_PATH_KEY]: path });
+  const profileResult = await updateOwnProfile(user.id, { cover_path: path });
+  if (profileResult.error) throw new Error(profileResult.error);
   return { path, url: publicStorageUrl(PROFILE_BUCKET, path) };
 }
 
@@ -302,12 +304,12 @@ export async function uploadProfilePhotoWeb(input: {
 }) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("AUTH_REQUIRED");
-  const slotIndex = Math.max(0, Math.min(5, Math.round(input.slotIndex)));
+  const slotIndex = Math.max(0, Math.min(6, Math.round(input.slotIndex)));
   const suffix = Math.random().toString(36).slice(2, 10);
   const path = `${user.id}/${Date.now()}-${slotIndex}-${suffix}.${extensionFromFile(input.file)}`;
   await uploadProfileFile(path, input.file);
 
-  const next = input.currentPaths.filter(Boolean).slice(0, 6);
+  const next = input.currentPaths.filter(Boolean).slice(0, 7);
   if (slotIndex < next.length) next[slotIndex] = path;
   else next.push(path);
 
@@ -322,7 +324,7 @@ export async function removeProfilePhotoWeb(input: {
 }) {
   const user = await getCurrentUser();
   if (!user?.id) throw new Error("AUTH_REQUIRED");
-  const next = input.currentPaths.filter(Boolean).slice(0, 6);
+  const next = input.currentPaths.filter(Boolean).slice(0, 7);
   next.splice(Math.max(0, Math.min(next.length - 1, input.slotIndex)), 1);
   const result = await updateOwnProfile(user.id, { photo_paths: next });
   if (result.error) throw new Error(result.error);

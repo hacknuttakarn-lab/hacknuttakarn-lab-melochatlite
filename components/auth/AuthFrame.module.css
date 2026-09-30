@@ -172,3 +172,35 @@
 }
 
 .memberCard { text-decoration: none; color: inherit; }
+
+/* V46: password visibility control */
+.passwordField {
+  position: relative;
+}
+.passwordField input {
+  width: 100%;
+  padding-right: 3rem;
+}
+.passwordToggle {
+  position: absolute;
+  top: 50%;
+  right: .7rem;
+  transform: translateY(-50%);
+  display: grid;
+  place-items: center;
+  width: 2rem;
+  height: 2rem;
+  padding: 0;
+  border: 0;
+  border-radius: .6rem;
+  background: transparent;
+  color: var(--text-muted, #94a3b8);
+  cursor: pointer;
+  font-size: 1.05rem;
+}
+.passwordToggle:hover,
+.passwordToggle:focus-visible {
+  background: color-mix(in srgb, currentColor 10%, transparent);
+  color: var(--text, currentColor);
+  outline: none;
+}

@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import {
@@ -38,6 +38,7 @@ import {
 } from './settingsWebData';
 
 import styles from './SettingsUtilityExperience.module.css';
+import AdminVerificationReview from './AdminVerificationReview';
 
 export type SettingsUtilityMode =
   | 'premium'
@@ -1742,18 +1743,7 @@ export default function SettingsUtilityExperience({
 
         {mode ===
         'review-admin' ? (
-          <ReviewAdmin
-            home={
-              reviewHome
-            }
-            counts={
-              reviewCounts
-            }
-            t={t}
-            onRefresh={
-              load
-            }
-          />
+          <AdminVerificationReview />
         ) : null}
       </div>
     );
@@ -1952,6 +1942,12 @@ function Blocked({
     setSearch,
   ] = useState('');
 
+  /* MELO_UNBLOCK_CONFIRM_MODAL_V1 */
+  const [
+    unblockCandidate,
+    setUnblockCandidate,
+  ] = useState<BlockedUserWeb | null>(null);
+
   const filtered =
     useMemo(() => {
       const keyword =
@@ -1985,18 +1981,32 @@ function Blocked({
   function confirmUnblock(
     user: BlockedUserWeb,
   ) {
-    const accepted =
-      window.confirm(
-        `${copy.unblockConfirmTitle}\n\n${user.displayName}\n\n${copy.unblockConfirmBody}`,
-      );
+    setUnblockCandidate(
+      user,
+    );
+  }
 
-    if (
-      accepted
-    ) {
-      onUnblock(
-        user.userId,
-      );
+  function closeUnblockConfirm() {
+    setUnblockCandidate(
+      null,
+    );
+  }
+
+  function acceptUnblock() {
+    if (!unblockCandidate) {
+      return;
     }
+
+    const userId =
+      unblockCandidate.userId;
+
+    setUnblockCandidate(
+      null,
+    );
+
+    onUnblock(
+      userId,
+    );
   }
 
   return (
@@ -2005,6 +2015,170 @@ function Blocked({
         styles.utilityStack
       }
     >
+      {unblockCandidate ? (
+        <div
+          className={
+            styles.unblockModalBackdrop
+          }
+          role="presentation"
+          onMouseDown={(
+            event,
+          ) => {
+            if (
+              event.target ===
+              event.currentTarget
+            ) {
+              closeUnblockConfirm();
+            }
+          }}
+        >
+          <section
+            className={
+              styles.unblockModal
+            }
+            role="dialog"
+            aria-modal="true"
+            aria-labelledby="melo-unblock-title"
+          >
+            <header
+              className={
+                styles.unblockModalHeader
+              }
+            >
+              <div
+                className={
+                  styles.unblockModalIcon
+                }
+                aria-hidden="true"
+              >
+                ↩
+              </div>
+
+              <div>
+                <h2
+                  id="melo-unblock-title"
+                >
+                  {
+                    copy.unblockConfirmTitle
+                  }
+                </h2>
+
+                <p>
+                  {
+                    unblockCandidate
+                      .displayName
+                  }
+                </p>
+              </div>
+
+              <button
+                type="button"
+                className={
+                  styles.unblockModalClose
+                }
+                aria-label="Close"
+                onClick={
+                  closeUnblockConfirm
+                }
+              >
+                ×
+              </button>
+            </header>
+
+            <div
+              className={
+                styles.unblockModalBody
+              }
+            >
+              <div
+                className={
+                  styles.unblockModalUser
+                }
+              >
+                {unblockCandidate.photoUrl ? (
+                  <img
+                    src={
+                      unblockCandidate
+                        .photoUrl
+                    }
+                    alt=""
+                  />
+                ) : (
+                  <div
+                    className={
+                      styles.unblockModalAvatarFallback
+                    }
+                    aria-hidden="true"
+                  >
+                    {
+                      unblockCandidate
+                        .displayName
+                        .slice(0, 1)
+                        .toUpperCase()
+                    }
+                  </div>
+                )}
+
+                <strong>
+                  {
+                    unblockCandidate
+                      .displayName
+                  }
+                </strong>
+              </div>
+
+              <p>
+                {
+                  copy.unblockConfirmBody
+                }
+              </p>
+            </div>
+
+            <footer
+              className={
+                styles.unblockModalActions
+              }
+            >
+              <button
+                type="button"
+                className={
+                  styles.unblockModalCancel
+                }
+                onClick={
+                  closeUnblockConfirm
+                }
+              >
+                {
+                  locale === 'th'
+                    ? 'ยกเลิก'
+                    : locale === 'de'
+                      ? 'Abbrechen'
+                      : 'Cancel'
+                }
+              </button>
+
+              <button
+                type="button"
+                className={
+                  styles.unblockModalConfirm
+                }
+                onClick={
+                  acceptUnblock
+                }
+              >
+                {
+                  locale === 'th'
+                    ? 'ยกเลิกการบล็อก'
+                    : locale === 'de'
+                      ? 'Blockierung aufheben'
+                      : 'Unblock'
+                }
+              </button>
+            </footer>
+          </section>
+        </div>
+      ) : null}
+
       <section
         className={
           styles.sectionHero

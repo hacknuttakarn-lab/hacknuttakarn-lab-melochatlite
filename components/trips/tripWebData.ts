@@ -27,6 +27,9 @@ export type TripWebRecord = {
   imagePath: string;
   startPoint: string;
   destination: string;
+  province: string;
+  district: string;
+  city: string;
   startDate: string;
   endDate: string;
   capacity: number;
@@ -255,6 +258,9 @@ function normalizeTrip(
     imagePath: text(row, "image_path"),
     startPoint: text(row, "start_point"),
     destination: text(row, "destination"),
+    province: text(row, "destination_province", "province", "region", "state"),
+    district: text(row, "destination_district", "district", "subdistrict"),
+    city: text(row, "destination_city", "city"),
     startDate: text(row, "start_date"),
     endDate: text(row, "end_date"),
     capacity: Math.max(0, num(row, "capacity")),

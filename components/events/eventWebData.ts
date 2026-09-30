@@ -22,6 +22,9 @@ export type EventWebRecord = {
   category: string;
   imageUrl: string;
   venueName: string;
+  address: string;
+  province: string;
+  district: string;
   city: string;
   country: string;
   startAt: string;
@@ -241,6 +244,9 @@ export async function loadEventsWeb(
         category: text(row, "category"),
         imageUrl: eventImage(row),
         venueName: text(row, "venue_name"),
+        address: text(row, "address"),
+        province: text(row, "province", "region", "state"),
+        district: text(row, "district", "subdistrict"),
         city: text(row, "city"),
         country,
         startAt: text(row, "start_at", "start_date"),

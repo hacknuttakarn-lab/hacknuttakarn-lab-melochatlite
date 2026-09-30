@@ -4,11 +4,20 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/SiteProviders";
 import { ChatConversationPane } from "./ChatConversationPane";
-import { ensureBusinessChatRoom, ensureDirectChatRoom, loadChatSnapshot, loadPartnerBusinessChatRooms, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
+import { ensureBusinessChatRoom, ensureDirectChatRoom, loadChatSnapshot, loadPartnerBusinessChatRooms, loadPinnedConversationIds, setConversationPinned, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatDrawer.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
+import AdminSupportChat from "@/components/support/AdminSupportChat";
+import { loadLoveSnapshot, type DatingProfileWeb } from "@/components/connect/connectData";
+import { getCurrentUser } from "@/lib/supabase/browser";
+import {
+  loadSettingsAccountSnapshot,
+  saveAutoTranslationEnabled,
+} from "@/components/settings/settingsWebData";
 
 const TRANSLATION_STORAGE_KEY = "melo-chat-translation-enabled";
+const TRANSLATION_SETTING_EVENT = "melo-chat-translation-setting-changed";
+/* MELO_DRAWER_ACCOUNT_TRANSLATION_V2 */
 
 const EMPTY: ChatSnapshot = {
   rooms: { direct: [], trip: [], event: [], community: [] },
@@ -42,6 +51,8 @@ const COPY = {
     partnerTitle: "แชทร้านค้า",
     customer: "ลูกค้า Melo",
     searchCustomers: "ค้นหาชื่อลูกค้าที่เคยแชท",
+    matches: "คนที่แมตช์",
+    noMatches: "ยังไม่มีคนที่แมตช์",
   },
   en: {
     title: "Chats",
@@ -61,6 +72,8 @@ const COPY = {
     partnerTitle: "Partner chat",
     customer: "Melo customer",
     searchCustomers: "Search customer chats",
+    matches: "Matches",
+    noMatches: "No matches yet",
   },
   de: {
     title: "Chats",
@@ -80,6 +93,8 @@ const COPY = {
     partnerTitle: "Partner-Chat",
     customer: "Melo-Kunde",
     searchCustomers: "Kundenchats durchsuchen",
+    matches: "Matches",
+    noMatches: "Noch keine Matches",
   },
   zh: {
     title: "聊天",
@@ -99,6 +114,8 @@ const COPY = {
     partnerTitle: "商家聊天",
     customer: "Melo 客户",
     searchCustomers: "搜索客户聊天",
+    matches: "匹配",
+    noMatches: "暂无匹配",
   },
   ja: {
     title: "チャット",
@@ -118,6 +135,8 @@ const COPY = {
     partnerTitle: "Partnerチャット",
     customer: "Meloユーザー",
     searchCustomers: "顧客チャットを検索",
+    matches: "マッチ",
+    noMatches: "まだマッチがありません",
   },
   ko: {
     title: "채팅",
@@ -137,6 +156,8 @@ const COPY = {
     partnerTitle: "파트너 채팅",
     customer: "Melo 고객",
     searchCustomers: "고객 채팅 검색",
+    matches: "매치",
+    noMatches: "아직 매치가 없습니다",
   },
 } as const;
 
@@ -151,7 +172,7 @@ function formatTime(value: string, locale: string) {
   return new Intl.DateTimeFormat(localeTag(locale), { hour: "2-digit", minute: "2-digit" }).format(date);
 }
 
-export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boolean; onClose: () => void; partnerBusinessId?: string }) {
+function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boolean; onClose: () => void; partnerBusinessId?: string }) {
   const { locale } = useLocale();
   const t = COPY[locale] ?? COPY.en;
   const partnerMode = Boolean(partnerBusinessId);
@@ -162,12 +183,24 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
   const [partnerSearch, setPartnerSearch] = useState("");
   const [loading, setLoading] = useState(false);
   const [translationEnabled, setTranslationEnabled] = useState(true);
+  const [primaryChatLanguage, setPrimaryChatLanguage] = useState("th");
+  const [translationUserId, setTranslationUserId] = useState("");
   const [pendingBusinessId, setPendingBusinessId] = useState("");
   const [pendingDirectChat, setPendingDirectChat] = useState<{ userId: string; title: string; subtitle: string; avatarUrl: string; country: string; nationality: string } | null>(null);
   const [pendingActivityChat, setPendingActivityChat] = useState<{ category: Exclude<ChatCategory, "direct">; id: string; title: string; subtitle: string; avatarUrl: string } | null>(null);
   const [externalRoom, setExternalRoom] = useState<ChatRoom | null>(null);
+  const [matchedProfiles, setMatchedProfiles] = useState<DatingProfileWeb[]>([]);
+  const [matchesLoading, setMatchesLoading] = useState(false);
+  const [pinnedConversationIds, setPinnedConversationIds] = useState<string[]>([]);
+  const [pinningProfileId, setPinningProfileId] = useState("");
 
-  const categories: ChatCategory[] = partnerMode ? ["direct"] : ["direct", "trip", "event", "community"];
+  /* MELO_CHAT_ROOM_PAGINATION_V2 */
+  const CHAT_ROOM_PAGE_SIZE = 15;
+  const [roomVisibleCount, setRoomVisibleCount] = useState(CHAT_ROOM_PAGE_SIZE);
+  const [matchVisibleCount, setMatchVisibleCount] = useState(CHAT_ROOM_PAGE_SIZE);
+
+  // Melo Chat Lite uses the drawer for direct member messages only.
+  const categories: ChatCategory[] = ["direct"];
   const rooms = partnerMode ? partnerRooms : snapshot.rooms[category];
   const visibleRooms = useMemo(() => {
     if (!partnerMode) return rooms;
@@ -175,6 +208,24 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
     if (!query) return rooms;
     return rooms.filter((room) => `${room.title} ${room.subtitle}`.toLocaleLowerCase().includes(query));
   }, [partnerMode, partnerSearch, rooms]);
+  const pagedVisibleRooms = useMemo(() => visibleRooms.slice(0, roomVisibleCount), [visibleRooms, roomVisibleCount]);
+  const sortedMatchedProfiles = useMemo(() => {
+    const pinIndex = new Map(pinnedConversationIds.map((id, index) => [id, index]));
+    return [...matchedProfiles].sort((a, b) => {
+      const aRoom = snapshot.rooms.direct.find((room) => room.userId === a.id);
+      const bRoom = snapshot.rooms.direct.find((room) => room.userId === b.id);
+      const ai = aRoom ? pinIndex.get(aRoom.id) : undefined;
+      const bi = bRoom ? pinIndex.get(bRoom.id) : undefined;
+      if (ai != null && bi != null) return ai - bi;
+      if (ai != null) return -1;
+      if (bi != null) return 1;
+      return 0;
+    });
+  }, [matchedProfiles, pinnedConversationIds, snapshot.rooms.direct]);
+  const pagedMatchedProfiles = useMemo(() => sortedMatchedProfiles.slice(0, matchVisibleCount), [sortedMatchedProfiles, matchVisibleCount]);
+  const loadMoreRooms = () => setRoomVisibleCount((current) => Math.min(visibleRooms.length, current + CHAT_ROOM_PAGE_SIZE));
+  const loadMoreMatches = () => setMatchVisibleCount((current) => Math.min(sortedMatchedProfiles.length, current + CHAT_ROOM_PAGE_SIZE));
+
   const selectedRoom = useMemo<ChatRoom | null>(
     () => rooms.find((room) => room.id === selectedRoomId)
       ?? (externalRoom?.id === selectedRoomId && externalRoom.category === category ? externalRoom : null),
@@ -195,6 +246,108 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
     }
   }
 
+  async function loadMatches() {
+    if (partnerMode) return [] as DatingProfileWeb[];
+    setMatchesLoading(true);
+    try {
+      const user = await getCurrentUser();
+      const userId = String(user?.id || "").trim();
+      if (!userId) {
+        setMatchedProfiles([]);
+        return [];
+      }
+      const [love, pins] = await Promise.all([loadLoveSnapshot(userId), loadPinnedConversationIds()]);
+      setPinnedConversationIds(pins);
+      setMatchedProfiles(love.matched);
+      setMatchVisibleCount(CHAT_ROOM_PAGE_SIZE);
+      return love.matched;
+    } catch {
+      setMatchedProfiles([]);
+      return [];
+    } finally {
+      setMatchesLoading(false);
+    }
+  }
+
+  async function openMatchedProfile(profile: DatingProfileWeb) {
+    const room = await ensureDirectChatRoom({
+      userId: profile.id,
+      title: profile.name,
+      subtitle: [profile.age ? `${profile.age}` : "", profile.country].filter(Boolean).join(" · "),
+      avatarUrl: profile.photoUrls?.[0] || "",
+      country: profile.country,
+      nationality: profile.nationality,
+    });
+    if (!room) return;
+    setCategory("direct");
+    setExternalRoom(room);
+    setSelectedRoomId(room.id);
+  }
+
+  async function togglePin(profile: DatingProfileWeb, existingRoom?: ChatRoom) {
+    if (pinningProfileId === profile.id) return;
+
+    setPinningProfileId(profile.id);
+
+    try {
+      let targetRoom = existingRoom;
+
+      if (!targetRoom) {
+        targetRoom =
+          (await ensureDirectChatRoom({
+            userId: profile.id,
+            title: profile.name,
+            subtitle: [profile.age ? `${profile.age}` : "", profile.country]
+              .filter(Boolean)
+              .join(" · "),
+            avatarUrl: profile.photoUrls?.[0] || "",
+            country: profile.country,
+            nationality: profile.nationality,
+          })) || undefined;
+      }
+
+      if (!targetRoom?.id) {
+        throw new Error("Unable to create or find this chat conversation.");
+      }
+
+      const conversationId = targetRoom.id;
+      const isPinned = pinnedConversationIds.includes(conversationId);
+
+      await setConversationPinned(conversationId, !isPinned);
+
+      setPinnedConversationIds((current) =>
+        isPinned
+          ? current.filter((id) => id !== conversationId)
+          : [conversationId, ...current.filter((id) => id !== conversationId)],
+      );
+
+      if (!existingRoom) {
+        setExternalRoom(targetRoom);
+        const nextSnapshot = await load();
+        if (nextSnapshot) {
+          const refreshedPins = await loadPinnedConversationIds();
+          setPinnedConversationIds(refreshedPins);
+        }
+      }
+    } catch (cause) {
+      const message =
+        cause instanceof Error && cause.message
+          ? cause.message
+          : "Unable to update pinned chat.";
+
+      console.error("[Melo Chat] Pin chat failed:", cause);
+      window.alert(message);
+    } finally {
+      setPinningProfileId("");
+    }
+  }
+
+  function handleRoomListScroll(event: React.UIEvent<HTMLDivElement>) {
+    const node = event.currentTarget;
+    if (node.scrollHeight - node.scrollTop - node.clientHeight > 80) return;
+    if (partnerMode) loadMoreRooms(); else loadMoreMatches();
+  }
+
   async function loadPartner() {
     if (!partnerBusinessId) {
       setPartnerRooms([]);
@@ -213,8 +366,117 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
   }
 
   useEffect(() => {
-    const saved = window.localStorage.getItem(TRANSLATION_STORAGE_KEY);
-    setTranslationEnabled(saved !== "off");
+    let active = true;
+
+    const cached =
+      window.localStorage.getItem(
+        TRANSLATION_STORAGE_KEY,
+      );
+
+    if (cached) {
+      setTranslationEnabled(
+        cached !== "off",
+      );
+    }
+
+    void loadSettingsAccountSnapshot()
+      .then((settings) => {
+        if (!active) return;
+
+        setTranslationUserId(
+          settings.userId,
+        );
+
+        setPrimaryChatLanguage(
+          settings.primaryLanguage ||
+            "th",
+        );
+
+        setTranslationEnabled(
+          settings.autoTranslationEnabled,
+        );
+
+        window.localStorage.setItem(
+          TRANSLATION_STORAGE_KEY,
+          settings.autoTranslationEnabled
+            ? "on"
+            : "off",
+        );
+      })
+      .catch(() => undefined);
+
+    const onTranslationSettingChanged =
+      (event: Event) => {
+        const detail =
+          (
+            event as CustomEvent<{
+              enabled?: boolean;
+              primaryLanguage?: string;
+            }>
+          ).detail;
+
+        if (
+          typeof detail?.enabled ===
+          "boolean"
+        ) {
+          setTranslationEnabled(
+            detail.enabled,
+          );
+
+          window.localStorage.setItem(
+            TRANSLATION_STORAGE_KEY,
+            detail.enabled
+              ? "on"
+              : "off",
+          );
+        }
+
+        if (
+          detail?.primaryLanguage
+        ) {
+          setPrimaryChatLanguage(
+            detail.primaryLanguage,
+          );
+        }
+      };
+
+    const onStorage =
+      (event: StorageEvent) => {
+        if (
+          event.key !==
+          TRANSLATION_STORAGE_KEY
+        ) {
+          return;
+        }
+
+        setTranslationEnabled(
+          event.newValue !== "off",
+        );
+      };
+
+    window.addEventListener(
+      TRANSLATION_SETTING_EVENT,
+      onTranslationSettingChanged as EventListener,
+    );
+
+    window.addEventListener(
+      "storage",
+      onStorage,
+    );
+
+    return () => {
+      active = false;
+
+      window.removeEventListener(
+        TRANSLATION_SETTING_EVENT,
+        onTranslationSettingChanged as EventListener,
+      );
+
+      window.removeEventListener(
+        "storage",
+        onStorage,
+      );
+    };
   }, []);
 
   useEffect(() => {
@@ -290,7 +552,7 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
     }
 
     if (partnerMode) void loadPartner();
-    else void load();
+    else { void load(); void loadMatches(); }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
@@ -392,11 +654,44 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
   }, [open, pendingActivityChat, partnerMode]);
 
   function toggleTranslation() {
-    setTranslationEnabled((current) => {
-      const next = !current;
-      window.localStorage.setItem(TRANSLATION_STORAGE_KEY, next ? "on" : "off");
-      return next;
-    });
+    const next =
+      !translationEnabled;
+
+    setTranslationEnabled(next);
+
+    window.localStorage.setItem(
+      TRANSLATION_STORAGE_KEY,
+      next ? "on" : "off",
+    );
+
+    window.dispatchEvent(
+      new CustomEvent(
+        TRANSLATION_SETTING_EVENT,
+        {
+          detail: {
+            enabled: next,
+            primaryLanguage:
+              primaryChatLanguage,
+          },
+        },
+      ),
+    );
+
+    if (translationUserId) {
+      void saveAutoTranslationEnabled(
+        translationUserId,
+        next,
+      ).catch(() => {
+        setTranslationEnabled(
+          !next,
+        );
+
+        window.localStorage.setItem(
+          TRANSLATION_STORAGE_KEY,
+          !next ? "on" : "off",
+        );
+      });
+    }
   }
 
   function chooseCategory(next: ChatCategory) {
@@ -450,57 +745,105 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
                 />
                 {partnerSearch ? <button type="button" onClick={() => setPartnerSearch("")} aria-label={t.close}>×</button> : null}
               </div>
-            ) : (
-              <nav className={styles.folderTabs} aria-label={t.title}>
-                {categories.map((item) => (
-                  <button
-                    type="button"
-                    key={item}
-                    className={category === item ? styles.folderActive : ""}
-                    onClick={() => chooseCategory(item)}
-                  >
-                    <strong>{t[item]}</strong>
-                    {snapshot.counts[item] > 0 ? <b>{snapshot.counts[item] > 99 ? "99+" : snapshot.counts[item]}</b> : null}
-                  </button>
-                ))}
-              </nav>
-            )}
+            ) : null}
 
             <div className={styles.listHeader}>
               <div>
                 <span>{t.list}</span>
-                <strong>{t[category]}</strong>
+                <strong>{partnerMode ? t[category] : t.matches}</strong>
               </div>
               <button type="button" onClick={() => void (partnerMode ? loadPartner() : load())} disabled={loading} aria-label={t.refresh} title={t.refresh}>↻</button>
             </div>
 
-            <div className={styles.roomList}>
-              {loading ? (
+            <div className={styles.roomList} onScroll={handleRoomListScroll}>
+              {!partnerMode ? (
+                matchesLoading ? (
+                  <div className={styles.roomState}>{t.loading}</div>
+                ) : matchedProfiles.length ? (
+                  pagedMatchedProfiles.map((profile) => {
+                    const existingRoom = snapshot.rooms.direct.find((room) => room.userId === profile.id);
+                    return (
+                      <div
+                        className={styles.roomRow}
+                        key={profile.id}
+                        role="button"
+                        tabIndex={0}
+                        onClick={() => void openMatchedProfile(profile)}
+                        onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); void openMatchedProfile(profile); } }}
+                      >
+                        <VerifiedUserAvatar userId={profile.id} name={profile.name} src={profile.photoUrls?.[0] || ""} country={profile.country} nationality={profile.nationality} className={styles.avatar} shape="rounded" badgeSize={15} alt="" />
+                        <span className={styles.roomCopy}>
+                          <span>
+                            <strong>{profile.name}{profile.age ? `, ${profile.age}` : ""}</strong>
+                            {existingRoom?.lastMessageAt ? <time>{formatTime(existingRoom.lastMessageAt, locale)}</time> : null}
+                          </span>
+                          <small>{profile.country || profile.nationality || t.matches}</small>
+                        </span>
+                        {(() => {
+                          const isPinned = Boolean(
+                            existingRoom &&
+                              pinnedConversationIds.includes(existingRoom.id),
+                          );
+                          const isPinning = pinningProfileId === profile.id;
+
+                          return (
+                            <button
+                              type="button"
+                              aria-label={isPinned ? "Unpin chat" : "Pin chat"}
+                              aria-pressed={isPinned}
+                              title={isPinned ? "Unpin chat" : "Pin chat"}
+                              disabled={isPinning}
+                              onPointerDown={(event) => event.stopPropagation()}
+                              onMouseDown={(event) => event.stopPropagation()}
+                              onClick={(event) => {
+                                event.preventDefault();
+                                event.stopPropagation();
+                                void togglePin(profile, existingRoom);
+                              }}
+                              onKeyDown={(event) => {
+                                event.stopPropagation();
+                              }}
+                              style={{
+                                position: "relative",
+                                zIndex: 3,
+                                display: "inline-grid",
+                                placeItems: "center",
+                                width: 38,
+                                height: 38,
+                                border: isPinned
+                                  ? "1px solid rgba(74, 163, 255, .55)"
+                                  : "1px solid transparent",
+                                borderRadius: 12,
+                                background: isPinned
+                                  ? "rgba(47, 127, 240, .16)"
+                                  : "transparent",
+                                cursor: isPinning ? "wait" : "pointer",
+                                padding: 0,
+                                fontSize: 18,
+                                lineHeight: 1,
+                                opacity: isPinning ? 0.55 : isPinned ? 1 : 0.72,
+                                pointerEvents: "auto",
+                              }}
+                            >
+                              {isPinning ? "…" : "📌"}
+                            </button>
+                          );
+                        })()}
+                        {existingRoom && existingRoom.unreadCount > 0 ? <b className={styles.unreadBadge}>{existingRoom.unreadCount > 99 ? "99+" : existingRoom.unreadCount}</b> : null}
+                        <span className={styles.chevron}>›</span>
+                      </div>
+                    );
+                  })
+                ) : (
+                  <div className={styles.roomState}>{t.noMatches}</div>
+                )
+              ) : loading ? (
                 <div className={styles.roomState}>{t.loading}</div>
               ) : visibleRooms.length ? (
-                visibleRooms.map((room) => (
-                  <div
-                    className={styles.roomRow}
-                    key={`${room.category}-${room.id}`}
-                    role="button"
-                    tabIndex={0}
-                    onClick={() => chooseRoom(room)}
-                    onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseRoom(room); } }}
-                  >
-                    {room.category === "direct" && room.userId && (partnerMode || !room.businessId) ? (
-                      <VerifiedUserAvatar userId={room.userId} name={room.title} src={room.avatarUrl} country={room.country} nationality={room.nationality} className={styles.avatar} shape="rounded" badgeSize={15} alt="" />
-                    ) : (
-                      <span className={styles.avatar}>{room.avatarUrl ? <img src={room.avatarUrl} alt="" /> : <b>{ICON[room.category]}</b>}</span>
-                    )}
-                    <span className={styles.roomCopy}>
-                      <span>
-                        {room.category === "direct" && room.userId && (partnerMode || !room.businessId) ? (
-                          <strong><Link href={`/users/${room.userId}`} className={styles.profileNameLink} onClick={(event) => event.stopPropagation()}>{room.title}</Link></strong>
-                        ) : <strong>{room.title}</strong>}
-                        <time>{formatTime(room.lastMessageAt, locale)}</time>
-                      </span>
-                      <small>{room.lastMessage || room.subtitle || t[room.category]}</small>
-                    </span>
+                pagedVisibleRooms.map((room) => (
+                  <div className={styles.roomRow} key={`${room.category}-${room.id}`} role="button" tabIndex={0} onClick={() => chooseRoom(room)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseRoom(room); } }}>
+                    <span className={styles.avatar}>{room.avatarUrl ? <img src={room.avatarUrl} alt="" /> : <b>{ICON[room.category]}</b>}</span>
+                    <span className={styles.roomCopy}><span><strong>{room.title}</strong><time>{formatTime(room.lastMessageAt, locale)}</time></span><small>{room.lastMessage || room.subtitle || t[room.category]}</small></span>
                     {room.unreadCount > 0 ? <b className={styles.unreadBadge}>{room.unreadCount > 99 ? "99+" : room.unreadCount}</b> : null}
                     <span className={styles.chevron}>›</span>
                   </div>
@@ -536,4 +879,12 @@ export default function ChatDrawer({ open, onClose, partnerBusinessId = "" }: { 
       </aside>
     </div>
   );
+}
+
+
+
+
+export default function ChatDrawer({ open, onClose, partnerBusinessId = "", adminMode = false }: { open: boolean; onClose: () => void; partnerBusinessId?: string; adminMode?: boolean }) {
+  if (adminMode) return open ? <AdminSupportChat onClose={onClose} /> : null;
+  return <UserChatDrawer open={open} onClose={onClose} partnerBusinessId={partnerBusinessId} />;
 }

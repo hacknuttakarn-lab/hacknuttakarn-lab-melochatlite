@@ -1,5 +1,9 @@
-import {
+﻿import {
+  getCurrentUser,
+  restDelete,
   restSelect,
+  restInsert,
+  restUpsert,
   rpcRequest,
 } from '@/lib/supabase/browser';
 
@@ -92,6 +96,7 @@ export type DatingProfileWeb = {
   interests: string[];
   primaryLanguage: string[];
   photoUrls: string[];
+  coverUrl: string;
   relationshipGoal: string;
   drinking: string;
   smoking: string;
@@ -104,6 +109,8 @@ export type DatingProfileWeb = {
   isOnline: boolean;
   lastActiveAt: string;
   travelExperience: string;
+  lifestyleTags: string[];
+  socialStyle: string;
 };
 
 export type LoveEntitlements = {
@@ -271,6 +278,40 @@ function stringArray(
     : [];
 }
 
+
+function hasCompleteLiteProfile(row: Row) {
+  const lifestyle = row.lifestyle_preferences;
+  const life = lifestyle && typeof lifestyle === 'object' && !Array.isArray(lifestyle)
+    ? lifestyle as Record<string, unknown>
+    : {};
+
+  const hasLifestyle = [
+    ['pet', 'pets'],
+    ['drink', 'drinking'],
+    ['smoke', 'smoking'],
+    ['exercise'],
+    ['social'],
+    ['interests'],
+  ].every((keys) =>
+    keys.some((key) => stringArray(life[key]).length > 0),
+  );
+
+  return Boolean(
+    text(row, 'first_name') &&
+    text(row, 'last_name') &&
+    text(row, 'gender') &&
+    text(row, 'date_of_birth') &&
+    numberValue(row, 'height_cm') > 0 &&
+    text(row, 'nationality', 'country') &&
+    text(row, 'education') &&
+    text(row, 'marital_status') &&
+    stringArray(row.looking_for).length > 0 &&
+    stringArray(row.sexual_orientations).length > 0 &&
+    hasLifestyle &&
+    stringArray(row.photo_paths).length > 0
+  );
+}
+
 function unique(
   values: string[],
 ) {
@@ -381,9 +422,12 @@ function friendCandidate(
     displayName:
       text(
         row,
-        'display_name',
+        'first_name',
       ) ||
-      'Melo User',
+      (() => {
+        const fallback = text(row, 'display_name', 'name', 'full_name');
+        return fallback && !fallback.includes('@') ? fallback : 'Melo User';
+      })(),
 
     age:
       row.age == null
@@ -1240,6 +1284,29 @@ function calculateAge(
     : null;
 }
 
+function canonicalLifestyleTags(row: Row) {
+  const raw = row.lifestyle_preferences;
+  const lifestyle = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+  // Home cards must show ONLY the member's Lifestyle > Interests selections.
+  const values = stringArray(lifestyle.interests).map((value) => value.trim()).filter(Boolean);
+  const normalized = values.map((value) => value.toLocaleLowerCase());
+  const tags = new Set<string>();
+  const aliases: Record<string, string[]> = {
+    Coffee: ["coffee", "kaffee", "กาแฟ"],
+    Travel: ["travel", "reisen", "ท่องเที่ยว", "เดินทาง"],
+    Fitness: ["fitness", "ฟิตเนส"],
+    Foodie: ["foodie", "อาหาร"],
+    Music: ["music", "musik", "ดนตรี"],
+    Pets: ["pets", "haustiere", "สัตว์เลี้ยง"],
+    Art: ["art", "kunst", "ศิลปะ"],
+    Beach: ["beach", "strand", "ทะเล", "ชายหาด"],
+  };
+  for (const [tag, words] of Object.entries(aliases)) {
+    if (normalized.some((value) => words.some((word) => value === word || value.includes(word)))) tags.add(tag);
+  }
+  return [...tags];
+}
+
 function datingProfile(
   row: Row,
 ): DatingProfileWeb {
@@ -1258,9 +1325,8 @@ function datingProfile(
     name:
       text(
         row,
-        'display_name',
-      ) ||
-      'Melo User',
+        'first_name',
+      ),
 
     age:
       calculateAge(
@@ -1341,35 +1407,91 @@ function datingProfile(
         )
         .filter(Boolean),
 
-    relationshipGoal:
-      text(
-        row,
-        'relationship_goal',
+    coverUrl:
+      storagePhotoUrl(
+        text(row, 'cover_path', 'cover_url', 'cover_image_url'),
       ),
 
-    drinking:
-      text(
-        row,
-        'drinking',
-      ),
+    // MELO_PUBLIC_LIFESTYLE_JSON_V1
+    // Personal Profile Settings stores these values inside
+    // profiles.lifestyle_preferences. Keep old columns as fallback
+    // for compatibility with older profile records.
+    relationshipGoal: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as Record<string, unknown>
+          : {};
 
-    smoking:
-      text(
-        row,
-        'smoking',
-      ),
+      // MELO_RELATIONSHIP_SOUGHT_FILTER_V1
+      // looking_for contains both Interested in and Relationship values.
+      // Public profile must show relationship values only.
+      const looking = stringArray(row.looking_for);
 
-    exercise:
-      text(
-        row,
-        'exercise',
-      ),
+      const interestedInValues = new Set([
+        "Men",
+        "Women",
+        "LGBTQ+",
+        "เพศชาย",
+        "เพศหญิง",
+        "Männer",
+        "Frauen",
+      ]);
 
-    pets:
-      text(
-        row,
-        'pets',
-      ),
+      const relationships = Array.from(
+        new Set(
+          looking
+            .map((value) => value.trim())
+            .filter(Boolean)
+            .filter((value) => !interestedInValues.has(value)),
+        ),
+      );
+
+      return (
+        relationships.join(", ") ||
+        text(row, "relationship_goal", "relationship_type")
+      );
+    })(),
+
+    drinking: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as Record<string, unknown>
+          : {};
+
+      return stringArray(lifestyle.drink).join(", ") || text(row, "drinking");
+    })(),
+
+    smoking: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as Record<string, unknown>
+          : {};
+
+      return stringArray(lifestyle.smoke).join(", ") || text(row, "smoking");
+    })(),
+
+    exercise: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as Record<string, unknown>
+          : {};
+
+      return stringArray(lifestyle.exercise).join(", ") || text(row, "exercise");
+    })(),
+
+    pets: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle =
+        raw && typeof raw === "object" && !Array.isArray(raw)
+          ? raw as Record<string, unknown>
+          : {};
+
+      return stringArray(lifestyle.pet).join(", ") || text(row, "pets");
+    })(),
 
     matchScore:
       Math.max(
@@ -1425,6 +1547,14 @@ function datingProfile(
         'travel_experience',
         'travel_level',
       ),
+
+    lifestyleTags: canonicalLifestyleTags(row),
+
+    socialStyle: (() => {
+      const raw = row.lifestyle_preferences;
+      const lifestyle = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
+      return stringArray(lifestyle.social)[0] || "";
+    })(),
   };
 }
 
@@ -1453,9 +1583,9 @@ async function profilesByIds(
       Row[]
     >(
       'profiles',
-      `select=id,display_name,date_of_birth,gender,nationality,city,province,country,interests,primary_language,photo_paths,relationship_goal,drinking,smoking,exercise,pets,love_intro,is_active&id=in.(${ordered.join(
+      `select=*&id=in.(${ordered.join(
         ',',
-      )})&is_active=eq.true`,
+      )})`,
     );
 
   if (
@@ -1656,18 +1786,16 @@ async function loadIncomingLikeIds(
   userId: string,
   canSeeLikes: boolean,
 ) {
-  if (
-    !canSeeLikes
-  ) {
-    return [];
-  }
-
-  const rpc =
-    await rpcRequest<
+  // Melo Chat Lite Connect must use the same Supabase source of truth as Feed.
+  // Prefer the entitlement-aware RPC when available, but do not turn the list
+  // into an empty array before trying the RLS-protected profile_likes table.
+  const rpc = canSeeLikes
+    ? await rpcRequest<
       Row[]
     >(
       'get_my_incoming_like_ids',
-    );
+    )
+    : { data: null, error: 'likes-rpc-not-used' };
 
   if (
     !rpc.error
@@ -1700,9 +1828,7 @@ async function loadIncomingLikeIds(
   if (
     fallback.error
   ) {
-    throw new Error(
-      fallback.error,
-    );
+    return [];
   }
 
   return unique(
@@ -1733,6 +1859,8 @@ async function datingActions(
     matchA,
     matchB,
     incomingIds,
+    follows,
+    passes,
   ] =
     await Promise.all([
       restSelect<
@@ -1767,20 +1895,30 @@ async function datingActions(
         userId,
         canSeeLikes,
       ),
+
+      restSelect<Row[]>(
+        'profile_follows',
+        `select=followed_user_id,created_at&follower_id=eq.${encoded}&order=created_at.desc`,
+      ),
+
+      restSelect<Row[]>(
+        'profile_passes',
+        `select=passed_user_id,created_at&owner_id=eq.${encoded}&order=created_at.desc`,
+      ),
     ]);
 
   const error =
     outgoing.error ||
     favorites.error ||
     matchA.error ||
-    matchB.error;
+    matchB.error ||
+    follows.error ||
+    passes.error;
 
-  if (
-    error
-  ) {
-    throw new Error(
-      error,
-    );
+  // Fresh Lite projects may not have the legacy action tables yet.
+  // Treat missing action data as empty so recommendations can still load.
+  if (error) {
+    return { likedIds: [], favoriteIds: [], matchedIds: [], incomingLikeIds: [], followedIds: [], passedIds: [] };
   }
 
   const likedIds =
@@ -1808,6 +1946,9 @@ async function datingActions(
           ),
       ),
     );
+
+  const followedIds = unique(rowsOf(follows.data).map((row) => text(row, 'followed_user_id')));
+  const passedIds = unique(rowsOf(passes.data).map((row) => text(row, 'passed_user_id')));
 
   const matchedIds =
     unique(
@@ -1852,6 +1993,8 @@ async function datingActions(
     likedIds,
     favoriteIds,
     matchedIds,
+    followedIds,
+    passedIds,
 
     incomingLikeIds:
       incomingIds.filter(
@@ -1910,12 +2053,12 @@ function recommendedForViewer(
       ),
     );
 
+  // Fresh Lite profiles do not require date of birth yet. Do not hide an otherwise
+  // valid profile only because age has not been collected. Once DOB exists, apply
+  // the configured age range normally.
   const ageOk =
-    age !== null &&
-    age >=
-      filters.ageMin &&
-    age <=
-      filters.ageMax;
+    age === null ||
+    (age >= filters.ageMin && age <= filters.ageMax);
 
   const wanted =
     filters.nationalities
@@ -1943,6 +2086,9 @@ async function loadRecommended(
     LoveSnapshot['filters'],
 
   likedIds:
+    Set<string>,
+
+  passedIds:
     Set<string>,
 
   userId: string,
@@ -1993,12 +2139,15 @@ async function loadRecommended(
       result.error;
   }
 
-  if (
-    lastError
-  ) {
-    throw new Error(
-      lastError,
+  if (lastError || rows.length === 0) {
+    // Lite must still discover real users when legacy dating RPCs are missing
+    // or exist but have no rows yet. The current profiles table is the source of truth.
+    const fallback = await restSelect<Row[]>(
+      'profiles',
+      'select=*&limit=100',
     );
+    if (fallback.error) throw new Error(fallback.error);
+    rows = rowsOf(fallback.data);
   }
 
   return rows
@@ -2023,6 +2172,8 @@ async function loadRecommended(
           ),
         ),
     )
+    .filter((row) => !passedIds.has(text(row, 'id')))
+    .filter(hasCompleteLiteProfile)
     .filter(
       (row) =>
         recommendedForViewer(
@@ -2035,6 +2186,12 @@ async function loadRecommended(
     );
 }
 
+export async function loadDatingProfileById(profileId: string): Promise<DatingProfileWeb | null> {
+  if (!profileId) return null;
+  const rows = await profilesByIds([profileId]);
+  return rows[0] || null;
+}
+
 export async function loadLoveSnapshot(
   userId: string,
 ): Promise<LoveSnapshot> {
@@ -2043,7 +2200,7 @@ export async function loadLoveSnapshot(
       Row[]
     >(
       'profiles',
-      `select=id,interested_genders,preferred_age_min,preferred_age_max,preferred_nationalities&id=eq.${encodeURIComponent(
+      `select=*&id=eq.${encodeURIComponent(
         userId,
       )}&limit=1`,
     );
@@ -2111,6 +2268,8 @@ export async function loadLoveSnapshot(
       actions.likedIds,
     );
 
+  const passedSet = new Set(actions.passedIds);
+
   const [
     rawRecommended,
     rawLikesYou,
@@ -2121,6 +2280,7 @@ export async function loadLoveSnapshot(
       loadRecommended(
         filters,
         likedSet,
+        passedSet,
         userId,
       ),
 
@@ -2264,34 +2424,99 @@ export async function setLoveLike(
       },
     );
 
-  if (
-    result.error
-  ) {
-    throw new Error(
-      result.error,
-    );
+  if (!result.error) {
+    const row = rowsOf(result.data)[0] ?? {};
+    return {
+      isMatch: boolValue(row, 'is_match'),
+      matchId: text(row, 'match_id') || null,
+    };
   }
 
-  const row =
-    rowsOf(
-      result.data,
-    )[0] ??
-    {};
+  // Melo Chat Lite uses a fresh Supabase project where the legacy
+  // set_profile_like RPC may not exist. Fall back to the RLS-protected
+  // profile_likes table so Home/Profile actions keep working.
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) throw new Error(result.error);
+
+  const targetId = encodeURIComponent(userId);
+  const viewerId = encodeURIComponent(currentUser.id);
+  if (liked) {
+    // profile_likes intentionally has INSERT/DELETE RLS policies but no UPDATE
+    // policy. PostgREST upsert can take the UPDATE path when this pair already
+    // exists, which Supabase rejects with a row-level security USING error.
+    // Remove our own existing pair first so the following upsert is always an
+    // INSERT and stays within the table's current RLS rules.
+    const clearExisting = await restDelete(
+      'profile_likes',
+      `liker_id=eq.${viewerId}&liked_user_id=eq.${targetId}`,
+    );
+    if (clearExisting.error) throw new Error(clearExisting.error);
+
+    const write = await restInsert(
+      'profile_likes',
+      { liker_id: currentUser.id, liked_user_id: userId },
+    );
+    if (write.error) throw new Error(write.error);
+  } else {
+    const remove = await restDelete(
+      'profile_likes',
+      `liker_id=eq.${viewerId}&liked_user_id=eq.${targetId}`,
+    );
+    if (remove.error) throw new Error(remove.error);
+  }
+
+  const reciprocal = liked
+    ? await restSelect<Row[]>(
+        'profile_likes',
+        `select=liker_id&liker_id=eq.${targetId}&liked_user_id=eq.${viewerId}&limit=1`,
+      )
+    : { data: [] as Row[], error: null };
 
   return {
-    isMatch:
-      boolValue(
-        row,
-        'is_match',
-      ),
-
-    matchId:
-      text(
-        row,
-        'match_id',
-      ) ||
-      null,
+    isMatch: !reciprocal.error && rowsOf(reciprocal.data).length > 0,
+    matchId: null,
   };
+}
+
+export async function loadProfileSocialState(userId: string) {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) throw new Error('Authentication required.');
+  const viewerId = encodeURIComponent(currentUser.id);
+  const targetId = encodeURIComponent(userId);
+  const [liked, followed, passed, matchA, matchB] = await Promise.all([
+    restSelect<Row[]>('profile_likes', `select=liked_user_id&liker_id=eq.${viewerId}&liked_user_id=eq.${targetId}&limit=1`),
+    restSelect<Row[]>('profile_follows', `select=followed_user_id&follower_id=eq.${viewerId}&followed_user_id=eq.${targetId}&limit=1`),
+    restSelect<Row[]>('profile_passes', `select=passed_user_id&owner_id=eq.${viewerId}&passed_user_id=eq.${targetId}&limit=1`),
+    restSelect<Row[]>('profile_matches', `select=id&user_a_id=eq.${viewerId}&user_b_id=eq.${targetId}&limit=1`),
+    restSelect<Row[]>('profile_matches', `select=id&user_a_id=eq.${targetId}&user_b_id=eq.${viewerId}&limit=1`),
+  ]);
+  const error = liked.error || followed.error || passed.error || matchA.error || matchB.error;
+  if (error) throw new Error(error);
+  return {
+    liked: rowsOf(liked.data).length > 0,
+    followed: rowsOf(followed.data).length > 0,
+    passed: rowsOf(passed.data).length > 0,
+    matched: rowsOf(matchA.data).length > 0 || rowsOf(matchB.data).length > 0,
+  };
+}
+
+export async function loadFollowedProfileIds(): Promise<string[]> {
+  const currentUser = await getCurrentUser();
+  if (!currentUser?.id) return [];
+  const result = await restSelect<Row[]>('profile_follows', `select=followed_user_id,created_at&follower_id=eq.${encodeURIComponent(currentUser.id)}&order=created_at.desc`);
+  if (result.error) throw new Error(result.error);
+  return unique(rowsOf(result.data).map((row) => text(row, 'followed_user_id')));
+}
+
+export async function setProfileFollow(userId: string, following: boolean): Promise<boolean> {
+  const result = await rpcRequest<boolean>('set_profile_follow', { p_target_user_id: userId, p_following: following });
+  if (result.error) throw new Error(result.error);
+  return typeof result.data === 'boolean' ? result.data : following;
+}
+
+export async function setProfilePass(userId: string): Promise<void> {
+  const result = await rpcRequest('set_profile_pass', { p_target_user_id: userId });
+  if (result.error) throw new Error(result.error);
 }
 
 export async function setLoveFavorite(
@@ -2504,3 +2729,4 @@ export function zodiacFromDate(
     names.en[index]
   );
 }
+

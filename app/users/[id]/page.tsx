@@ -1,5 +1,2 @@
-import { PublicProfileExperience } from "@/components/profile/PublicProfileExperience";
-
-export default function PublicProfilePage() {
-  return <PublicProfileExperience />;
-}
+import LiteMockExperience from '@/components/lite/LiteMockExperience';
+export default function PublicProfilePage(){return <LiteMockExperience kind="profile"/>}

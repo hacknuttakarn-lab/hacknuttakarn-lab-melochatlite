@@ -6,6 +6,11 @@ import { useRouter } from "next/navigation";
 import { Header } from "@/components/Header";
 import { useLocale } from "@/components/SiteProviders";
 import { GLOBAL_COUNTRY_SCOPE } from "@/lib/discoveryCountry";
+import {
+  getMasterLocationLabel,
+  getMasterProvinceOptions,
+  matchesMasterLocation,
+} from "@/lib/masterLocationFilter";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import {
   loadTripsWeb,
@@ -375,6 +380,55 @@ const CATEGORY_ORDER = [
   "OTHER",
 ];
 
+const TRIP_CATEGORY_META: Record<string, { icon: string; accent: string }> = {
+  "ROAD TRIP": { icon: "🚗", accent: "#2F8FFF" },
+  "CAMPING & OUTDOOR": { icon: "🏕️", accent: "#32B979" },
+  "HIKING & TREKKING": { icon: "🥾", accent: "#8B63E8" },
+  "BEACH & ISLAND": { icon: "🏝️", accent: "#17A7BE" },
+  "WATER ADVENTURE": { icon: "🌊", accent: "#2E9DEB" },
+  "SNOW & WINTER TRIP": { icon: "❄️", accent: "#6D9FEF" },
+  "FOOD & CAFE TRIP": { icon: "☕", accent: "#FF9E2C" },
+  "CITY & SIGHTSEEING": { icon: "🏙️", accent: "#6B7A90" },
+  "NATURE & RELAX": { icon: "🌿", accent: "#20B7A6" },
+  "FESTIVAL & EVENT TRIP": { icon: "🎉", accent: "#FF4F87" },
+  "PHOTOGRAPHY & CONTENT TRIP": { icon: "📸", accent: "#A970FF" },
+  "CULTURE & LOCAL EXPERIENCE": { icon: "🏮", accent: "#F25C5C" },
+  "WELLNESS & RETREAT": { icon: "🧘", accent: "#20A78F" },
+  "BACKPACKING & BUDGET TRAVEL": { icon: "🎒", accent: "#D78A2D" },
+  "OTHER": { icon: "•••", accent: "#6B7A90" },
+};
+
+type TripFilterCopy = {
+  categoriesTitle: string;
+  categoriesHint: string;
+  searchTitle: string;
+  searchHint: string;
+  province: string;
+  district: string;
+  keyword: string;
+  allProvince: string;
+  allDistrict: string;
+  clear: string;
+  results: (count: number) => string;
+};
+
+const TRIP_FILTER_COPY: Record<"th" | "en" | "de" | "zh" | "ja" | "ko", TripFilterCopy> = {
+  th: { categoriesTitle: "ประเภททริป", categoriesHint: "เลือกประเภททริปที่ต้องการ แล้วค้นหาต่อด้วยพื้นที่หรือคำสำคัญ", searchTitle: "ค้นหาในประเภทนี้", searchHint: "กรองจุดหมาย พื้นที่ และคำค้น เพื่อหาทริปที่ตรงกับแผนของคุณ", province: "จังหวัด / รัฐ / จุดหมาย", district: "อำเภอ / เขต / เมือง", keyword: "ค้นหาชื่อทริป สถานที่ หรือคำสำคัญ", allProvince: "ทุกจังหวัด / รัฐ / จุดหมาย", allDistrict: "ทุกอำเภอ / เขต / เมือง", clear: "ล้างตัวกรอง", results: (count) => `พบ ${count} ทริป` },
+  en: { categoriesTitle: "Trip types", categoriesHint: "Choose a trip type, then narrow it down by area or keyword.", searchTitle: "Search this trip type", searchHint: "Filter destinations, areas and keywords to find the right trip.", province: "Province / state / destination", district: "District / city", keyword: "Search trip, place or keyword", allProvince: "All provinces / states / destinations", allDistrict: "All districts / cities", clear: "Clear filters", results: (count) => `${count} trips` },
+  de: { categoriesTitle: "Reisearten", categoriesHint: "Wähle eine Reiseart und grenze sie nach Region oder Stichwort ein.", searchTitle: "In dieser Reiseart suchen", searchHint: "Ziel, Region und Stichwörter filtern, um passende Reisen zu finden.", province: "Region / Bundesland / Ziel", district: "Bezirk / Stadt", keyword: "Reise, Ort oder Stichwort suchen", allProvince: "Alle Regionen / Ziele", allDistrict: "Alle Bezirke / Städte", clear: "Filter löschen", results: (count) => `${count} Reisen` },
+  zh: { categoriesTitle: "旅行类型", categoriesHint: "先选择旅行类型，再按地区或关键词进一步筛选。", searchTitle: "搜索此旅行类型", searchHint: "按目的地、地区和关键词查找更合适的旅行。", province: "省 / 州 / 目的地", district: "区 / 市", keyword: "搜索旅行、地点或关键词", allProvince: "所有省 / 州 / 目的地", allDistrict: "所有区 / 市", clear: "清除筛选", results: (count) => `找到 ${count} 个旅行` },
+  ja: { categoriesTitle: "Tripタイプ", categoriesHint: "Tripタイプを選び、エリアやキーワードで絞り込めます。", searchTitle: "このTripタイプから検索", searchHint: "目的地、エリア、キーワードで希望に合うTripを探せます。", province: "都道府県 / 州 / 目的地", district: "市区町村 / 都市", keyword: "Trip・場所・キーワードを検索", allProvince: "すべての都道府県 / 目的地", allDistrict: "すべての市区町村 / 都市", clear: "フィルターを解除", results: (count) => `${count} Trip` },
+  ko: { categoriesTitle: "여행 유형", categoriesHint: "여행 유형을 선택한 뒤 지역이나 검색어로 더 좁혀보세요.", searchTitle: "이 여행 유형에서 검색", searchHint: "목적지, 지역, 검색어로 원하는 여행을 찾아보세요.", province: "도 / 주 / 목적지", district: "구 / 시", keyword: "여행, 장소 또는 검색어", allProvince: "모든 도 / 주 / 목적지", allDistrict: "모든 구 / 시", clear: "필터 지우기", results: (count) => `${count}개 여행` },
+};
+
+function normalizeTripCategoryValue(value: string) {
+  const clean = value.trim().toUpperCase();
+  if (clean === "CAMPING") return "CAMPING & OUTDOOR";
+  if (clean === "CAFE HOPPING") return "FOOD & CAFE TRIP";
+  if (clean === "HIKING") return "HIKING & TREKKING";
+  return CATEGORY_ORDER.includes(clean) ? clean : "OTHER";
+}
+
 function localeTag(locale: string) {
   return ({
     th: "th-TH",
@@ -406,10 +460,11 @@ function formatDateRange(start: string, end: string, locale: string) {
 }
 
 function categoryLabel(category: string, copy: any, locale = "en") {
+  const normalized = normalizeTripCategoryValue(category);
   return (
-    copy.categories?.[category] ||
-    CATEGORY_LABELS[locale]?.[category] ||
-    category ||
+    copy.categories?.[normalized] ||
+    CATEGORY_LABELS[locale]?.[normalized] ||
+    normalized ||
     "Trip"
   );
 }
@@ -428,6 +483,8 @@ export default function TripWebExperience() {
   const [trips, setTrips] = useState<TripWebRecord[]>([]);
   const [mode, setMode] = useState<"discover" | "mine">("discover");
   const [category, setCategory] = useState("");
+  const [selectedProvince, setSelectedProvince] = useState("");
+  const [categoryQuery, setCategoryQuery] = useState("");
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
   const [pullDistance, setPullDistance] = useState(0);
@@ -459,21 +516,55 @@ export default function TripWebExperience() {
     void load();
   }, [countryScope]);
 
-  const categories = useMemo(
-    () =>
-      CATEGORY_ORDER.filter((item) =>
-        trips.some((trip) => trip.category === item),
-      ),
-    [trips],
+  const modeBase = useMemo(
+    () => trips.filter((trip) => mode !== "mine" || trip.joined || trip.createdByMe),
+    [mode, trips],
   );
 
+  const categoryBase = useMemo(
+    () => modeBase.filter((trip) => !category || normalizeTripCategoryValue(trip.category) === category),
+    [category, modeBase],
+  );
+
+  // Location Filter V2: dropdowns come from the canonical master location data,
+  // never from Trip/Map address strings.
+  const filterCountryValue = countryScope === GLOBAL_COUNTRY_SCOPE ? "" : countryScope;
+  const provinceOptions = useMemo(
+    () => getMasterProvinceOptions(filterCountryValue),
+    [filterCountryValue],
+  );
+
+  // Location Filter V2: province belongs to the active country scope.
+  useEffect(() => {
+    setSelectedProvince("");
+  }, [filterCountryValue]);
+
   const filtered = useMemo(() => {
-    return trips.filter((trip) => {
-      if (mode === "mine" && !trip.joined && !trip.createdByMe) return false;
-      if (category && trip.category !== category) return false;
-      return true;
-    });
-  }, [category, mode, trips]);
+    const query = categoryQuery.trim().toLocaleLowerCase();
+    return categoryBase
+      .filter((trip) =>
+        matchesMasterLocation(
+          {
+            country: trip.country,
+            province: trip.province,
+            district: trip.district,
+            city: trip.city,
+            destination: trip.destination,
+            startPoint: trip.startPoint,
+          },
+          filterCountryValue,
+          selectedProvince,
+          "",
+        ),
+      )
+      .filter((trip) => {
+        if (!query) return true;
+        return [trip.title, trip.description, trip.startPoint, trip.destination, trip.province, trip.district, trip.city, trip.country, trip.organizerName, categoryLabel(trip.category, copy, locale)]
+          .join(" ")
+          .toLocaleLowerCase()
+          .includes(query);
+      });
+  }, [categoryBase, categoryQuery, copy, filterCountryValue, locale, selectedProvince]);
 
   const featured = useMemo(
     () =>
@@ -525,8 +616,15 @@ export default function TripWebExperience() {
     }
   }
 
+  function selectCategory(nextCategory: string) {
+    setCategory(nextCategory);
+    setSelectedProvince("");
+    setCategoryQuery("");
+  }
+
   function resetFilters() {
-    setCategory("");
+    setSelectedProvince("");
+    setCategoryQuery("");
   }
 
   useEffect(() => {
@@ -661,26 +759,75 @@ export default function TripWebExperience() {
           <div className={styles.inlineJoinError}>{joinError}</div>
         ) : null}
 
-        <div className={styles.categoryRail}>
-          <button
-            type="button"
-            className={!category ? styles.categoryActive : ""}
-            onClick={() => setCategory("")}
-          >
-            {copy.all}
-          </button>
-
-          {categories.map((item) => (
-            <button
-              type="button"
-              key={item}
-              className={category === item ? styles.categoryActive : ""}
-              onClick={() => setCategory(item)}
-            >
-              {categoryLabel(item, copy, locale)}
+        <section className={styles.categoryBrowser} aria-label={(TRIP_FILTER_COPY[locale] ?? TRIP_FILTER_COPY.en).categoriesTitle}>
+          <div className={styles.categoryBrowserHeader}>
+            <div>
+              <strong>{(TRIP_FILTER_COPY[locale] ?? TRIP_FILTER_COPY.en).categoriesTitle}</strong>
+              <p>{(TRIP_FILTER_COPY[locale] ?? TRIP_FILTER_COPY.en).categoriesHint}</p>
+            </div>
+            <button type="button" className={!category ? styles.categoryAllActive : styles.categoryAllButton} onClick={() => selectCategory("")}>
+              {copy.all}
             </button>
-          ))}
-        </div>
+          </div>
+          <div className={styles.desktopCategoryGrid}>
+            {CATEGORY_ORDER.map((item) => (
+              <button type="button" key={item} className={`${styles.categoryTile} ${category === item ? styles.categoryTileActive : ""}`} onClick={() => selectCategory(item)}>
+                <span className={styles.categoryTileIcon} style={{ background: TRIP_CATEGORY_META[item].accent }}>{TRIP_CATEGORY_META[item].icon}</span>
+                <strong>{categoryLabel(item, copy, locale)}</strong>
+              </button>
+            ))}
+          </div>
+          <div className={styles.mobileCategoryGrid}>
+            {CATEGORY_ORDER.map((item) => (
+              <button type="button" key={item} className={`${styles.mobileCategoryButton} ${category === item ? styles.mobileCategoryButtonActive : ""}`} onClick={() => selectCategory(item)}>
+                <span className={styles.mobileCategoryIcon} style={{ background: TRIP_CATEGORY_META[item].accent }}>{TRIP_CATEGORY_META[item].icon}</span>
+                <strong>{categoryLabel(item, copy, locale)}</strong>
+              </button>
+            ))}
+          </div>
+        </section>
+
+        {category ? (() => {
+          const filterCopy = TRIP_FILTER_COPY[locale] ?? TRIP_FILTER_COPY.en;
+          return (
+            <section className={styles.categorySearchPanel}>
+              <div className={styles.categorySearchHeading}>
+                <span className={styles.categorySearchIcon} style={{ background: TRIP_CATEGORY_META[category]?.accent }}>{TRIP_CATEGORY_META[category]?.icon}</span>
+                <div>
+                  <small>{filterCopy.searchTitle}</small>
+                  <h2>{categoryLabel(category, copy, locale)}</h2>
+                  <p>{filterCopy.searchHint}</p>
+                </div>
+                <strong className={styles.categorySearchCount}>{filterCopy.results(filtered.length)}</strong>
+              </div>
+              <div className={styles.categorySearchFilters}>
+                <label>
+                  <span>{filterCopy.province}</span>
+                  <select
+                    value={selectedProvince}
+                    disabled={!provinceOptions.length}
+                    onChange={(event) => setSelectedProvince(event.target.value)}
+                  >
+                    <option value="">{filterCopy.allProvince}</option>
+                    {provinceOptions.map((province) => (
+                      <option value={province.value} key={province.code}>
+                        {getMasterLocationLabel(province, locale)}
+                      </option>
+                    ))}
+                  </select>
+                </label>
+
+                <label className={styles.categorySearchKeyword}>
+                  <span>{filterCopy.keyword}</span>
+                  <input value={categoryQuery} onChange={(event) => setCategoryQuery(event.target.value)} placeholder={filterCopy.keyword} />
+                </label>
+                <button type="button" className={styles.categorySearchClear} disabled={!selectedProvince && !categoryQuery.trim()} onClick={resetFilters}>
+                  {filterCopy.clear}
+                </button>
+              </div>
+            </section>
+          );
+        })() : null}
 
         {loading ? (
           <div className={styles.state}>{copy.loading}</div>
@@ -693,7 +840,7 @@ export default function TripWebExperience() {
           <div className={styles.state}>
             <strong>{mode === "mine" ? copy.noMine : copy.noTrips}</strong>
             {category ? (
-              <button type="button" onClick={resetFilters}>{copy.clear}</button>
+              <button type="button" onClick={() => selectCategory("")}>{copy.clear}</button>
             ) : null}
           </div>
         ) : (

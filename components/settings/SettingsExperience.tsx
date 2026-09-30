@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import Link from 'next/link';
 import {
@@ -45,6 +45,7 @@ import {
   loadWebUserSettings,
   saveConnectPreferenceSnapshot,
   savePrimaryChatLanguage,
+  saveAutoTranslationEnabled,
   saveWebUserSettings,
   type ConnectPreferenceSnapshot,
   type FriendGoalWeb,
@@ -53,6 +54,7 @@ import {
 } from './settingsWebData';
 
 import styles from './SettingsExperience.module.css';
+import PersonalProfileSettings from './PersonalProfileSettings';
 
 const COPY = {
   th: {
@@ -86,9 +88,9 @@ const COPY = {
       'ภาษาหลักของแชท',
 
     discovery:
-      'ความสนใจและการค้นพบ',
+      'ตั้งค่าเกี่ยวกับการหาคู่',
     discoveryDesc:
-      'ใช้การตั้งค่าเหล่านี้เพื่อช่วยแนะนำคนที่เหมาะสม',
+      'กำหนดช่วงอายุ เพศ ความสนใจ ระยะทาง และรูปแบบการค้นหาคนที่เหมาะกับคุณ',
     meet:
       'อยากทำความรู้จักกับใคร?',
     women:
@@ -205,9 +207,9 @@ const COPY = {
       'Primary chat language',
 
     discovery:
-      'Interests and discovery',
+      'Dating preferences',
     discoveryDesc:
-      'Use these preferences to recommend suitable people',
+      'Set age range, gender, interests, distance, and how Melo recommends people to you',
     meet:
       'Who would you like to meet?',
     women:
@@ -323,9 +325,9 @@ const COPY = {
       'Primäre Chatsprache',
 
     discovery:
-      'Interessen und Entdecken',
+      'Dating-Einstellungen',
     discoveryDesc:
-      'Diese Einstellungen helfen bei passenden Empfehlungen',
+      'Lege Alter, Geschlecht, Interessen, Entfernung und Empfehlungen fest',
     meet:
       'Wen möchtest du kennenlernen?',
     women:
@@ -1710,6 +1712,13 @@ export default function SettingsExperience() {
         snapshot,
       );
 
+      window.localStorage.setItem(
+        'melo-chat-translation-enabled',
+        snapshot.autoTranslationEnabled
+          ? 'on'
+          : 'off',
+      );
+
       const saved =
         loadWebUserSettings(
           snapshot.primaryLanguage,
@@ -2189,6 +2198,63 @@ export default function SettingsExperience() {
     }
   }
 
+  /* MELO_SETTINGS_TRANSLATION_SECTION_V2 */
+  async function toggleAutoTranslation() {
+    if (!account) return;
+
+    const next =
+      !account.autoTranslationEnabled;
+
+    setSaveError('');
+
+    setAccount({
+      ...account,
+      autoTranslationEnabled:
+        next,
+    });
+
+    window.localStorage.setItem(
+      'melo-chat-translation-enabled',
+      next ? 'on' : 'off',
+    );
+
+    window.dispatchEvent(
+      new CustomEvent(
+        'melo-chat-translation-setting-changed',
+        {
+          detail: {
+            enabled: next,
+            primaryLanguage:
+              account.primaryLanguage,
+          },
+        },
+      ),
+    );
+
+    try {
+      await saveAutoTranslationEnabled(
+        account.userId,
+        next,
+      );
+    } catch (cause) {
+      setAccount({
+        ...account,
+        autoTranslationEnabled:
+          !next,
+      });
+
+      window.localStorage.setItem(
+        'melo-chat-translation-enabled',
+        !next ? 'on' : 'off',
+      );
+
+      setSaveError(
+        cause instanceof Error
+          ? cause.message
+          : t.saveError,
+      );
+    }
+  }
   async function selectChatLanguage(
     code: string,
   ) {
@@ -2218,6 +2284,20 @@ export default function SettingsExperience() {
         primaryLanguage:
           code,
       });
+
+      window.dispatchEvent(
+        new CustomEvent(
+          'melo-chat-translation-setting-changed',
+          {
+            detail: {
+              enabled:
+                account.autoTranslationEnabled,
+              primaryLanguage:
+                code,
+            },
+          },
+        ),
+      );
     } catch (cause) {
       setSaveError(
         cause instanceof Error
@@ -2374,75 +2454,7 @@ export default function SettingsExperience() {
             styles.settingsGrid
           }
         >
-          <SettingsSection
-            title={
-              t.appearance
-            }
-            description={
-              t.appearanceDesc
-            }
-            icon="◐"
-          >
-            <div
-              className={
-                styles.choiceGrid
-              }
-            >
-              {(
-                [
-                  'system',
-                  'light',
-                  'dark',
-                ] as const
-              ).map(
-                (mode) => (
-                  <button
-                    key={
-                      mode
-                    }
-                    className={
-                      themeMode ===
-                      mode
-                        ? styles.choiceActive
-                        : ''
-                    }
-                    onClick={() =>
-                      setThemeMode(
-                        mode,
-                      )
-                    }
-                  >
-                    <span>
-                      {mode ===
-                      'system'
-                        ? '◐'
-                        : mode ===
-                            'dark'
-                          ? '☾'
-                          : '☀'}
-                    </span>
-
-                    <strong>
-                      {mode ===
-                      'system'
-                        ? t.system
-                        : mode ===
-                            'dark'
-                          ? t.dark
-                          : t.light}
-                    </strong>
-
-                    {themeMode ===
-                    mode ? (
-                      <b>
-                        ✓
-                      </b>
-                    ) : null}
-                  </button>
-                ),
-              )}
-            </div>
-          </SettingsSection>
+          <PersonalProfileSettings />
 
           <SettingsSection
             title={
@@ -2451,7 +2463,7 @@ export default function SettingsExperience() {
             description={
               t.languageDesc
             }
-            icon="A"
+            icon="🌐"
           >
             <div
               className={
@@ -2473,9 +2485,7 @@ export default function SettingsExperience() {
 
                 <div>
                   <strong>
-                    {
-                      t.appLanguage
-                    }
+                    {t.appLanguage}
                   </strong>
 
                   <small>
@@ -2492,30 +2502,35 @@ export default function SettingsExperience() {
                     styles.inlineLanguages
                   }
                 >
-                  {supportedLocales.map(
-                    (item) => (
+                  {supportedLocales
+                    .filter((code) =>
+                      ['th', 'en', 'de'].includes(code),
+                    )
+                    .map(
+                    (code) => (
                       <button
+                        type="button"
                         key={
-                          item
-                        }
-                        title={
-                          localeLabels[
-                            item
-                          ]
+                          code
                         }
                         data-active={
-                          item ===
-                          locale
+                          locale ===
+                          code
                         }
                         onClick={() =>
                           setLocale(
-                            item,
+                            code,
                           )
+                        }
+                        title={
+                          localeLabels[
+                            code
+                          ]
                         }
                       >
                         {
                           FLAG[
-                            item
+                            code
                           ]
                         }
                       </button>
@@ -2525,6 +2540,7 @@ export default function SettingsExperience() {
               </div>
 
               <button
+                type="button"
                 className={
                   styles.settingRowButton
                 }
@@ -2539,1003 +2555,105 @@ export default function SettingsExperience() {
                     styles.rowIcon
                   }
                 >
-                  文
+                  ◉
                 </span>
 
                 <div>
                   <strong>
-                    {
-                      t.chatLanguage
-                    }
+                    {t.chatLanguage}
                   </strong>
 
                   <small>
-                    {chatLanguageLabel(
-                      prefs.translationLanguage,
-                    )}
+                    {chatLanguageLabel(account.primaryLanguage)}
                   </small>
                 </div>
 
-                <b>
-                  ›
-                </b>
+                <em>
+                  {
+                    account.primaryLanguage
+                      .toUpperCase()
+                  }
+                </em>
+
+                <b>›</b>
               </button>
+
+              <div
+                className={
+                  styles.settingRow
+                }
+              >
+                <span
+                  className={
+                    styles.rowIcon
+                  }
+                >
+                  🌐
+                </span>
+
+                <div>
+                  <strong>
+                    {t.translations}
+                  </strong>
+
+                  <small>
+                    {
+                      account.autoTranslationEnabled
+                        ? (
+                            locale === 'th'
+                              ? 'เปิดการแปลข้อความต่างภาษาอัตโนมัติ'
+                              : locale === 'de'
+                                ? 'Fremdsprachige Nachrichten automatisch übersetzen'
+                                : locale === 'zh'
+                                  ? '自动翻译其他语言的消息'
+                                  : locale === 'ja'
+                                    ? '他の言語のメッセージを自動翻訳'
+                                    : locale === 'ko'
+                                      ? '다른 언어의 메시지를 자동 번역'
+                                      : 'Automatically translate messages in other languages'
+                          )
+                        : (
+                            locale === 'th'
+                              ? 'ปิดการแปลอัตโนมัติ'
+                              : locale === 'de'
+                                ? 'Automatische Übersetzung ist aus'
+                                : locale === 'zh'
+                                  ? '自动翻译已关闭'
+                                  : locale === 'ja'
+                                    ? '自動翻訳はオフです'
+                                    : locale === 'ko'
+                                      ? '자동 번역이 꺼져 있습니다'
+                                      : 'Automatic translation is off'
+                          )
+                    }
+                  </small>
+                </div>
+
+                <button
+                  type="button"
+                  className={
+                    styles.switch
+                  }
+                  data-on={
+                    account.autoTranslationEnabled
+                  }
+                  aria-pressed={
+                    account.autoTranslationEnabled
+                  }
+                  onClick={() =>
+                    void toggleAutoTranslation()
+                  }
+                >
+                  <i />
+                </button>
+              </div>
             </div>
 
             {saveError ? (
-              <p
-                className={
-                  styles.inlineError
-                }
-              >
+              <p role="alert">
                 {saveError}
               </p>
             ) : null}
-          </SettingsSection>
-
-          <SettingsSection
-            title={
-              t.discovery
-            }
-            description={
-              t.discoveryDesc
-            }
-            icon="♡"
-            wide
-          >
-            <div
-              className={
-                styles.connectGeneralGrid
-              }
-            >
-              <div
-                className={
-                  styles.connectMiniCard
-                }
-              >
-                <div
-                  className={
-                    styles.miniCardHead
-                  }
-                >
-                  <div>
-                    <strong>
-                      {
-                        ct.modes
-                      }
-                    </strong>
-
-                    <small>
-                      {
-                        ct.modesDesc
-                      }
-                    </small>
-                  </div>
-                </div>
-
-                <div
-                  className={
-                    styles.modeToggles
-                  }
-                >
-                  <button
-                    data-on={
-                      connect
-                        ?.intents
-                        .friendsEnabled ??
-                      false
-                    }
-                    onClick={() =>
-                      connect &&
-                      patchIntents({
-                        friendsEnabled:
-                          !connect
-                            .intents
-                            .friendsEnabled,
-                      })
-                    }
-                  >
-                    <span>
-                      ☺
-                    </span>
-
-                    <div>
-                      <strong>
-                        {
-                          ct.friend
-                        }
-                      </strong>
-
-                      <small>
-                        {connect
-                          ?.intents
-                          .friendsEnabled
-                          ? ct.enabled
-                          : ct.disabled}
-                      </small>
-                    </div>
-
-                    <i />
-                  </button>
-
-                  <button
-                    data-on={
-                      connect
-                        ?.intents
-                        .loveEnabled ??
-                      false
-                    }
-                    onClick={() =>
-                      connect &&
-                      patchIntents({
-                        loveEnabled:
-                          !connect
-                            .intents
-                            .loveEnabled,
-                      })
-                    }
-                  >
-                    <span>
-                      ♡
-                    </span>
-
-                    <div>
-                      <strong>
-                        {
-                          ct.love
-                        }
-                      </strong>
-
-                      <small>
-                        {connect
-                          ?.intents
-                          .loveEnabled
-                          ? ct.enabled
-                          : ct.disabled}
-                      </small>
-                    </div>
-
-                    <i />
-                  </button>
-                </div>
-              </div>
-
-              <div
-                className={
-                  styles.connectMiniCard
-                }
-              >
-                <div
-                  className={
-                    styles.miniCardHead
-                  }
-                >
-                  <div>
-                    <strong>
-                      {
-                        ct.distance
-                      }
-                    </strong>
-
-                    <small>
-                      {
-                        ct.distanceDesc
-                      }
-                    </small>
-                  </div>
-
-                  <b>
-                    {
-                      prefs.maximumDistance
-                    }{' '}
-                    km
-                  </b>
-                </div>
-
-                <div
-                  className={
-                    styles.distanceChoices
-                  }
-                >
-                  {[
-                    10,
-                    25,
-                    50,
-                    100,
-                  ].map(
-                    (value) => (
-                      <button
-                        key={
-                          value
-                        }
-                        data-active={
-                          prefs.maximumDistance ===
-                          value
-                        }
-                        onClick={() =>
-                          patchPrefs({
-                            maximumDistance:
-                              value,
-                          })
-                        }
-                      >
-                        {
-                          value
-                        }{' '}
-                        km
-                      </button>
-                    ),
-                  )}
-                </div>
-              </div>
-            </div>
-
-            <div
-              className={
-                styles.connectTabs
-              }
-            >
-              <button
-                data-active={
-                  connectTab ===
-                  'friend'
-                }
-                onClick={() =>
-                  setConnectTab(
-                    'friend',
-                  )
-                }
-              >
-                {
-                  ct.friendSettings
-                }
-              </button>
-
-              <button
-                data-active={
-                  connectTab ===
-                  'love'
-                }
-                onClick={() =>
-                  setConnectTab(
-                    'love',
-                  )
-                }
-              >
-                {
-                  ct.loveSettings
-                }
-              </button>
-            </div>
-
-            {!connect ? (
-              <div
-                className={
-                  styles.connectState
-                }
-              >
-                <strong>
-                  {
-                    ct.loadError
-                  }
-                </strong>
-
-                {connectError ? (
-                  <p>
-                    {
-                      connectError
-                    }
-                  </p>
-                ) : null}
-
-                <button
-                  onClick={() =>
-                    account &&
-                    void loadConnect(
-                      account.userId,
-                    )
-                  }
-                >
-                  {
-                    ct.retry
-                  }
-                </button>
-              </div>
-            ) : connectTab ===
-              'friend' ? (
-              <div
-                className={
-                  styles.connectPanel
-                }
-              >
-                <p
-                  className={
-                    styles.connectHint
-                  }
-                >
-                  {
-                    ct.friendHint
-                  }
-                </p>
-
-                <div
-                  className={
-                    styles.connectTwoCol
-                  }
-                >
-                  <div
-                    className={
-                      styles.formCard
-                    }
-                  >
-                    <label>
-                      {
-                        ct.intro
-                      }
-                    </label>
-
-                    <textarea
-                      maxLength={
-                        240
-                      }
-                      value={
-                        connect
-                          .friend
-                          .intro
-                      }
-                      onChange={(
-                        e,
-                      ) =>
-                        patchFriend({
-                          intro:
-                            e.target
-                              .value,
-                        })
-                      }
-                      placeholder={
-                        ct.introPlaceholder
-                      }
-                    />
-
-                    <small>
-                      {
-                        connect
-                          .friend
-                          .intro
-                          .length
-                      }
-                      /240
-                    </small>
-                  </div>
-
-                  <div
-                    className={
-                      styles.formCard
-                    }
-                  >
-                    <label>
-                      {
-                        ct.age
-                      }
-                    </label>
-
-                    <AgeEditor
-                      minLabel={
-                        ct.minimum
-                      }
-                      maxLabel={
-                        ct.maximum
-                      }
-                      min={
-                        connect
-                          .friend
-                          .preferredAgeMin
-                      }
-                      max={
-                        connect
-                          .friend
-                          .preferredAgeMax
-                      }
-                      onMin={(
-                        delta,
-                      ) =>
-                        adjustAge(
-                          'friend',
-                          'preferredAgeMin',
-                          delta,
-                        )
-                      }
-                      onMax={(
-                        delta,
-                      ) =>
-                        adjustAge(
-                          'friend',
-                          'preferredAgeMax',
-                          delta,
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                <ConnectOptionBlock
-                  label={
-                    ct.goals
-                  }
-                >
-                  <div
-                    className={
-                      styles.interests
-                    }
-                  >
-                    {FRIEND_GOALS.map(
-                      (item) => (
-                        <button
-                          key={
-                            item
-                          }
-                          data-active={
-                            connect.friend.goals.includes(
-                              item,
-                            )
-                          }
-                          onClick={() =>
-                            toggleFriendGoal(
-                              item,
-                            )
-                          }
-                        >
-                          {connect.friend.goals.includes(
-                            item,
-                          )
-                            ? '✓ '
-                            : ''}
-                          {
-                            ct[
-                              item
-                            ]
-                          }
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </ConnectOptionBlock>
-
-                <ConnectOptionBlock
-                  label={
-                    ct.languages
-                  }
-                >
-                  <div
-                    className={
-                      styles.interests
-                    }
-                  >
-                    {CHAT_LANGUAGE_OPTIONS.filter(
-                      (item) =>
-                        FRIEND_LANGUAGE_CODES.includes(
-                          item[0] as (
-                            typeof FRIEND_LANGUAGE_CODES
-                          )[number],
-                        ),
-                    ).map(
-                      (item) => (
-                        <button
-                          key={
-                            item[0]
-                          }
-                          data-active={
-                            connect.friend.preferredLanguages.includes(
-                              item[0],
-                            )
-                          }
-                          onClick={() =>
-                            toggleFriendLanguage(
-                              item[0],
-                            )
-                          }
-                        >
-                          {connect.friend.preferredLanguages.includes(
-                            item[0],
-                          )
-                            ? '✓ '
-                            : ''}
-                          {
-                            item[1]
-                          }{' '}
-                          ·{' '}
-                          {item[0].toUpperCase()}
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </ConnectOptionBlock>
-
-                <ConnectOptionBlock
-                  label={
-                    ct.sharedInterests
-                  }
-                >
-                  <div
-                    className={
-                      styles.interests
-                    }
-                  >
-                    {AVAILABLE_INTERESTS.map(
-                      (item) => (
-                        <button
-                          key={
-                            item
-                          }
-                          data-active={
-                            connect.friend.preferredInterests.includes(
-                              item,
-                            )
-                          }
-                          onClick={() =>
-                            toggleFriendInterest(
-                              item,
-                            )
-                          }
-                        >
-                          {connect.friend.preferredInterests.includes(
-                            item,
-                          )
-                            ? '✓ '
-                            : ''}
-                          {
-                            item
-                          }
-                        </button>
-                      ),
-                    )}
-                  </div>
-                </ConnectOptionBlock>
-
-                <NationalityPicker
-                  locale={
-                    locale
-                  }
-                  copy={
-                    ct
-                  }
-                  values={
-                    connect
-                      .friend
-                      .preferredNationalities
-                  }
-                  onAdd={(
-                    value,
-                  ) =>
-                    addNationality(
-                      'friend',
-                      value,
-                    )
-                  }
-                  onRemove={(
-                    value,
-                  ) =>
-                    removeNationality(
-                      'friend',
-                      value,
-                    )
-                  }
-                />
-
-                <div
-                  className={
-                    styles.toggleRows
-                  }
-                >
-                  <ToggleSetting
-                    title={
-                      ct.allowDiscovery
-                    }
-                    description={
-                      ct.allowDiscoveryDesc
-                    }
-                    value={
-                      connect
-                        .friend
-                        .allowDiscovery
-                    }
-                    onChange={() =>
-                      patchFriend({
-                        allowDiscovery:
-                          !connect
-                            .friend
-                            .allowDiscovery,
-                      })
-                    }
-                  />
-
-                  <ToggleSetting
-                    title={
-                      ct.sameCity
-                    }
-                    description={
-                      ct.sameCityDesc
-                    }
-                    value={
-                      connect
-                        .friend
-                        .showSameCityFirst
-                    }
-                    onChange={() =>
-                      patchFriend({
-                        showSameCityFirst:
-                          !connect
-                            .friend
-                            .showSameCityFirst,
-                      })
-                    }
-                  />
-                </div>
-              </div>
-            ) : (
-              <div
-                className={
-                  styles.connectPanel
-                }
-              >
-                <p
-                  className={
-                    styles.connectHint
-                  }
-                >
-                  {
-                    ct.loveHint
-                  }
-                </p>
-
-                <div
-                  className={
-                    styles.connectTwoCol
-                  }
-                >
-                  <div
-                    className={
-                      styles.formCard
-                    }
-                  >
-                    <label>
-                      {
-                        ct.loveIntro
-                      }
-                    </label>
-
-                    <textarea
-                      maxLength={
-                        240
-                      }
-                      value={
-                        loveIntro
-                      }
-                      onChange={(
-                        e,
-                      ) => {
-                        setConnectMessage(
-                          '',
-                        );
-
-                        setLoveIntro(
-                          e.target
-                            .value,
-                        );
-                      }}
-                      placeholder={
-                        ct.loveIntroPlaceholder
-                      }
-                    />
-
-                    <small>
-                      {
-                        loveIntro.length
-                      }
-                      /240
-                    </small>
-                  </div>
-
-                  <ConnectOptionBlock
-                    label={
-                      ct.relationshipGoal
-                    }
-                  >
-                    <div
-                      className={
-                        styles.interests
-                      }
-                    >
-                      {LOVE_RELATIONSHIP_GOALS.map(
-                        (item) => (
-                          <button
-                            key={
-                              item
-                            }
-                            data-active={
-                              connect.love.relationshipGoal ===
-                              item
-                            }
-                            onClick={() =>
-                              patchLove({
-                                relationshipGoal:
-                                  item,
-                              })
-                            }
-                          >
-                            {connect.love.relationshipGoal ===
-                            item
-                              ? '✓ '
-                              : ''}
-                            {
-                              ct[
-                                item
-                              ]
-                            }
-                          </button>
-                        ),
-                      )}
-                    </div>
-                  </ConnectOptionBlock>
-                </div>
-
-                <div
-                  className={
-                    styles.connectTwoCol
-                  }
-                >
-                  <ConnectOptionBlock
-                    label={
-                      ct.genders
-                    }
-                  >
-                    <div
-                      className={
-                        styles.interests
-                      }
-                    >
-                      {LOVE_GENDER_OPTIONS.map(
-                        (item) => (
-                          <button
-                            key={
-                              item
-                            }
-                            data-active={
-                              connect.love.interestedGenders.includes(
-                                item,
-                              )
-                            }
-                            onClick={() =>
-                              toggleLoveGender(
-                                item,
-                              )
-                            }
-                          >
-                            {connect.love.interestedGenders.includes(
-                              item,
-                            )
-                              ? '✓ '
-                              : ''}
-                            {
-                              ct[
-                                item
-                              ]
-                            }
-                          </button>
-                        ),
-                      )}
-                    </div>
-                  </ConnectOptionBlock>
-
-                  <div
-                    className={
-                      styles.formCard
-                    }
-                  >
-                    <label>
-                      {
-                        ct.age
-                      }
-                    </label>
-
-                    <AgeEditor
-                      minLabel={
-                        ct.minimum
-                      }
-                      maxLabel={
-                        ct.maximum
-                      }
-                      min={
-                        connect
-                          .love
-                          .preferredAgeMin
-                      }
-                      max={
-                        connect
-                          .love
-                          .preferredAgeMax
-                      }
-                      onMin={(
-                        delta,
-                      ) =>
-                        adjustAge(
-                          'love',
-                          'preferredAgeMin',
-                          delta,
-                        )
-                      }
-                      onMax={(
-                        delta,
-                      ) =>
-                        adjustAge(
-                          'love',
-                          'preferredAgeMax',
-                          delta,
-                        )
-                      }
-                    />
-                  </div>
-                </div>
-
-                <NationalityPicker
-                  locale={
-                    locale
-                  }
-                  copy={
-                    ct
-                  }
-                  values={
-                    connect
-                      .love
-                      .preferredNationalities
-                  }
-                  onAdd={(
-                    value,
-                  ) =>
-                    addNationality(
-                      'love',
-                      value,
-                    )
-                  }
-                  onRemove={(
-                    value,
-                  ) =>
-                    removeNationality(
-                      'love',
-                      value,
-                    )
-                  }
-                />
-              </div>
-            )}
-
-            <div
-              className={
-                styles.connectSaveBar
-              }
-            >
-              <div>
-                {connectError ? (
-                  <span
-                    data-error="true"
-                  >
-                    {
-                      connectError
-                    }
-                  </span>
-                ) : connectMessage ? (
-                  <span>
-                    {
-                      connectMessage
-                    }
-                  </span>
-                ) : null}
-              </div>
-
-              <button
-                disabled={
-                  !connect ||
-                  connectSaving
-                }
-                onClick={() =>
-                  void saveConnect()
-                }
-              >
-                {connectSaving
-                  ? ct.saving
-                  : ct.save}
-              </button>
-            </div>
-          </SettingsSection>
-
-          <SettingsSection
-            title={
-              t.package
-            }
-            description={
-              t.packageDesc
-            }
-            icon="★"
-          >
-            <div
-              className={
-                styles.packageCard
-              }
-            >
-              <div
-                className={
-                  styles.packageHead
-                }
-              >
-                <div>
-                  <strong>
-                    {planName(
-                      account.planCode,
-                      t,
-                    )}
-                  </strong>
-
-                  <span>
-                    {
-                      t.currentPackage
-                    }
-                  </span>
-                </div>
-
-                <b>
-                  ●{' '}
-                  {
-                    t.active
-                  }
-                </b>
-              </div>
-
-              <div
-                className={
-                  styles.benefits
-                }
-              >
-                <span>
-                  ✓{' '}
-                  {
-                    t.translations
-                  }
-                </span>
-
-                <span>
-                  ✓{' '}
-                  {account.translationBalance.toLocaleString()}{' '}
-                  {
-                    t.credits
-                  }
-                </span>
-
-                <span>
-                  ✓{' '}
-                  {
-                    t.profiles
-                  }
-                </span>
-
-                <span>
-                  ✓{' '}
-                  {
-                    t.favorites
-                  }
-                </span>
-              </div>
-
-              <Link
-                className={
-                  styles.primaryLink
-                }
-                href="/premium"
-              >
-                {
-                  t.viewPackages
-                }
-              </Link>
-            </div>
           </SettingsSection>
 
           <SettingsSection
@@ -3619,31 +2737,7 @@ export default function SettingsExperience() {
                 href="/blocked-users"
               />
 
-              {account.canQuestRewardAdmin ? (
-                <SettingsLink
-                  icon="Q"
-                  title={
-                    t.questAdmin
-                  }
-                  value={
-                    t.manage
-                  }
-                  href="/admin/quest-rewards"
-                />
-              ) : null}
 
-              {account.adminHasReviewAccess ? (
-                <SettingsLink
-                  icon="✓"
-                  title={
-                    t.reviewAdmin
-                  }
-                  value={
-                    t.manage
-                  }
-                  href="/admin/review-center"
-                />
-              ) : null}
 
               {account.canModerate &&
               !account.adminHasReviewAccess ? (
@@ -3672,18 +2766,6 @@ export default function SettingsExperience() {
                 />
               ) : null}
 
-              {account.canQuestRewardAdmin ? (
-                <SettingsLink
-                  icon="⌫"
-                  title={
-                    t.cleanup
-                  }
-                  value={
-                    t.manage
-                  }
-                  href="/prelaunch-cleanup"
-                />
-              ) : null}
 
               <SettingsLink
                 icon="?"
@@ -4237,3 +3319,8 @@ function SettingsLink({
     </Link>
   );
 }
+
+
+
+
+

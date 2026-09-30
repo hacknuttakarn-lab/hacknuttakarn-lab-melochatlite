@@ -45,3 +45,20 @@
   .categoryBrowser{margin-top:9px!important;margin-bottom:18px!important}
   .categorySearchPanel{margin-top:-2px!important}
 }
+
+/* MELO LOCATION FILTER V3 — category + province + keyword (district kept as data only) */
+.categorySearchFilters{
+  grid-template-columns:minmax(180px,.9fr) minmax(300px,1.7fr) auto!important;
+}
+.categorySearchKeyword{grid-column:auto!important}
+@media(max-width:980px){
+  .categorySearchFilters{grid-template-columns:minmax(160px,.8fr) minmax(0,1.5fr) auto!important}
+  .categorySearchKeyword{grid-column:auto!important}
+  .categorySearchClear{justify-self:stretch!important}
+}
+@media(max-width:760px){
+  .categorySearchFilters{grid-template-columns:1fr!important}
+  .categorySearchKeyword,.categorySearchClear{grid-column:1!important}
+  .categorySearchClear{width:100%!important}
+}
+

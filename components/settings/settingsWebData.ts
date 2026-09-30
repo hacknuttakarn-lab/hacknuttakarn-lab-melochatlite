@@ -1,4 +1,4 @@
-'use client';
+﻿'use client';
 
 import {
   getCurrentUser,
@@ -56,6 +56,7 @@ export type SettingsAccountSnapshot = {
   email: string;
   displayName: string;
   primaryLanguage: string;
+  autoTranslationEnabled: boolean;
   planCode: 'free' | 'premium' | 'ultimate';
   translationBalance: number;
   subscriptionStatus: string;
@@ -410,6 +411,7 @@ export async function loadSettingsAccountSnapshot(): Promise<SettingsAccountSnap
     email: user.email ?? '',
     displayName: text(profile, 'display_name', 'name', 'full_name') || user.email?.split('@')[0] || 'Melo User',
     primaryLanguage: text(profile, 'primary_language') || 'th',
+    autoTranslationEnabled: profile.auto_translation_enabled !== false,
     planCode: normalizePlan(text(monetization, 'plan_code')),
     translationBalance: numberValue(monetization, 'translation_balance'),
     subscriptionStatus: text(monetization, 'subscription_status') || 'active',
@@ -423,6 +425,20 @@ export async function loadSettingsAccountSnapshot(): Promise<SettingsAccountSnap
 
 export async function savePrimaryChatLanguage(userId: string, language: string) {
   const result = await restUpsert<Row[]>('profiles', { id: userId, primary_language: language }, 'id');
+  if (result.error) throw new Error(result.error);
+}
+
+/* MELO_ACCOUNT_TRANSLATION_SETTINGS_V2 */
+export async function saveAutoTranslationEnabled(userId: string, enabled: boolean) {
+  const result = await restUpsert<Row[]>(
+    'profiles',
+    {
+      id: userId,
+      auto_translation_enabled: enabled,
+    },
+    'id',
+  );
+
   if (result.error) throw new Error(result.error);
 }
 
@@ -449,16 +465,164 @@ export async function loadPackageCatalog(): Promise<PackageProduct[]> {
 
 export async function loadBlockedUsersWeb(): Promise<BlockedUserWeb[]> {
   const result = await rpcRequest<Row[]>('get_my_blocked_users');
-  if (result.error) return [];
-  return rowsOf(result.data).map((row) => ({
-    userId: text(row, 'user_id'),
-    displayName: text(row, 'display_name') || 'Melo member',
-    photoUrl: text(row, 'photo_path') ? publicStorageUrl('profile-photos', text(row, 'photo_path')) : '',
-    blockedAt: text(row, 'blocked_at'),
-    reason: text(row, 'reason'),
-  })).filter((item) => item.userId);
-}
 
+  if (result.error) {
+    console.error(
+      'Unable to load blocked users',
+      result.error,
+    );
+    return [];
+  }
+
+  /* MELO_BLOCKED_USER_PROFILE_NAME_V2 */
+  const blockedRows = rowsOf(result.data);
+
+  const items = await Promise.all(
+    blockedRows.map(async (row) => {
+      const userId = text(
+        row,
+        'id',
+        'user_id',
+        'blocked_user_id',
+      );
+
+      if (!userId) {
+        return null;
+      }
+
+      const photoPaths =
+        stringArray(row.photo_paths);
+
+      let resolvedPhotoPath =
+        photoPaths[0] ||
+        text(row, 'photo_path');
+
+      /*
+       * Blocked-user RPC may expose display_name/email-like values.
+       * Melo Profile / Connect uses profiles.first_name as the
+       * public profile name, so resolve the profile by user id.
+       */
+      let displayName = '';
+
+      try {
+        const profileResult =
+          await restSelect<Row[]>(
+            'profiles',
+            `select=id,first_name,display_name,photo_paths&id=eq.${encodeURIComponent(userId)}&limit=1`,
+          );
+
+        if (!profileResult.error) {
+          const profile =
+            rowsOf(profileResult.data)[0];
+
+          if (profile) {
+            const firstName =
+              text(
+                profile,
+                'first_name',
+              ).trim();
+
+            const fallbackName =
+              text(
+                profile,
+                'display_name',
+              ).trim();
+
+            if (firstName) {
+              displayName = firstName;
+            } else if (
+              fallbackName &&
+              !fallbackName.includes('@') &&
+              !fallbackName.includes('.com') &&
+              !fallbackName.includes('.net') &&
+              !fallbackName.includes('.org')
+            ) {
+              displayName = fallbackName;
+            }
+
+            if (!resolvedPhotoPath) {
+              const profilePhotos =
+                stringArray(
+                  profile.photo_paths,
+                );
+
+              resolvedPhotoPath =
+                profilePhotos[0] || '';
+            }
+          }
+        }
+      } catch (error) {
+        console.error(
+          'Unable to resolve blocked profile',
+          error,
+        );
+      }
+
+      /*
+       * Last fallback only when the RPC value looks like
+       * a genuine profile name, never an email/username.
+       */
+      if (!displayName) {
+        const rpcFirstName =
+          text(
+            row,
+            'first_name',
+          ).trim();
+
+        const rpcDisplayName =
+          text(
+            row,
+            'display_name',
+            'name',
+          ).trim();
+
+        if (rpcFirstName) {
+          displayName = rpcFirstName;
+        } else if (
+          rpcDisplayName &&
+          !rpcDisplayName.includes('@') &&
+          !rpcDisplayName.includes('.com') &&
+          !rpcDisplayName.includes('.net') &&
+          !rpcDisplayName.includes('.org')
+        ) {
+          displayName =
+            rpcDisplayName;
+        }
+      }
+
+      return {
+        userId,
+
+        displayName:
+          displayName ||
+          'Melo member',
+
+        photoUrl: resolvedPhotoPath
+          ? publicStorageUrl(
+              'profile-photos',
+              resolvedPhotoPath,
+            )
+          : '',
+
+        blockedAt: text(
+          row,
+          'blocked_at',
+          'created_at',
+        ),
+
+        reason: text(
+          row,
+          'reason',
+        ),
+      };
+    }),
+  );
+
+  return items.filter(
+    (item): item is BlockedUserWeb =>
+      Boolean(item?.userId),
+  );
+}
 export async function unblockUserWeb(userId: string) {
   const result = await rpcRequest('unblock_user', { p_other_user_id: userId });
   if (result.error) throw new Error(result.error);
@@ -579,3 +743,7 @@ export async function loadAdminReviewQueueCountsWeb() {
   const entries=await Promise.all(calls.map(async([key,name,params])=>{const r=await rpcRequest<Row[]>(name,params);return [key,r.error?0:rowsOf(r.data).length] as const}));
   return Object.fromEntries(entries) as Record<string,number>;
 }
+
+
+
+

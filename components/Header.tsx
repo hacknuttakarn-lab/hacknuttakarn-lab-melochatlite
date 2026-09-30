@@ -6,16 +6,20 @@ import { usePathname, useRouter } from 'next/navigation';
 import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocale } from './SiteProviders';
 import { authCopy } from '@/i18n/authUi';
+import { selectableLocales } from '@/i18n/dictionaries';
 import { getCurrentUser, getStoredSession, isSupabaseConfigured, publicStorageUrl, restSelect, rpcRequest, signOut } from '@/lib/supabase/browser';
 import accountStyles from './HeaderAccount.module.css';
 import { loadFriendSnapshot } from '@/components/connect/connectData';
 import { loadChatUnreadTotal } from '@/components/chat/chatData';
 import ChatDrawer from '@/components/chat/ChatDrawer';
 import VerifiedUserAvatar from '@/components/profile/VerifiedUserAvatar';
+import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { COUNTRY_PICKER_COUNTRIES, GLOBAL_COUNTRY_SCOPE, countryPickerLabel, countryScopeFlag, countryScopeLabel, matchesCountryScope, type CountryScope } from '@/lib/discoveryCountry';
 import { switchToPartnerMode } from '@/components/partner/partnerModeWeb';
 import { loadTripsWeb } from '@/components/trips/tripWebData';
 import { loadEventsWeb } from '@/components/events/eventWebData';
+import { loadSettingsAccountSnapshot } from '@/components/settings/settingsWebData';
+import { loadSocialFeedWeb } from "@/components/feed/socialFeedWebData";
 
 type HeaderUser = {
   id?: string;
@@ -46,6 +50,8 @@ type HeaderNotification = {
   imageUrl: string;
   avatarLabel: string;
   userId: string;
+  isChat: boolean;
+  adminNotice?: { id:string; level:string; subject:string; message:string; createdAt:string; readAt:string };
 };
 
 
@@ -199,9 +205,158 @@ function notificationUnread(row: HeaderSearchRow) {
   return false;
 }
 
+// MELO_CHAT_NOTIFICATION_DRAWER_V1
+function isDirectChatNotification(item: HeaderNotification) {
+  const href =
+    String(
+      item.href || "",
+    ).toLowerCase();
+
+  const title =
+    String(
+      item.title || "",
+    ).toLowerCase();
+
+  const body =
+    String(
+      item.body || "",
+    ).toLowerCase();
+
+  const combined =
+    `${href} ${title} ${body}`;
+
+  return Boolean(
+    item.userId &&
+      (
+        href === "/chat" ||
+        href.startsWith("/chat?") ||
+        href.startsWith("/chat/") ||
+        combined.includes("message") ||
+        combined.includes("ข้อความ") ||
+        combined.includes("nachricht")
+      ),
+  );
+}
+
+/* MELO_NOTIFICATION_POST_ID_HELPER_V4 */
+function notificationResolvedPostId(row: HeaderSearchRow) {
+  const meta = notificationMeta(row);
+
+  const directPostId = searchText(
+    row,
+    "post_id",
+    "feed_post_id",
+  );
+
+  if (directPostId) {
+    return directPostId;
+  }
+
+  const metadataPostId = searchText(
+    meta,
+    "post_id",
+    "feed_post_id",
+  );
+
+  if (metadataPostId) {
+    return metadataPostId;
+  }
+
+  const kind = notificationKind(row);
+
+  if (kind === "post_like" || kind === "post_comment") {
+    return (
+      searchText(
+        row,
+        "entity_id",
+        "activity_id",
+        "context_id",
+      ) ||
+      searchText(
+        meta,
+        "entity_id",
+        "activity_id",
+        "context_id",
+      )
+    );
+  }
+
+  return "";
+}
+
+/* MELO_FOLLOW_NOTIFICATION_PROFILE_V5 */
+function notificationFollowProfileHref(row: HeaderSearchRow) {
+  const kind = notificationKind(row);
+
+  const raw = [
+    searchText(
+      row,
+      "type",
+      "notification_type",
+      "kind",
+      "event_type",
+      "title",
+      "body",
+      "message",
+    ),
+    searchText(
+      notificationMeta(row),
+      "type",
+      "notification_type",
+      "kind",
+      "activity_type",
+      "title",
+      "body",
+      "message",
+    ),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const isFollow =
+    kind === "follow" ||
+    raw.includes("follow") ||
+    raw.includes("ติดตาม");
+
+  if (!isFollow) {
+    return "";
+  }
+
+  // notificationProfileId represents the actor/profile associated
+  // with this notification, i.e. the member who followed you.
+  const actorId = notificationProfileId(row);
+
+  if (!actorId) {
+    return "";
+  }
+
+  return `/users/${encodeURIComponent(actorId)}`;
+}
+
 function notificationHref(row: HeaderSearchRow) {
+  // Follow notification -> profile of the member who followed you.
+  const followProfileHref = notificationFollowProfileHref(row);
+
+  if (followProfileHref) {
+    return followProfileHref;
+  }
+
   const meta = notificationMeta(row);
   const raw = notificationSourceText(row);
+
+  // MELO_NOTIFICATION_ROUTING_LITE_V1
+  // Melo Chat Lite Connect routes.
+  const kind = notificationKind(row);
+
+  if (kind === 'match') {
+    return '/connect?tab=connected';
+  }
+
+  if (kind === 'likes_you') {
+    return '/connect?tab=incoming';
+  }
+
   const explicitActivityType = (
     searchText(meta, 'activity_type', 'context_type', 'entity_type') ||
     searchText(row, 'activity_type', 'context_type', 'entity_type')
@@ -240,6 +395,13 @@ function notificationHref(row: HeaderSearchRow) {
   const resolvedEventId = eventId || ((explicitActivityType === 'event' || raw.includes('event')) ? genericActivityId : '');
   const resolvedCommunityId = communityId || ((explicitActivityType === 'community' || raw.includes('community')) ? genericActivityId : '');
   const resolvedPostId = postId || (raw.includes('post') ? genericActivityId : '');
+
+  // Melo Chat Lite: likes/comments must open the exact Feed post.
+  if (kind === 'post_like' || kind === 'post_comment') {
+    return resolvedPostId
+      ? `/feed?post=${encodeURIComponent(resolvedPostId)}`
+      : '/feed';
+  }
 
   // Safety notifications should open Safety Center, not the old Home-page
   // #safety marketing anchor. If a Live Location session id is available,
@@ -286,7 +448,7 @@ function notificationHref(row: HeaderSearchRow) {
   if (raw.includes('post')) return '/feed';
 
   if (raw.includes('friend') || raw.includes('connection') || raw.includes('friend_request')) return '/friends';
-  if (raw.includes('match') || raw.includes('love') || raw.includes('dating')) return '/love';
+  if (raw.includes('match') || raw.includes('love') || raw.includes('dating')) return '/connect?tab=connected';
   if (raw.includes('reputation') || raw.includes('review') || raw.includes('rating')) return '/reputation';
 
   return '/account';
@@ -695,18 +857,166 @@ async function resolveNotificationActors(rows: HeaderSearchRow[], currentUserId:
 }
 
 function notificationKind(row: HeaderSearchRow) {
+  // MELO_NOTIFICATION_SCHEMA_V2
+  //
+  // New public.notifications schema uses:
+  // type, actor_id, post_id, entity_id, metadata, is_read.
+
+  const explicitType = searchText(
+    row,
+    'type',
+    'notification_type',
+    'kind',
+    'event_type',
+  )
+    .trim()
+    .toLowerCase()
+    .replace(/[\s-]+/g, '_');
+
+  const aliases: Record<string, string> = {
+    post_like: 'post_like',
+    like_post: 'post_like',
+    post_liked: 'post_like',
+
+    post_comment: 'post_comment',
+    comment_post: 'post_comment',
+    post_commented: 'post_comment',
+    comment: 'post_comment',
+
+    follow: 'follow',
+    profile_follow: 'follow',
+    followed: 'follow',
+
+    profile_like: 'likes_you',
+    likes_you: 'likes_you',
+    like_you: 'likes_you',
+    interested: 'likes_you',
+    profile_interested: 'likes_you',
+
+    match: 'match',
+    matched: 'match',
+    profile_match: 'match',
+
+    verification_approved: 'verification_approved',
+    identity_approved: 'verification_approved',
+    document_approved: 'verification_approved',
+    admin_approved: 'verification_approved',
+
+    verification_rejected: 'verification_rejected',
+    identity_rejected: 'verification_rejected',
+    document_rejected: 'verification_rejected',
+    admin_rejected: 'verification_rejected',
+
+    verification_needs_info: 'verification_needs_info',
+    verification_more_info: 'verification_needs_info',
+    document_needs_info: 'verification_needs_info',
+    admin_needs_info: 'verification_needs_info',
+
+    sos: 'sos',
+    live_location: 'live_location',
+    attendance: 'attendance',
+    trip_join: 'trip_join',
+    event_join: 'event_join',
+    community_join: 'community_join',
+    trip: 'trip',
+    event: 'event',
+    community: 'community',
+  };
+
+  if (explicitType && aliases[explicitType]) {
+    return aliases[explicitType];
+  }
+
   const raw = notificationSourceText(row);
+
   if (raw.includes('sos')) return 'sos';
-  if (raw.includes('live location') || raw.includes('live_location')) return 'live_location';
-  if (raw.includes('check-in') || raw.includes('checkin') || raw.includes('check_in') || raw.includes('attendance')) return 'attendance';
-  if (raw.includes('like') && raw.includes('post')) return 'post_like';
-  if ((raw.includes('join') || raw.includes('request')) && raw.includes('trip')) return 'trip_join';
-  if ((raw.includes('join') || raw.includes('attendee')) && raw.includes('event')) return 'event_join';
-  if ((raw.includes('join') || raw.includes('member')) && raw.includes('community')) return 'community_join';
+
+  if (
+    raw.includes('live location') ||
+    raw.includes('live_location')
+  ) {
+    return 'live_location';
+  }
+
+  if (
+    raw.includes('check-in') ||
+    raw.includes('checkin') ||
+    raw.includes('check_in') ||
+    raw.includes('attendance')
+  ) {
+    return 'attendance';
+  }
+
+  if (
+    raw.includes('comment') &&
+    raw.includes('post')
+  ) {
+    return 'post_comment';
+  }
+
+  if (
+    raw.includes('like') &&
+    raw.includes('post')
+  ) {
+    return 'post_like';
+  }
+
+  if (
+    raw.includes('match') ||
+    raw.includes('matched')
+  ) {
+    return 'match';
+  }
+
+  if (
+    raw.includes('likes_you') ||
+    raw.includes('like you') ||
+    raw.includes('profile_like')
+  ) {
+    return 'likes_you';
+  }
+
+  if (
+    raw.includes('follow')
+  ) {
+    return 'follow';
+  }
+
+  if (
+    (raw.includes('join') || raw.includes('request')) &&
+    raw.includes('trip')
+  ) {
+    return 'trip_join';
+  }
+
+  if (
+    (raw.includes('join') || raw.includes('attendee')) &&
+    raw.includes('event')
+  ) {
+    return 'event_join';
+  }
+
+  if (
+    (raw.includes('join') || raw.includes('member')) &&
+    raw.includes('community')
+  ) {
+    return 'community_join';
+  }
+
   if (raw.includes('trip')) return 'trip';
-  if (raw.includes('event') || raw.includes('activity')) return 'event';
-  if (raw.includes('community')) return 'community';
-  return 'generic';
+
+  if (
+    raw.includes('event') ||
+    raw.includes('activity')
+  ) {
+    return 'event';
+  }
+
+  if (raw.includes('community')) {
+    return 'community';
+  }
+
+  return explicitType || 'generic';
 }
 
 function isChatActivityNotification(row: HeaderSearchRow) {
@@ -729,6 +1039,27 @@ function notificationAvatarLabel(row: HeaderSearchRow) {
       return '◎';
     case 'post_like':
       return '❤';
+
+    case 'post_comment':
+      return '💬';
+
+    case 'follow':
+      return '👤';
+
+    case 'likes_you':
+      return '♥';
+
+    case 'match':
+      return '♥';
+
+    case 'verification_approved':
+      return '✓';
+
+    case 'verification_rejected':
+      return '!';
+
+    case 'verification_needs_info':
+      return '!';
     case 'live_location':
       return '⌖';
     case 'attendance':
@@ -754,21 +1085,163 @@ async function loadNotificationProfiles(rows: HeaderSearchRow[]) {
 }
 
 function notificationResolvedTitle(row: HeaderSearchRow, locale: string) {
-  const direct = searchText(row, 'title', 'subject', 'heading') || searchText(notificationMeta(row), 'title', 'subject', 'heading');
+  const direct =
+    searchText(
+      row,
+      'title',
+      'subject',
+      'heading',
+    ) ||
+    searchText(
+      notificationMeta(row),
+      'title',
+      'subject',
+      'heading',
+    );
+
   if (direct) return direct;
-  const actor = notificationActorName(row);
-  const kind = notificationKind(row);
-  if (kind === 'trip_join') return actor ? `${actor} requested to join your trip` : notificationTitle(row, locale);
-  if (kind === 'event_join') return actor ? `${actor} joined your event` : notificationTitle(row, locale);
-  if (kind === 'community_join') return actor ? `${actor} joined your community` : notificationTitle(row, locale);
-  if (kind === 'post_like') return actor ? `${actor} liked your post` : notificationTitle(row, locale);
-  if (kind === 'live_location') return actor ? `${actor} shared Live Location with you` : notificationTitle(row, locale);
-  if (kind === 'attendance') {
-    const labels = { th: 'เปิดให้เช็กอินแล้ว', en: 'Check-in is open', de: 'Check-in ist geöffnet', zh: '签到已开放', ja: 'Check-in受付中', ko: '체크인이 열렸습니다' } as Record<string, string>;
-    return labels[locale] ?? labels.en;
+
+  const actor =
+    notificationActorName(row);
+
+  const kind =
+    notificationKind(row);
+
+  const names = {
+    th: {
+      someone: 'มีคน',
+    },
+
+    en: {
+      someone: 'Someone',
+    },
+
+    de: {
+      someone: 'Jemand',
+    },
+  } as Record<
+    string,
+    {
+      someone: string;
+    }
+  >;
+
+  const language =
+    names[locale] ??
+    names.en;
+
+  const who =
+    actor ||
+    language.someone;
+
+  const labels = {
+    th: {
+      post_like: `${who} ถูกใจโพสต์ของคุณ`,
+      post_comment: `${who} แสดงความคิดเห็นในโพสต์ของคุณ`,
+      follow: `${who} เริ่มติดตามคุณ`,
+      likes_you: `${who} สนใจคุณ`,
+      match: actor
+        ? `คุณและ ${actor} แมตช์กันแล้ว`
+        : 'คุณมี Match ใหม่',
+      verification_approved:
+        'การยืนยันตัวตนได้รับการอนุมัติแล้ว',
+      verification_rejected:
+        'การยืนยันตัวตนไม่ได้รับการอนุมัติ',
+      verification_needs_info:
+        'แอดมินต้องการข้อมูลเพิ่มเติม',
+    },
+
+    en: {
+      post_like: `${who} liked your post`,
+      post_comment: `${who} commented on your post`,
+      follow: `${who} followed you`,
+      likes_you: `${who} likes you`,
+      match: actor
+        ? `You matched with ${actor}`
+        : 'You have a new match',
+      verification_approved:
+        'Your verification was approved',
+      verification_rejected:
+        'Your verification was rejected',
+      verification_needs_info:
+        'More verification information is required',
+    },
+
+    de: {
+      post_like: `${who} gefällt dein Beitrag`,
+      post_comment: `${who} hat deinen Beitrag kommentiert`,
+      follow: `${who} folgt dir jetzt`,
+      likes_you: `${who} interessiert sich für dich`,
+      match: actor
+        ? `Du hast ein Match mit ${actor}`
+        : 'Du hast ein neues Match',
+      verification_approved:
+        'Deine Verifizierung wurde genehmigt',
+      verification_rejected:
+        'Deine Verifizierung wurde abgelehnt',
+      verification_needs_info:
+        'Weitere Verifizierungsdaten werden benötigt',
+    },
+  } as Record<
+    string,
+    Record<string, string>
+  >;
+
+  const copy =
+    labels[locale] ??
+    labels.en;
+
+  if (copy[kind]) {
+    return copy[kind];
   }
-  if (kind === 'sos') return actor ? `${actor} sent SOS` : notificationTitle(row, locale);
-  return notificationTitle(row, locale);
+
+  if (kind === 'trip_join') {
+    return actor
+      ? `${actor} requested to join your trip`
+      : notificationTitle(row, locale);
+  }
+
+  if (kind === 'event_join') {
+    return actor
+      ? `${actor} joined your event`
+      : notificationTitle(row, locale);
+  }
+
+  if (kind === 'community_join') {
+    return actor
+      ? `${actor} joined your community`
+      : notificationTitle(row, locale);
+  }
+
+  if (kind === 'live_location') {
+    return actor
+      ? `${actor} shared Live Location with you`
+      : notificationTitle(row, locale);
+  }
+
+  if (kind === 'attendance') {
+    const attendanceLabels = {
+      th: 'เปิดให้เช็กอินแล้ว',
+      en: 'Check-in is open',
+      de: 'Check-in ist geöffnet',
+    } as Record<string, string>;
+
+    return (
+      attendanceLabels[locale] ??
+      attendanceLabels.en
+    );
+  }
+
+  if (kind === 'sos') {
+    return actor
+      ? `${actor} sent SOS`
+      : notificationTitle(row, locale);
+  }
+
+  return notificationTitle(
+    row,
+    locale,
+  );
 }
 
 function notificationResolvedBody(row: HeaderSearchRow, locale: string) {
@@ -783,6 +1256,74 @@ function notificationResolvedBody(row: HeaderSearchRow, locale: string) {
     ko: { tripJoin: '여행을 열어 요청을 검토하세요.', eventJoin: '이벤트에 새 참가자가 생겼습니다.', communityJoin: '커뮤니티에 새 멤버가 참여했습니다.', postLike: '게시물을 열어 최신 활동을 확인하세요.', liveLocation: '탭하여 실시간 안전 위치를 확인하세요.', sos: '친구가 도움이 필요할 수 있습니다. 안전 센터에서 최신 위치를 확인하세요.', attendance: 'Melo 모바일 앱에서 체크인하세요. 웹에서는 체크인할 수 없습니다.' },
   } as Record<string, Record<string, string>>;
   const copy = labels[locale] ?? labels.en;
+
+  const modernKind =
+    notificationKind(row);
+
+  const modernLabels = {
+    th: {
+      post_comment:
+        'เปิดโพสต์เพื่อดูความคิดเห็นล่าสุด',
+      follow:
+        'เปิดโปรไฟล์เพื่อดูข้อมูลสมาชิก',
+      likes_you:
+        'เปิด Connect เพื่อดูคนที่สนใจคุณ',
+      match:
+        'คุณสามารถเริ่มแชทกับ Match นี้ได้แล้ว',
+      verification_approved:
+        'แอดมินตรวจสอบข้อมูลและอนุมัติการยืนยันของคุณแล้ว',
+      verification_rejected:
+        'เปิดรายละเอียดเพื่อดูสถานะการตรวจสอบจากแอดมิน',
+      verification_needs_info:
+        'กรุณาตรวจสอบข้อมูลหรือเอกสารที่ต้องส่งเพิ่มเติม',
+    },
+
+    en: {
+      post_comment:
+        'Open the post to view the latest comment.',
+      follow:
+        'Open the profile to view this member.',
+      likes_you:
+        'Open Connect to see who likes you.',
+      match:
+        'You can now start chatting with this match.',
+      verification_approved:
+        'Admin has reviewed and approved your verification.',
+      verification_rejected:
+        'Open the details to review the admin decision.',
+      verification_needs_info:
+        'Please review the information or documents requested by admin.',
+    },
+
+    de: {
+      post_comment:
+        'Öffne den Beitrag, um den neuesten Kommentar zu sehen.',
+      follow:
+        'Öffne das Profil, um dieses Mitglied anzusehen.',
+      likes_you:
+        'Öffne Connect, um zu sehen, wer dich mag.',
+      match:
+        'Du kannst jetzt mit diesem Match chatten.',
+      verification_approved:
+        'Die Administration hat deine Verifizierung genehmigt.',
+      verification_rejected:
+        'Öffne die Details, um die Entscheidung zu sehen.',
+      verification_needs_info:
+        'Bitte prüfe die zusätzlich angeforderten Informationen oder Dokumente.',
+    },
+  } as Record<
+    string,
+    Record<string, string>
+  >;
+
+  const modernCopy =
+    modernLabels[locale] ??
+    modernLabels.en;
+
+  if (modernCopy[modernKind]) {
+    return modernCopy[modernKind];
+  }
+
   switch (notificationKind(row)) {
     case 'trip_join':
       return copy.tripJoin;
@@ -928,6 +1469,7 @@ async function loadOpenAttendanceHeaderNotifications(locale: string): Promise<He
       imageUrl: candidate.imageUrl,
       avatarLabel: '✓',
       userId: '',
+      isChat: false,
     } satisfies HeaderNotification;
   }));
 
@@ -938,6 +1480,7 @@ export function Header() {
   const { t, locale, setLocale, localeLabels, supportedLocales, countryScope, setCountryScope, theme, toggleTheme } = useLocale();
   const router = useRouter();
   const pathname = usePathname();
+  const adminArea = pathname.startsWith('/admin');
 
   const [menuOpen, setMenuOpen] = useState(false);
   const [memberMenuOpen, setMemberMenuOpen] = useState(false);
@@ -947,6 +1490,8 @@ export function Header() {
   const [searchOpen, setSearchOpen] = useState(false);
   const [searchLoading, setSearchLoading] = useState(false);
   const [user, setUser] = useState<HeaderUser | null>(null);
+  const [headerProfileAvatar, setHeaderProfileAvatar] = useState("");
+  const [adminReviewAllowed, setAdminReviewAllowed] = useState(false);
   const [authChecked, setAuthChecked] = useState(false);
   const [chatUnreadCount, setChatUnreadCount] = useState(0);
   const [chatDrawerOpen, setChatDrawerOpen] = useState(false);
@@ -954,10 +1499,15 @@ export function Header() {
   const [notificationItems, setNotificationItems] = useState<HeaderNotification[]>([]);
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationRefreshTick, setNotificationRefreshTick] = useState(0);
+  const [adminNoticeOpen, setAdminNoticeOpen] = useState<HeaderNotification['adminNotice'] | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const memberMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const attendanceNotificationCacheRef = useRef<{ at: number; items: HeaderNotification[] }>({ at: 0, items: [] });
+
+  // MELO_HEADER_ACTIVITY_SOUND_V1
+  const notificationKnownIdsRef = useRef<Set<string>>(new Set());
+  const notificationSoundReadyRef = useRef(false);
   const auth = authCopy[locale];
   const settingsLabel = ({
     th: 'ตั้งค่า',
@@ -967,6 +1517,15 @@ export function Header() {
     ja: '設定',
     ko: '설정',
   } as Record<string, string>)[locale] ?? 'Settings';
+  const verifyLabel = ({
+    th: 'ยืนยันตัวตน', en: 'Verify', de: 'Verifizieren', zh: 'Verify', ja: 'Verify', ko: 'Verify',
+  } as Record<string, string>)[locale] ?? 'Verify';
+  const premiumLabel = ({
+    th: 'Premium', en: 'Premium', de: 'Premium', zh: 'Premium', ja: 'Premium', ko: 'Premium',
+  } as Record<string, string>)[locale] ?? 'Premium';
+  const adminReviewLabel = ({
+    th: 'Admin Center', en: 'Admin Center', de: 'Admin Center', zh: 'Admin Center', ja: 'Admin Center', ko: 'Admin Center',
+  } as Record<string, string>)[locale] ?? 'Admin Review Center';
   const partnerModeLabel = ({
     th: 'พาร์ทเนอร์',
     en: 'Partner mode',
@@ -1049,6 +1608,9 @@ export function Header() {
     ko: { menu: '메뉴', home: '홈', feed: '피드', connect: 'Connect', deals: '특별 딜', partners: '파트너', profile: '프로필', chats: '채팅', messenger: '메시지', trips: '여행', events: '이벤트', communities: '커뮤니티' },
   } as Record<string, { menu: string; home: string; feed: string; connect: string; deals: string; partners: string; profile: string; chats: string; messenger: string; trips: string; events: string; communities: string }>)[locale];
 
+  // Partner discovery and Special Deals are temporarily Thailand-only.
+  const showThailandDeals = countryScope === 'TH';
+
   const close = () => {
     setMenuOpen(false);
     setMemberMenuOpen(false);
@@ -1066,7 +1628,11 @@ export function Header() {
     router.push('/partner');
   }
 
-  const notificationUnreadCount = useMemo(() => notificationItems.filter((item) => item.unread).length, [notificationItems]);
+  const visibleNotificationItems = useMemo(() => {
+    if (!adminArea) return notificationItems.filter((item) => !item.href?.startsWith('/admin'));
+    return notificationItems.filter((item) => item.href?.startsWith('/admin') || item.adminNotice);
+  }, [adminArea, notificationItems]);
+  const notificationUnreadCount = useMemo(() => visibleNotificationItems.filter((item) => item.unread).length, [visibleNotificationItems]);
 
   useEffect(() => {
     if (!signedIn) {
@@ -1105,29 +1671,166 @@ export function Header() {
 
     async function loadHeaderNotifications() {
       setNotificationsLoading(true);
-      const result = await restSelect<HeaderSearchRow[]>('app_notifications', 'select=*&order=created_at.desc&limit=24');
+      const result = await restSelect<HeaderSearchRow[]>('notifications', 'select=*&order=created_at.desc&limit=24');
       if (!active) return;
       const rawRows = searchRows(result.data).filter((row) => !isChatActivityNotification(row));
       const rows = await resolveNotificationActors(rawRows, user?.id ?? '');
       if (!active) return;
       const profiles = await loadNotificationProfiles(rows);
       if (!active) return;
+      // MELO_PROFILE_POST_NOTIFICATION_ROUTING_V4
+      // Resolve the real owner of Like/Comment posts before building hrefs.
+      const postNotificationRows = rows
+        .map((row) => {
+          const kind = notificationKind(row);
+
+          if (kind !== 'post_like' && kind !== 'post_comment') {
+            return null;
+          }
+
+          const postId = notificationResolvedPostId(row);
+
+          return postId
+            ? { row, postId }
+            : null;
+        })
+        .filter(
+          (
+            item,
+          ): item is {
+            row: HeaderSearchRow;
+            postId: string;
+          } => Boolean(item),
+        );
+
+      const uniqueNotificationPostIds = [
+        ...new Set(postNotificationRows.map((item) => item.postId)),
+      ];
+
+      const notificationPostOwnerMap = new Map<string, string>();
+
+      await Promise.all(
+        uniqueNotificationPostIds.map(async (postId) => {
+          try {
+            const posts = await loadSocialFeedWeb({
+              postId,
+              limit: 1,
+            });
+
+            const post = posts.find(
+              (item) => String(item.id) === String(postId),
+            ) ?? posts[0];
+
+            if (post?.id && post?.authorId) {
+              notificationPostOwnerMap.set(
+                String(post.id),
+                String(post.authorId),
+              );
+            }
+          } catch {
+            // Keep normal notification fallback when the post cannot be resolved.
+          }
+        }),
+      );
+
+      if (!active) return;
+
       const backendItems = rows.map((row, index) => {
         const profile = profiles.get(notificationProfileId(row) || '') ?? null;
         const profileImage = profile ? notificationProfileImage(profile) : '';
         const rowImage = notificationActorInlineImage(row);
+
+        const kind = notificationKind(row);
+        const postId =
+          kind === 'post_like' || kind === 'post_comment'
+            ? notificationResolvedPostId(row)
+            : '';
+
+        const postOwnerId = postId
+          ? notificationPostOwnerMap.get(postId) || ''
+          : '';
+
+        const profilePostHref =
+          postId && postOwnerId
+            ? postOwnerId === user?.id
+              ? `/profile?post=${encodeURIComponent(postId)}`
+              : `/users/${encodeURIComponent(postOwnerId)}?post=${encodeURIComponent(postId)}`
+            : '';
+
         return {
           id: searchText(row, 'id') || `notification-${index}`,
           title: notificationResolvedTitle(row, locale),
           body: notificationResolvedBody(row, locale),
-          href: notificationHref(row),
+
+          // Like/Comment always opens the post on its owner's Profile.
+          href:
+            kind === 'post_like' || kind === 'post_comment'
+              ? profilePostHref || notificationHref(row)
+              : notificationHref(row),
+
           createdAt: searchText(row, 'created_at', 'inserted_at', 'updated_at'),
           unread: notificationUnread(row),
           imageUrl: rowImage || profileImage,
           avatarLabel: notificationAvatarLabel(profile || row),
           userId: notificationProfileId(row),
+
+          // MELO_CHAT_NOTIFICATION_DRAWER_V2
+          // Detect chat from the original notification payload.
+          isChat: isChatActivityNotification(row),
         } satisfies HeaderNotification;
       });
+
+      const noticeResult = await restSelect<HeaderSearchRow[]>('admin_user_notices', 'select=id,level,subject,message,created_at,read_at&order=created_at.desc&limit=24');
+      if (!active) return;
+      const adminNoticeItems: HeaderNotification[] = searchRows(noticeResult.data).map((row,index)=>({
+        id:`admin-notice-${searchText(row,'id')||index}`,
+        title: searchText(row,'subject') || (locale==='th'?'ประกาศจากทีมงาน Melo Chat':'Message from Melo Chat'),
+        body: locale==='th'?'ข้อความจากทีมงาน Melo Chat — กดเพื่อดูรายละเอียด':'Message from the Melo Chat team — open for details',
+        href:'#',
+        createdAt:searchText(row,'created_at'),
+        unread:!searchText(row,'read_at'),
+        imageUrl:'',
+        avatarLabel:'M',
+        userId:'',
+        isChat:false,
+        adminNotice:{id:searchText(row,'id'),level:searchText(row,'level'),subject:searchText(row,'subject'),message:searchText(row,'message'),createdAt:searchText(row,'created_at'),readAt:searchText(row,'read_at')}
+      }));
+      // MELO_HEADER_ACTIVITY_SOUND_V1
+      const currentNotificationIds = new Set(
+        [...adminNoticeItems, ...backendItems].map((item) => item.id).filter(Boolean),
+      );
+
+      if (!notificationSoundReadyRef.current) {
+        // First load establishes the baseline only.
+        notificationKnownIdsRef.current = currentNotificationIds;
+        notificationSoundReadyRef.current = true;
+      } else {
+        const hasNewActivityNotification = [...adminNoticeItems, ...backendItems].some(
+          (item) =>
+            item.unread &&
+            Boolean(item.id) &&
+            !notificationKnownIdsRef.current.has(item.id),
+        );
+
+        if (hasNewActivityNotification) {
+          try {
+            const audio = new Audio(
+              '/sounds/melo_activity_fun_onebeat_v2.wav',
+            );
+
+            audio.preload = 'auto';
+            audio.volume = 0.92;
+
+            void audio.play().catch(() => {
+              // Browser may require user interaction before audio playback.
+            });
+          } catch {
+            // Notification rendering continues even if audio is unavailable.
+          }
+        }
+
+        notificationKnownIdsRef.current = currentNotificationIds;
+      }
 
       const now = Date.now();
       if (now - attendanceNotificationCacheRef.current.at >= 30000) {
@@ -1137,20 +1840,43 @@ export function Header() {
       }
       const backendAttendanceHrefs = new Set(rows.filter((row) => notificationKind(row) === 'attendance').map(notificationHref));
       const attendanceItems = attendanceNotificationCacheRef.current.items.filter((item) => !backendAttendanceHrefs.has(item.href));
-      setNotificationItems([...attendanceItems, ...backendItems]);
+      setNotificationItems([...adminNoticeItems, ...attendanceItems, ...backendItems]);
       setNotificationsLoading(false);
     }
 
     void loadHeaderNotifications();
     const timer = window.setInterval(() => {
       void loadHeaderNotifications();
-    }, 30000);
+    }, 5000);
 
     return () => {
       active = false;
       window.clearInterval(timer);
     };
   }, [locale, signedIn, notificationRefreshTick, user?.id]);
+
+  useEffect(() => {
+    let active = true;
+    async function syncAdminReviewAccess() {
+      if (!signedIn) {
+        if (active) setAdminReviewAllowed(false);
+        return;
+      }
+      try {
+        const account = await loadSettingsAccountSnapshot();
+        if (active) setAdminReviewAllowed(Boolean(account.adminHasReviewAccess || account.canModerate));
+      } catch {
+        if (active) setAdminReviewAllowed(false);
+      }
+    }
+    void syncAdminReviewAccess();
+    const onAuthChanged = () => void syncAdminReviewAccess();
+    window.addEventListener('melo-auth-changed', onAuthChanged);
+    return () => {
+      active = false;
+      window.removeEventListener('melo-auth-changed', onAuthChanged);
+    };
+  }, [signedIn]);
 
   useEffect(() => {
     if (countryScope === GLOBAL_COUNTRY_SCOPE) return;
@@ -1208,6 +1934,24 @@ export function Header() {
       window.removeEventListener('melo-open-direct-chat', openChatDrawer as EventListener);
     };
   }, []);
+
+  useEffect(() => {
+    let active = true;
+    async function syncHeaderProfileAvatar() {
+      if (!signedIn || !user?.id) { if (active) setHeaderProfileAvatar(""); return; }
+      const result = await restSelect<HeaderSearchRow[]>("profiles", `select=photo_paths&id=eq.${encodeURIComponent(user.id)}&limit=1`);
+      if (!active) return;
+      const row = Array.isArray(result.data) ? result.data[0] : null;
+      setHeaderProfileAvatar(row ? searchProfileImage(row) : "");
+    }
+    void syncHeaderProfileAvatar();
+    const onProfileUpdated = (event: Event) => {
+      const avatarUrl = String((event as CustomEvent<{avatarUrl?:string}>).detail?.avatarUrl || "");
+      if (avatarUrl) setHeaderProfileAvatar(avatarUrl); else void syncHeaderProfileAvatar();
+    };
+    window.addEventListener("melo-profile-updated", onProfileUpdated as EventListener);
+    return () => { active = false; window.removeEventListener("melo-profile-updated", onProfileUpdated as EventListener); };
+  }, [signedIn, user?.id]);
 
   useEffect(() => {
     if (!signedIn) {
@@ -1524,7 +2268,7 @@ export function Header() {
             : undefined
         }
       >
-        <Link href={authPending ? "#" : signedIn ? "/account" : "/"} className="brand" onClick={close}>
+        <Link href={authPending ? "#" : signedIn ? (adminArea ? "/admin" : "/account") : "/"} className="brand" onClick={close}>
           <Image src="/melo-logo.png" alt="Melo Chat" width={42} height={42} priority />
           <span>Melo Chat</span>
         </Link>
@@ -1555,42 +2299,26 @@ export function Header() {
           ) : signedIn ? (
             <>
               <div className="memberDesktopNavContent">
-                <div className={accountStyles.memberMenuWrap} ref={memberMenuRef}>
-                  <button
-                    type="button"
-                    className={`${accountStyles.memberMenuButton} ${memberMenuOpen ? accountStyles.memberMenuButtonOpen : ''}`}
-                    onClick={() => {
-                      setMemberMenuOpen((open) => !open);
-                      setAccountOpen(false);
-                    }}
-                    aria-expanded={memberMenuOpen}
-                    aria-haspopup="menu"
-                  >
-                    <span>☰</span>{memberMain.menu}<b>⌄</b>
-                  </button>
-                  {memberMenuOpen && (
-                    <div className={accountStyles.memberSubmenu} role="menu">
-                      <Link href="/connect" onClick={close} role="menuitem"><span>☺</span>{memberMain.connect}</Link>
-                      <Link href="/deals" onClick={close} role="menuitem"><span>%</span>{memberMain.deals}</Link>
-                      <Link href="/partners" onClick={close} role="menuitem"><span>⌂</span>{memberMain.partners}</Link>
-                      <Link href="/trips" onClick={close} role="menuitem"><span>✈</span>{memberMain.trips}</Link>
-                      <Link href="/events" onClick={close} role="menuitem"><span>◇</span>{memberMain.events}</Link>
-                      <Link href="/community" onClick={close} role="menuitem"><span>◎</span>{memberMain.communities}</Link>
-                    </div>
-                  )}
-                </div>
-                <Link href="/account" onClick={close}>{memberMain.home}</Link>
-                <Link href="/profile" onClick={close}>{memberMain.profile}</Link>
-                <button
-                  type="button"
-                  onClick={() => { close(); setChatDrawerOpen(true); }}
-                  className={`${accountStyles.chatNavLink} ${accountStyles.chatNavButton}`}
-                  aria-haspopup="dialog"
-                  aria-expanded={chatDrawerOpen}
-                >
-                  <span>{memberMain.chats}</span>
-                  {chatUnreadCount > 0 ? <b className={accountStyles.chatNavBadge}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
-                </button>
+                {adminArea ? (
+                  <>
+                    <Link href="/admin" onClick={close}>{adminReviewLabel}</Link>
+                    <button type="button" onClick={() => { close(); setChatDrawerOpen(true); }} className={`${accountStyles.chatNavLink} ${accountStyles.chatNavButton}`} aria-haspopup="dialog" aria-expanded={chatDrawerOpen}>
+                      <span>{locale === 'th' ? 'แชท Support' : locale === 'de' ? 'Support-Chat' : 'Support chat'}</span>
+                      {chatUnreadCount > 0 ? <b className={accountStyles.chatNavBadge}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
+                    </button>
+                  </>
+                ) : (
+                  <>
+                    <Link href="/account" onClick={close}>{memberMain.home}</Link>
+                    <Link href="/feed" onClick={close}>{memberMain.feed}</Link>
+                    <Link href="/connect" onClick={close}>{memberMain.connect}</Link>
+                    <Link href="/profile" onClick={close}>{memberMain.profile}</Link>
+                    <button type="button" onClick={() => { close(); setChatDrawerOpen(true); }} className={`${accountStyles.chatNavLink} ${accountStyles.chatNavButton}`} aria-haspopup="dialog" aria-expanded={chatDrawerOpen}>
+                      <span>{memberMain.chats}</span>
+                      {chatUnreadCount > 0 ? <b className={accountStyles.chatNavBadge}>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
+                    </button>
+                  </>
+                )}
               </div>
 
               <div className="memberMobileNavContent">
@@ -1601,22 +2329,30 @@ export function Header() {
                 </form>
 
                 <div className="memberMobileDrawerLinks">
+                  <Link className={mobilePathActive('/account') ? 'isActive' : ''} href="/account" onClick={close}><span>⌂</span>{memberMain.home}</Link>
+                  <Link className={mobilePathActive('/feed') ? 'isActive' : ''} href="/feed" onClick={close}><span>▤</span>{memberMain.feed}</Link>
                   <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span>♡</span>{memberMain.connect}</Link>
-                  <Link className={mobilePathActive('/deals') ? 'isActive' : ''} href="/deals" onClick={close}><span>%</span>{memberMain.deals}</Link>
-                  <Link className={mobilePathActive('/partners') ? 'isActive' : ''} href="/partners" onClick={close}><span>▣</span>{memberMain.partners}</Link>
-                  <Link className={mobilePathActive('/trips') ? 'isActive' : ''} href="/trips" onClick={close}><span>✈</span>{memberMain.trips}</Link>
-                  <Link className={mobilePathActive('/events') ? 'isActive' : ''} href="/events" onClick={close}><span>◇</span>{memberMain.events}</Link>
-                  <Link className={mobilePathActive('/community') ? 'isActive' : ''} href="/community" onClick={close}><span>◎</span>{memberMain.communities}</Link>
+                  <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span>○</span>{memberMain.profile}</Link>
+                  <button type="button" className={chatDrawerOpen ? 'isActive' : ''} onClick={() => { close(); setChatDrawerOpen(true); }}><span>◌</span>{memberMain.chats}</button>
                 </div>
 
                 <div className="memberMobileDrawerUtility">
-                  <Link href="/safety" onClick={close}><span>✚</span>{safetyCopy.label}</Link>
-                  <Link href="/settings" onClick={close}><span>⚙</span>{settingsLabel}</Link>
-                  <button type="button" onClick={() => void openPartnerMode()}><span>▣</span>{partnerModeLabel}</button>
+                  {adminArea ? (
+                    <>
+                      <Link href="/account" onClick={close}><span>↩</span>{locale === 'th' ? 'กลับ User Area' : locale === 'de' ? 'Zurück zum User-Bereich' : 'Back to User Area'}</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/premium" onClick={close}><span>✦</span>Premium</Link>
+                      <Link href="/settings" onClick={close}><span>⚙</span>{settingsLabel}</Link>
+                      <Link href="/verify" onClick={close}><span>✓</span>{verifyLabel}</Link>
+                      {adminReviewAllowed ? <Link href="/admin" onClick={close}><span>▣</span>{adminReviewLabel}</Link> : null}
+                    </>
+                  )}
                 </div>
 
                 <div className="memberMobileDrawerControls">
-                  <label htmlFor="melo-member-mobile-language"><span>🌐</span><strong>{t('common.language')}</strong><select id="melo-member-mobile-language" aria-label={t('common.language')} value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>{supportedLocales.map((item) => <option value={item} key={item}>{localeLabels[item]}</option>)}</select></label>
+                  <label htmlFor="melo-member-mobile-language"><span>🌐</span><strong>{t('common.language')}</strong><select id="melo-member-mobile-language" aria-label={t('common.language')} value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>{selectableLocales.filter((item) => item === 'th' || item === 'en' || item === 'de').map((item) => <option value={item} key={item}>{localeLabels[item]}</option>)}</select></label>
                   <button type="button" onClick={toggleTheme}><span>{theme === 'dark' ? '☀' : '☾'}</span><span className="memberMobileDrawerControlCopy"><strong>{themeCopy.label}</strong><small>{theme === 'dark' ? themeCopy.dark : themeCopy.light}</small></span></button>
                 </div>
 
@@ -1625,10 +2361,22 @@ export function Header() {
             </>
           ) : (
             <>
-              <Link href="/#features" onClick={close}>{t('nav.features')}</Link>
-              <Link href="/#safety" onClick={close}>{t('nav.safety')}</Link>
-              <Link href="/#partner" onClick={close}>{t('nav.partner')}</Link>
-              <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
+              {pathname === '/' ? (
+                <div className="publicHeaderControls">
+                  <PublicLanguageSwitcher placement="header" />
+                  <button
+                    type="button"
+                    className="themeButton publicThemeButton"
+                    onClick={toggleTheme}
+                    title={theme === 'dark' ? themeCopy.light : themeCopy.dark}
+                    aria-label={theme === 'dark' ? themeCopy.light : themeCopy.dark}
+                  >
+                    <span aria-hidden="true">{theme === 'dark' ? '☀' : '☾'}</span>
+                  </button>
+                </div>
+              ) : (
+                <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
+              )}
             </>
           )}
 
@@ -1649,7 +2397,7 @@ export function Header() {
                   value={locale}
                   onChange={(event) => setLocale(event.target.value as typeof locale)}
                 >
-                  {supportedLocales.map((item) => (
+                  {selectableLocales.filter((item) => item === 'th' || item === 'en' || item === 'de').map((item) => (
                     <option value={item} key={item}>{localeLabels[item]}</option>
                   ))}
                 </select>
@@ -1787,12 +2535,11 @@ export function Header() {
             </div>
           )}
           {signedIn && (
-            <label className="countrySelect" aria-label={countryPickerLabel(locale)} title={countryPickerLabel(locale)}>
-              <span>{countryScopeFlag(countryScope)}</span>
-              <select value={countryScope} onChange={(event) => setCountryScope(event.target.value as CountryScope)}>
-                <option value={GLOBAL_COUNTRY_SCOPE}>{countryScopeLabel(GLOBAL_COUNTRY_SCOPE, locale)}</option>
-                {COUNTRY_PICKER_COUNTRIES.map((country) => (
-                  <option value={country.code} key={country.code}>{country.labels[locale]}</option>
+            <label className="countrySelect" aria-label={t('common.language')} title={t('common.language')}>
+              <span>🌐</span>
+              <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>
+                {selectableLocales.filter((item) => item === 'th' || item === 'en' || item === 'de').map((item) => (
+                  <option value={item} key={item}>{localeLabels[item]}</option>
                 ))}
               </select>
             </label>
@@ -1835,14 +2582,50 @@ export function Header() {
                     {notificationsLoading ? <span>{notificationCopy.loading}</span> : null}
                   </div>
 
-                  {notificationItems.length ? (
+                  {visibleNotificationItems.length ? (
                     <div className={accountStyles.notificationList}>
-                      {notificationItems.map((item) => (
+                      {visibleNotificationItems.map((item) => (
                         <Link
-                          href={item.href}
+                          href={item.isChat ? "#" : item.href}
                           key={item.id}
                           className={`${accountStyles.notificationRow} ${item.unread ? accountStyles.notificationRowUnread : ''}`}
-                          onClick={() => {
+                          onClick={(event) => {
+                            if (item.adminNotice) {
+                              event.preventDefault();
+                              event.stopPropagation();
+                              setAdminNoticeOpen(item.adminNotice);
+                              setNotificationOpen(false);
+                              if (!item.adminNotice.readAt) {
+                                void rpcRequest('mark_admin_user_notice_read',{p_notice_id:item.adminNotice.id}).then(()=>setNotificationRefreshTick(t=>t+1));
+                              }
+                              return;
+                            }
+                            if (item.isChat) {
+                              event.preventDefault();
+                              event.stopPropagation();
+
+                              setNotificationOpen(false);
+                              setMenuOpen(false);
+                              setMemberMenuOpen(false);
+                              setAccountOpen(false);
+
+                              window.dispatchEvent(
+                                new CustomEvent(
+                                  "melo-open-direct-chat",
+                                  {
+                                    detail: {
+                                      userId: item.userId,
+                                      title: item.title,
+                                      subtitle: item.body,
+                                      avatarUrl: item.imageUrl,
+                                    },
+                                  },
+                                ),
+                              );
+
+                              return;
+                            }
+
                             setNotificationOpen(false);
                             close();
                           }}
@@ -1883,18 +2666,6 @@ export function Header() {
           )}
 
           {signedIn && (
-            <Link
-              href="/safety"
-              className={accountStyles.safetyShortcutButton}
-              title={safetyCopy.label}
-              aria-label={safetyCopy.label}
-              onClick={close}
-            >
-              <span className={accountStyles.safetyShortcutGlyph}>✚</span>
-            </Link>
-          )}
-
-          {signedIn && (
             <div className={accountStyles.accountMenuWrap} ref={accountRef}>
               <button
                 type="button"
@@ -1905,21 +2676,31 @@ export function Header() {
                 aria-expanded={accountOpen}
                 aria-haspopup="menu"
               >
-                <span className={accountStyles.avatar}>⚙</span>
+                <span className={`${accountStyles.avatar} ${headerProfileAvatar ? accountStyles.avatarPhoto : ""}`}>{headerProfileAvatar ? <img src={headerProfileAvatar} alt="" /> : "⚙"}</span>
               </button>
 
               {accountOpen && (
                 <div className={accountStyles.dropdown} role="menu">
                   <div className={accountStyles.identity}>
-                    <span className={accountStyles.avatarLarge}>{initial}</span>
+                    <span className={`${accountStyles.avatarLarge} ${headerProfileAvatar ? accountStyles.avatarPhoto : ""}`}>{headerProfileAvatar ? <img src={headerProfileAvatar} alt="" /> : initial}</span>
                     <div>
                       <small>{auth.signedInAs}</small>
                       <strong>{email || 'Melo'}</strong>
                     </div>
                   </div>
                   <div className={accountStyles.divider} />
-                  <button type="button" className={accountStyles.partnerModeMenuButton} onClick={() => void openPartnerMode()} role="menuitem"><span>▣</span><strong>{partnerModeLabel}</strong></button>
-                  <Link href="/settings" onClick={close} role="menuitem"><span>⚙</span>{settingsLabel}</Link>
+                  {adminArea ? (
+                    <>
+                      <Link href="/account" onClick={close} role="menuitem"><span aria-hidden="true">↩</span>{locale === 'th' ? 'กลับ User Area' : locale === 'de' ? 'Zurück zum User-Bereich' : 'Back to User Area'}</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link href="/settings" onClick={close} role="menuitem"><span>⚙</span>{settingsLabel}</Link>
+                      <Link href="/premium" onClick={close} role="menuitem"><span aria-hidden="true">✦</span>{premiumLabel}</Link>
+                      <Link href="/verify" onClick={close} role="menuitem"><span aria-hidden="true">✓</span>{verifyLabel}</Link>
+                      {adminReviewAllowed ? <Link href="/admin" onClick={close} role="menuitem"><span aria-hidden="true">▣</span>{adminReviewLabel}</Link> : null}
+                    </>
+                  )}
                   <button
                     type="button"
                     className={accountStyles.themeMenuButton}
@@ -1962,19 +2743,36 @@ export function Header() {
       <button type="button" className="memberMobileMenuBackdrop" onClick={close} aria-label="Close menu" />
     ) : null}
 
-    {signedIn ? (
+    {signedIn && !adminArea ? (
       <nav className="meloMobileBottomNav" aria-label="Mobile primary navigation">
         <Link className={mobilePathActive('/account') ? 'isActive' : ''} href="/account" onClick={close}><span aria-hidden="true">⌂</span><small>{memberMain.home}</small></Link>
         <Link className={mobilePathActive('/feed') ? 'isActive' : ''} href="/feed" onClick={close}><span aria-hidden="true">▤</span><small>{memberMain.feed}</small></Link>
         <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span aria-hidden="true">♡</span><small>{memberMain.connect}</small></Link>
         <button type="button" className={chatDrawerOpen || pathname.startsWith('/chat') ? 'isActive' : ''} onClick={() => { close(); setChatDrawerOpen(true); }} aria-haspopup="dialog" aria-expanded={chatDrawerOpen}>
-          <span aria-hidden="true">✉</span><small>{memberMain.messenger}</small>{chatUnreadCount > 0 ? <b>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
+          <span aria-hidden="true">✉</span><small>{memberMain.chats}</small>{chatUnreadCount > 0 ? <b>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
         </button>
         <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span aria-hidden="true">○</span><small>{memberMain.profile}</small></Link>
       </nav>
     ) : null}
 
-    {signedIn ? <ChatDrawer open={chatDrawerOpen} onClose={() => setChatDrawerOpen(false)} /> : null}
+    {adminNoticeOpen ? (
+      <div className={accountStyles.adminNoticeBackdrop} role="presentation" onMouseDown={()=>setAdminNoticeOpen(null)}>
+        <section className={accountStyles.adminNoticeModal} role="dialog" aria-modal="true" onMouseDown={(event)=>event.stopPropagation()}>
+          <button type="button" className={accountStyles.adminNoticeClose} onClick={()=>setAdminNoticeOpen(null)}>×</button>
+          <small>{adminNoticeOpen.level==='action_required'?(locale==='th'?'ต้องดำเนินการแก้ไข':'ACTION REQUIRED'):adminNoticeOpen.level==='notice'?(locale==='th'?'แจ้งให้ทราบ':'NOTICE'):(locale==='th'?'คำเตือน':'WARNING')}</small>
+          <h2>{adminNoticeOpen.subject}</h2>
+          <time>{notificationTime(adminNoticeOpen.createdAt, locale)}</time>
+          <div className={accountStyles.adminNoticeMessage}>{adminNoticeOpen.message}</div>
+          <button type="button" className={accountStyles.adminNoticeAcknowledge} onClick={()=>setAdminNoticeOpen(null)}>{locale==='th'?'รับทราบ':'Acknowledge'}</button>
+        </section>
+      </div>
+    ) : null}
+
+    {signedIn ? <ChatDrawer open={chatDrawerOpen} onClose={() => setChatDrawerOpen(false)} adminMode={adminArea} /> : null}
     </>
   );
 }
+
+
+
+

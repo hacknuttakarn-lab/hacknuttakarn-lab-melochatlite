@@ -1172,6 +1172,13 @@
   font-size: 12px;
 }
 
+.promotionCard > p {
+  margin: 7px 0 0;
+  color: var(--text-secondary);
+  font-size: 10px;
+  line-height: 1.65;
+}
+
 .segmented {
   display: grid;
   grid-template-columns:

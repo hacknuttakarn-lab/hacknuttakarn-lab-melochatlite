@@ -1,4 +1,4 @@
-.page {
+﻿.page {
   min-height: 100vh;
   background:
     radial-gradient(
@@ -2807,5 +2807,217 @@
 
   .androidFaqCard p {
     font-size: 10.5px;
+  }
+}
+/* =========================================================
+   MELO_UNBLOCK_CONFIRM_MODAL_V1
+   ========================================================= */
+
+.unblockModalBackdrop {
+  position: fixed;
+  inset: 0;
+  z-index: 1400;
+  display: grid;
+  place-items: center;
+  padding: 20px;
+  background: rgba(4, 10, 18, 0.68);
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+}
+
+.unblockModal {
+  width: min(480px, 100%);
+  overflow: hidden;
+  border: 1px solid var(--border);
+  border-radius: 22px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 32px 90px rgba(0, 0, 0, 0.38);
+}
+
+.unblockModalHeader {
+  display: grid;
+  grid-template-columns: 48px minmax(0, 1fr) 36px;
+  gap: 13px;
+  align-items: center;
+  padding: 18px;
+  border-bottom: 1px solid var(--border);
+}
+
+.unblockModalIcon {
+  display: grid;
+  width: 48px;
+  height: 48px;
+  place-items: center;
+  border-radius: 14px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 23px;
+  font-weight: 900;
+}
+
+.unblockModalHeader h2 {
+  margin: 0;
+  color: var(--text);
+  font-size: 18px;
+  line-height: 1.3;
+}
+
+.unblockModalHeader p {
+  margin: 5px 0 0;
+  color: var(--text-secondary);
+  font-size: 12px;
+}
+
+.unblockModalClose {
+  display: grid;
+  width: 36px;
+  height: 36px;
+  place-items: center;
+  border: 1px solid var(--border);
+  border-radius: 11px;
+  background: var(--surface-2);
+  color: var(--text);
+  font: inherit;
+  font-size: 20px;
+  cursor: pointer;
+}
+
+.unblockModalClose:hover {
+  background: var(--primary-soft);
+}
+
+.unblockModalBody {
+  display: grid;
+  gap: 16px;
+  padding: 20px;
+}
+
+.unblockModalBody > p {
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 13px;
+  line-height: 1.7;
+}
+
+.unblockModalUser {
+  display: flex;
+  gap: 12px;
+  align-items: center;
+  padding: 12px;
+  border: 1px solid var(--border);
+  border-radius: 15px;
+  background: var(--surface-2);
+}
+
+.unblockModalUser img,
+.unblockModalAvatarFallback {
+  width: 46px;
+  height: 46px;
+  flex: 0 0 46px;
+  border-radius: 50%;
+}
+
+.unblockModalUser img {
+  object-fit: cover;
+}
+
+.unblockModalAvatarFallback {
+  display: grid;
+  place-items: center;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-weight: 900;
+}
+
+.unblockModalUser strong {
+  min-width: 0;
+  overflow: hidden;
+  color: var(--text);
+  font-size: 14px;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.unblockModalActions {
+  display: flex;
+  justify-content: flex-end;
+  gap: 10px;
+  padding: 0 20px 20px;
+}
+
+.unblockModalCancel,
+.unblockModalConfirm {
+  min-height: 44px;
+  border-radius: 12px;
+  padding: 0 18px;
+  font: inherit;
+  font-size: 12px;
+  font-weight: 850;
+  cursor: pointer;
+}
+
+.unblockModalCancel {
+  border: 1px solid var(--border);
+  background: var(--surface-2);
+  color: var(--text);
+}
+
+.unblockModalCancel:hover {
+  background: var(--primary-soft);
+}
+
+.unblockModalConfirm {
+  border: 1px solid var(--primary);
+  background: var(--primary);
+  color: #fff;
+}
+
+.unblockModalConfirm:hover {
+  filter: brightness(1.06);
+}
+
+:global(html[data-theme="dark"]) .unblockModal {
+  background: var(--surface, #121923);
+  border-color: var(--border, #283241);
+}
+
+@media (max-width: 600px) {
+  .unblockModalBackdrop {
+    align-items: end;
+    padding:
+      12px
+      max(12px, env(safe-area-inset-right))
+      max(12px, calc(env(safe-area-inset-bottom) + 12px))
+      max(12px, env(safe-area-inset-left));
+  }
+
+  .unblockModal {
+    border-radius: 20px;
+  }
+
+  .unblockModalHeader {
+    grid-template-columns: 42px minmax(0, 1fr) 34px;
+    gap: 10px;
+    padding: 15px;
+  }
+
+  .unblockModalIcon {
+    width: 42px;
+    height: 42px;
+  }
+
+  .unblockModalBody {
+    padding: 15px;
+  }
+
+  .unblockModalActions {
+    flex-direction: column-reverse;
+    padding: 0 15px 15px;
+  }
+
+  .unblockModalActions > button {
+    width: 100%;
+    min-height: 48px;
   }
 }

@@ -6,6 +6,11 @@ import { Header } from '@/components/Header';
 import { useLocale } from '@/components/SiteProviders';
 import { resolveCommerceMediaList } from '@/components/commerce/commerceMedia';
 import { GLOBAL_COUNTRY_SCOPE, matchesCountryScope } from '@/lib/discoveryCountry';
+import {
+  getMasterLocationLabel,
+  getMasterProvinceOptions,
+  matchesMasterLocation,
+} from '@/lib/masterLocationFilter';
 import { getCurrentUser, isSupabaseConfigured, rpcRequest } from '@/lib/supabase/browser';
 import { getPartnerCategoryLabel, partnersCopy, type PartnerBusinessCategory } from '@/i18n/partnersUi';
 import styles from './PartnersExperience.module.css';
@@ -242,20 +247,6 @@ function partnerDistrict(partner: PartnerItem) {
   return city && normalizeArea(city) !== normalizeArea(partner.province) ? city : '';
 }
 
-function uniqueAreas(values: string[]) {
-  const seen = new Set<string>();
-  const result: string[] = [];
-  for (const raw of values) {
-    const value = raw.trim();
-    if (!value) continue;
-    const key = normalizeArea(value);
-    if (seen.has(key)) continue;
-    seen.add(key);
-    result.push(value);
-  }
-  return result.sort((left, right) => left.localeCompare(right));
-}
-
 function partnerLocationText(partner: PartnerItem) {
   const parts = [partnerDistrict(partner), partnerProvince(partner), partner.country].filter(Boolean);
   return parts.filter((part, index) => parts.findIndex((item) => normalizeArea(item) === normalizeArea(part)) === index).join(' · ');
@@ -325,7 +316,6 @@ export function PartnersExperience() {
   const [selectedCategory, setSelectedCategory] = useState<PartnerCategoryFilter>('');
   const [categorySheetOpen, setCategorySheetOpen] = useState(false);
   const [selectedProvince, setSelectedProvince] = useState('');
-  const [selectedDistrict, setSelectedDistrict] = useState('');
   const [categoryQuery, setCategoryQuery] = useState('');
   const categorySearchRef = useRef<HTMLElement | null>(null);
   const [loading, setLoading] = useState(true);
@@ -447,17 +437,35 @@ export function PartnersExperience() {
 
   const scoped = useMemo(() => partners.filter((partner) => countryScope === GLOBAL_COUNTRY_SCOPE || matchesCountryScope(partner.country, countryScope)), [countryScope, partners]);
   const categoryBase = useMemo(() => scoped.filter((partner) => partnerMatchesCategory(partner, selectedCategory)), [scoped, selectedCategory]);
-  const provinceOptions = useMemo(() => uniqueAreas(categoryBase.map(partnerProvince)), [categoryBase]);
-  const districtOptions = useMemo(() => uniqueAreas(
-    categoryBase
-      .filter((partner) => !selectedProvince || normalizeArea(partnerProvince(partner)) === normalizeArea(selectedProvince))
-      .map(partnerDistrict),
-  ), [categoryBase, selectedProvince]);
+  // Partner discovery is currently Thailand-first. The dropdown values come from
+  // the canonical master list, while legacy/map strings are only normalized for matching.
+  const locationCountryValue = countryScope === GLOBAL_COUNTRY_SCOPE ? 'Thailand' : countryScope;
+  const provinceOptions = useMemo(
+    () => getMasterProvinceOptions(locationCountryValue),
+    [locationCountryValue],
+  );
+
+  // Location Filter V2: province belongs to the active country scope.
+  useEffect(() => {
+    setSelectedProvince("");
+  }, [locationCountryValue]);
   const filtered = useMemo(() => {
     const query = categoryQuery.trim().toLocaleLowerCase();
     return categoryBase
-      .filter((partner) => !selectedProvince || normalizeArea(partnerProvince(partner)) === normalizeArea(selectedProvince))
-      .filter((partner) => !selectedDistrict || normalizeArea(partnerDistrict(partner)) === normalizeArea(selectedDistrict))
+      .filter((partner) =>
+        matchesMasterLocation(
+          {
+            country: partner.country,
+            province: partner.province,
+            district: partner.district,
+            city: partner.city,
+            address: partner.address,
+          },
+          locationCountryValue,
+          selectedProvince,
+          '',
+        ),
+      )
       .filter((partner) => {
         if (!query) return true;
         const haystack = [
@@ -474,7 +482,7 @@ export function PartnersExperience() {
         ].join(' ').toLocaleLowerCase();
         return haystack.includes(query);
       });
-  }, [categoryBase, categoryQuery, selectedDistrict, selectedProvince]);
+  }, [categoryBase, categoryQuery, locationCountryValue, selectedProvince]);
   const recommended = useMemo(() => {
     const flagged = filtered.filter((partner) => partner.recommended);
     return (flagged.length ? flagged : filtered).slice(0, 6);
@@ -486,7 +494,6 @@ export function PartnersExperience() {
   const selectCategory = (category: PartnerCategoryFilter) => {
     setSelectedCategory(category);
     setSelectedProvince('');
-    setSelectedDistrict('');
     setCategoryQuery('');
     setCategorySheetOpen(false);
     if (category) {
@@ -576,20 +583,13 @@ export function PartnersExperience() {
                   value={selectedProvince}
                   onChange={(event) => {
                     setSelectedProvince(event.target.value);
-                    setSelectedDistrict('');
-                  }}
+                                  }}
                 >
                   <option value="">{locationCopy.allProvince}</option>
-                  {provinceOptions.map((province) => <option value={province} key={province}>{province}</option>)}
+                  {provinceOptions.map((province) => <option value={province.value} key={province.code}>{getMasterLocationLabel(province, locale)}</option>)}
                 </select>
               </label>
-              <label>
-                <span>{locationCopy.district}</span>
-                <select value={selectedDistrict} onChange={(event) => setSelectedDistrict(event.target.value)}>
-                  <option value="">{locationCopy.allDistrict}</option>
-                  {districtOptions.map((district) => <option value={district} key={district}>{district}</option>)}
-                </select>
-              </label>
+
               <label className={styles.categorySearchKeyword}>
                 <span>{locationCopy.keyword}</span>
                 <input value={categoryQuery} onChange={(event) => setCategoryQuery(event.target.value)} placeholder={locationCopy.keyword} />
@@ -597,11 +597,10 @@ export function PartnersExperience() {
               <button
                 type="button"
                 className={styles.categorySearchClear}
-                disabled={!selectedProvince && !selectedDistrict && !categoryQuery.trim()}
+                disabled={!selectedProvince && !categoryQuery.trim()}
                 onClick={() => {
                   setSelectedProvince('');
-                  setSelectedDistrict('');
-                  setCategoryQuery('');
+                                setCategoryQuery('');
                 }}
               >
                 {locationCopy.clear}

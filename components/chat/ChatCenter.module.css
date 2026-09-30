@@ -879,15 +879,16 @@
 .composer textarea {
   width: 100%;
   min-height: 46px;
-  max-height: 120px;
-  resize: vertical;
+  max-height: none;
+  resize: none;
   border: 1px solid var(--border);
   border-radius: 15px;
   background: var(--surface-2);
   color: var(--text);
-  padding: 12px 122px 11px 13px;
+  padding: 12px 82px 11px 13px;
   font: inherit;
   line-height: 1.4;
+  overflow-y: hidden;
   outline: none;
 }
 
@@ -1186,7 +1187,7 @@
   }
 
   .composer textarea {
-    padding-right: 112px;
+    padding-right: 78px;
   }
 
   .composerTool {

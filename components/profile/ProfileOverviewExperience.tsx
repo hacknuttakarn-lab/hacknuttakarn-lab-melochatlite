@@ -1,7 +1,7 @@
 "use client";
 
 import Link from "next/link";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { Header } from "@/components/Header";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import SocialPostComposerModal from "@/components/feed/SocialPostComposerModal";
@@ -234,7 +234,12 @@ export default function ProfileOverviewExperience() {
   const education = String(firstValue(profile, ["education"]) || "");
   const height = Number(firstValue(profile, ["height_cm", "height"]) || 0);
 
-  const verified = Boolean(verification?.is_verified || reputation?.is_verified);
+  const verified =
+    String(verification?.status || "").toLowerCase() === "approved" &&
+    String(verification?.identity_status || "").toLowerCase() === "approved" &&
+    String(verification?.selfie_status || "").toLowerCase() === "approved" &&
+    Boolean(verification?.reviewed_by) &&
+    Boolean(verification?.reviewed_at);
   const rating = Number(firstValue(reputation, ["average_rating", "reputation_score"]) || 0);
   const reviewCount = Number(firstValue(reputation, ["review_count"]) || snapshot?.reviews?.length || 0);
   const completedTrips = Number(firstValue(reputation, ["completed_trips"]) || 0);
@@ -678,6 +683,21 @@ function ProfileCommentsDrawer({
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = commentTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const style = window.getComputedStyle(textarea);
+    const lineHeight = Number.parseFloat(style.lineHeight) || 21;
+    const padding = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
+    const border = (Number.parseFloat(style.borderTopWidth) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0);
+    const maxHeight = (lineHeight * 7) + padding + border;
+    const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [body]);
 
   async function loadComments() {
     setLoading(true);
@@ -745,7 +765,8 @@ function ProfileCommentsDrawer({
 
         <div className={styles.commentComposer}>
           <textarea
-            rows={2}
+            ref={commentTextareaRef}
+            rows={1}
             value={body}
             onChange={(event) => setBody(event.target.value)}
             placeholder={t.commentPlaceholder}

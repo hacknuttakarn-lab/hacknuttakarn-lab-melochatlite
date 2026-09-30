@@ -1,18 +1,33 @@
 'use client';
 
 import { useLocale } from '@/components/SiteProviders';
+import { selectableLocales } from '@/i18n/dictionaries';
 
-export default function PublicLanguageSwitcher() {
+type PublicLanguageSwitcherProps = {
+  placement?: 'floating' | 'header';
+};
+
+export default function PublicLanguageSwitcher({
+  placement = 'floating',
+}: PublicLanguageSwitcherProps) {
   const {
     locale,
     setLocale,
     localeLabels,
-    supportedLocales,
     t,
   } = useLocale();
 
+  const selectId =
+    placement === 'header'
+      ? 'melo-header-language'
+      : 'melo-public-language';
+
   return (
-    <div className="meloPublicLanguageSwitcher">
+    <div
+      className={`meloPublicLanguageSwitcher ${
+        placement === 'header' ? 'meloPublicLanguageSwitcherHeader' : ''
+      }`}
+    >
       <span
         className="meloPublicLanguageIcon"
         aria-hidden="true"
@@ -22,20 +37,20 @@ export default function PublicLanguageSwitcher() {
 
       <label
         className="srOnly"
-        htmlFor="melo-public-language"
+        htmlFor={selectId}
       >
         {t('common.language')}
       </label>
 
       <select
-        id="melo-public-language"
+        id={selectId}
         aria-label={t('common.language')}
         value={locale}
         onChange={(event) =>
           setLocale(event.target.value as typeof locale)
         }
       >
-        {supportedLocales.map((item) => (
+        {selectableLocales.map((item) => (
           <option
             key={item}
             value={item}
@@ -59,16 +74,32 @@ export default function PublicLanguageSwitcher() {
           min-height: 42px;
           padding: 0 12px;
 
-          border: 1px solid rgba(148, 163, 184, 0.24);
+          border: 1px solid var(--border);
           border-radius: 14px;
 
-          background: rgba(255, 255, 255, 0.96);
+          background: color-mix(in srgb, var(--surface) 96%, transparent);
+          color: var(--text);
 
           box-shadow:
-            0 10px 28px rgba(15, 23, 42, 0.1),
-            0 2px 8px rgba(15, 23, 42, 0.05);
+            0 10px 28px color-mix(in srgb, var(--shadow) 82%, transparent),
+            0 2px 8px color-mix(in srgb, var(--shadow) 45%, transparent);
 
           backdrop-filter: blur(14px);
+        }
+
+        .meloPublicLanguageSwitcherHeader {
+          position: static;
+          top: auto;
+          right: auto;
+          z-index: auto;
+
+          min-height: 40px;
+          padding: 0 10px;
+
+          border-radius: 12px;
+          background: var(--surface);
+          box-shadow: 0 8px 24px var(--shadow);
+          backdrop-filter: none;
         }
 
         .meloPublicLanguageIcon {
@@ -87,13 +118,23 @@ export default function PublicLanguageSwitcher() {
           outline: 0;
 
           background: transparent;
-          color: #172033;
+          color: var(--text);
 
           font: inherit;
           font-size: 14px;
           font-weight: 700;
 
           cursor: pointer;
+        }
+
+        .meloPublicLanguageSwitcherHeader select {
+          min-width: 88px;
+          max-width: 108px;
+        }
+
+        option {
+          color: var(--text);
+          background: var(--surface);
         }
 
         .srOnly {
@@ -113,29 +154,37 @@ export default function PublicLanguageSwitcher() {
           border: 0;
         }
 
-        :global(html[data-theme='dark'])
-          .meloPublicLanguageSwitcher {
-          border-color: rgba(148, 163, 184, 0.22);
-
-          background: rgba(20, 27, 40, 0.94);
-
-          box-shadow:
-            0 12px 30px rgba(0, 0, 0, 0.28),
-            0 2px 8px rgba(0, 0, 0, 0.18);
-        }
-
-        :global(html[data-theme='dark']) select {
-          color: #f8fafc;
-        }
-
-        :global(html[data-theme='dark']) option {
-          color: #0f172a;
-          background: #ffffff;
-        }
-
         @media (max-width: 900px) {
-          .meloPublicLanguageSwitcher {
+          .meloPublicLanguageSwitcher:not(.meloPublicLanguageSwitcherHeader) {
             display: none;
+          }
+
+          .meloPublicLanguageSwitcherHeader {
+            flex: 1 1 auto;
+            width: 100%;
+            min-width: 0;
+            box-shadow: none;
+          }
+
+          .meloPublicLanguageSwitcherHeader select {
+            flex: 1 1 auto;
+            min-width: 0;
+            max-width: none;
+          }
+        }
+
+        @media (max-width: 760px) {
+          .meloPublicLanguageSwitcher:not(.meloPublicLanguageSwitcherHeader) {
+            top: 76px;
+            right: 12px;
+
+            min-height: 40px;
+
+            padding: 0 10px;
+          }
+
+          select {
+            font-size: 13px;
           }
         }
       `}</style>

@@ -1,5 +1,10 @@
-import { LoveExperience } from '@/components/connect/LoveExperience';
+import { Suspense } from 'react';
+import LiteMockExperience from '@/components/lite/LiteMockExperience';
 
 export default function Page() {
-  return <LoveExperience />;
+  return (
+    <Suspense fallback={null}>
+      <LiteMockExperience kind="love" />
+    </Suspense>
+  );
 }

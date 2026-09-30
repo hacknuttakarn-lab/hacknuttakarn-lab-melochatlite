@@ -3,7 +3,6 @@
 import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/components/SiteProviders";
-import { getCurrentMeloPlace } from "@/components/location/meloLocationWeb";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import {
   getCurrentUser,
@@ -17,6 +16,7 @@ import { activityChatCopy } from "@/i18n/activityChatUi";
 import {
   loadActivityMessages,
   loadDirectMessages,
+  loadDirectMessagesPage,
   markDirectRead,
   sendActivityMessage,
   sendDirectMessage,
@@ -884,25 +884,6 @@ function IconSticker() {
   );
 }
 
-function IconLocation() {
-  return (
-    <svg
-      viewBox="0 0 24 24"
-      aria-hidden="true"
-    >
-      <path
-        d="M12 21s6-5.35 6-11a6 6 0 1 0-12 0c0 5.65 6 11 6 11Z"
-      />
-
-      <circle
-        cx="12"
-        cy="10"
-        r="2.2"
-      />
-    </svg>
-  );
-}
-
 function IconImage() {
   return (
     <svg
@@ -1299,6 +1280,7 @@ export function ChatConversationPane({
   translationEnabled:
     boolean;
 
+
   drawerMode?:
     boolean;
 }) {
@@ -1326,6 +1308,24 @@ export function ChatConversationPane({
   ] = useState<
     RenderMessage[]
   >([]);
+
+  // MELO_GOOGLE_AUTO_TRANSLATION_V1
+  //
+  // Chat translation language is intentionally independent from
+  // the website UI locale. It comes from profiles.primary_language.
+  const [
+    primaryChatLanguage,
+    setPrimaryChatLanguage,
+  ] = useState(
+    locale,
+  );
+
+  const translationCacheRef =
+    useRef<
+      Map<string, string>
+    >(
+      new Map(),
+    );
 
   const [
     activitySenderProfiles,
@@ -1401,16 +1401,312 @@ export function ChatConversationPane({
       HTMLDivElement
     >(null);
 
+  const messageListRef = useRef<HTMLDivElement>(null);
+  const shouldScrollToEndRef = useRef(true);
+  const [loadingOlder, setLoadingOlder] = useState(false);
+  const [hasOlder, setHasOlder] = useState(true);
+
   const fileInputRef =
     useRef<
       HTMLInputElement
     >(null);
+
+  const composerTextareaRef =
+    useRef<HTMLTextAreaElement>(null);
+
+  function resizeComposerTextarea() {
+    const textarea = composerTextareaRef.current;
+
+    if (!textarea) {
+      return;
+    }
+
+    textarea.style.height = "auto";
+
+    const computed = window.getComputedStyle(textarea);
+    const lineHeight = Number.parseFloat(computed.lineHeight) || 20;
+    const paddingTop = Number.parseFloat(computed.paddingTop) || 0;
+    const paddingBottom = Number.parseFloat(computed.paddingBottom) || 0;
+    const borderTop = Number.parseFloat(computed.borderTopWidth) || 0;
+    const borderBottom = Number.parseFloat(computed.borderBottomWidth) || 0;
+    const maxHeight =
+      lineHeight * 7 +
+      paddingTop +
+      paddingBottom +
+      borderTop +
+      borderBottom;
+    const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+
+    textarea.style.height = `${Math.max(46, nextHeight)}px`;
+    textarea.style.overflowY =
+      textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }
 
   const roomKey =
     room
       ? `${room.category}:${room.id}`
       : "";
 
+  useEffect(() => {
+    resizeComposerTextarea();
+  }, [draft]);
+
+  function normalizeChatLanguage(
+    value:
+      unknown,
+  ): typeof locale {
+    const raw =
+      String(
+        value ?? "",
+      )
+        .trim()
+        .toLowerCase()
+        .replace(
+          "_",
+          "-",
+        );
+
+    const base =
+      raw.split(
+        "-",
+      )[0];
+
+    const supportedLanguages = [
+      "th",
+      "en",
+      "de",
+      "zh",
+      "ja",
+      "ko",
+    ] as const;
+
+    return supportedLanguages.includes(
+      base as (typeof supportedLanguages)[number],
+    )
+      ? (base as typeof locale)
+      : locale;
+  }
+
+  async function loadPrimaryChatLanguage(
+    currentUserId:
+      string,
+  ) {
+    const result =
+      await restSelect<
+        Record<
+          string,
+          any
+        >[]
+      >(
+        "profiles",
+
+        `select=primary_language&id=eq.${encodeURIComponent(
+          currentUserId,
+        )}&limit=1`,
+      );
+
+    const row =
+      !result.error &&
+      Array.isArray(
+        result.data,
+      )
+        ? result.data[0]
+        : null;
+
+    const language =
+      normalizeChatLanguage(
+        row?.primary_language,
+      );
+
+    setPrimaryChatLanguage(
+      language,
+    );
+
+    return language;
+  }
+
+  async function translateMessageBody(
+    message:
+      RenderMessage,
+    targetLanguage:
+      string,
+  ) {
+    if (
+      !translationEnabled ||
+      message.messageType !==
+        "text" ||
+      !message.originalBody?.trim()
+    ) {
+      return message;
+    }
+
+    const alreadyTranslated =
+      message.translations?.[
+        targetLanguage
+      ]?.trim();
+
+    if (
+      alreadyTranslated &&
+      alreadyTranslated !==
+        message.originalBody.trim()
+    ) {
+      return message;
+    }
+
+    const cacheKey =
+      `${message.id}:${targetLanguage}:${message.originalBody}`;
+
+    const cached =
+      translationCacheRef.current.get(
+        cacheKey,
+      );
+
+    if (cached) {
+      return {
+        ...message,
+
+        translations: {
+          ...message.translations,
+          [targetLanguage]:
+            cached,
+        },
+      };
+    }
+
+    try {
+      const response =
+        await fetch(
+          "/api/translate",
+          {
+            method:
+              "POST",
+
+            headers: {
+              "Content-Type":
+                "application/json",
+            },
+
+            body:
+              JSON.stringify(
+                {
+                  text:
+                    message.originalBody,
+
+                  target:
+                    targetLanguage,
+                },
+              ),
+          },
+        );
+
+      if (!response.ok) {
+        return message;
+      }
+
+      const result =
+        await response.json();
+
+      const translated =
+        typeof result?.translatedText ===
+          "string"
+          ? result.translatedText.trim()
+          : "";
+
+      if (!translated) {
+        return message;
+      }
+
+      translationCacheRef.current.set(
+        cacheKey,
+        translated,
+      );
+
+      // MELO_PERSISTENT_TRANSLATION_V1
+      //
+      // Persist newly generated direct-message translations.
+      // The Supabase RPC checks that the signed-in user belongs
+      // to the conversation before updating chat_messages.
+      if (
+        room?.category ===
+          "direct" &&
+        message.id &&
+        !result?.skipped
+      ) {
+        void rpcRequest(
+          "save_chat_message_translation",
+          {
+            p_message_id:
+              message.id,
+
+            p_language:
+              targetLanguage,
+
+            p_translation:
+              translated,
+          },
+        ).catch(
+          () =>
+            undefined,
+        );
+      }
+
+      return {
+        ...message,
+
+        translations: {
+          ...message.translations,
+
+          [targetLanguage]:
+            translated,
+        },
+      };
+    } catch {
+      // Translation must never block normal chat.
+      return message;
+    }
+  }
+
+  async function translateIncomingMessages(
+    sourceMessages:
+      RenderMessage[],
+    currentUserId:
+      string,
+    targetLanguage:
+      string,
+  ) {
+    if (
+      !translationEnabled ||
+      !sourceMessages.length
+    ) {
+      return sourceMessages;
+    }
+
+    return Promise.all(
+      sourceMessages.map(
+        async (
+          message,
+        ) => {
+          const mine =
+            directMine(
+              message,
+              room!,
+              currentUserId,
+            );
+
+          // Auto Translation is for incoming messages.
+          // The sender continues seeing their original message.
+          if (mine) {
+            return message;
+          }
+
+          return translateMessageBody(
+            message,
+            targetLanguage,
+          );
+        },
+      ),
+    );
+  }
   async function load(
     background = false,
   ) {
@@ -1442,16 +1738,43 @@ export function ChatConversationPane({
         room.category ===
         "direct"
       ) {
-        const next =
-          await loadDirectMessages(
-            room.id,
-          );
+        const [
+          next,
+          targetLanguage,
+        ] =
+          await Promise.all([
+            loadDirectMessages(
+              room.id,
+            ),
 
-        setMessages(
+            loadPrimaryChatLanguage(
+              user.id,
+            ),
+          ]);
+
+        const rendered =
           next.map(
             directToRender,
-          ),
-        );
+          );
+
+        const translated =
+          await translateIncomingMessages(
+            rendered,
+            user.id,
+            targetLanguage,
+          );
+
+        if (background) {
+          setMessages((current) => {
+            const merged = new Map(current.map((item) => [item.id, item]));
+            for (const item of translated) merged.set(item.id, item);
+            return [...merged.values()].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+          });
+        } else {
+          shouldScrollToEndRef.current = true;
+          setHasOlder(next.length >= 15);
+          setMessages(translated);
+        }
 
         void markDirectRead(
           room.id,
@@ -1524,6 +1847,8 @@ export function ChatConversationPane({
     () => {
       setDraft("");
       setMessages([]);
+      setHasOlder(true);
+      shouldScrollToEndRef.current = true;
       setActivitySenderProfiles(
         new Map(),
       );
@@ -1575,6 +1900,7 @@ export function ChatConversationPane({
     [
       roomKey,
       locale,
+      translationEnabled,
     ],
   );
 
@@ -1586,21 +1912,50 @@ export function ChatConversationPane({
         return;
       }
 
-      window.setTimeout(
-        () =>
-          endRef.current?.scrollIntoView(
-            {
-              block:
-                "end",
-            },
-          ),
-        20,
-      );
+      if (!shouldScrollToEndRef.current) return;
+      shouldScrollToEndRef.current = false;
+      window.setTimeout(() => endRef.current?.scrollIntoView({ block: "end" }), 20);
     },
     [
       messages.length,
     ],
   );
+
+  async function loadOlderDirectMessages() {
+    if (!room || room.category !== "direct" || loadingOlder || !hasOlder || !messages.length) return;
+    const scroll = messageListRef.current;
+    const oldest = messages[0]?.createdAt;
+    if (!scroll || !oldest) return;
+    const previousHeight = scroll.scrollHeight;
+    const previousTop = scroll.scrollTop;
+    setLoadingOlder(true);
+    shouldScrollToEndRef.current = false;
+    try {
+      const user = await getCurrentUser();
+      if (!user) return;
+      const [older, targetLanguage] = await Promise.all([
+        loadDirectMessagesPage(room.id, { before: oldest, limit: 15 }),
+        loadPrimaryChatLanguage(user.id),
+      ]);
+      const translated = await translateIncomingMessages(older.map(directToRender), user.id, targetLanguage);
+      setHasOlder(older.length >= 15);
+      setMessages((current) => {
+        const merged = new Map([...translated, ...current].map((item) => [item.id, item]));
+        return [...merged.values()].sort((a, b) => new Date(a.createdAt).getTime() - new Date(b.createdAt).getTime());
+      });
+      requestAnimationFrame(() => requestAnimationFrame(() => {
+        const node = messageListRef.current;
+        if (node) node.scrollTop = previousTop + (node.scrollHeight - previousHeight);
+      }));
+    } finally {
+      setLoadingOlder(false);
+    }
+  }
+
+  function handleMessageScroll() {
+    const node = messageListRef.current;
+    if (node && node.scrollTop <= 40) void loadOlderDirectMessages();
+  }
 
   const title =
     room?.title ||
@@ -1646,12 +2001,55 @@ export function ChatConversationPane({
 
     return (
       message.translations?.[
-        locale
+        primaryChatLanguage
       ]?.trim() ||
       message.originalBody
     );
   }
 
+  function originalBodyUnderTranslation(
+    message:
+      RenderMessage,
+  ) {
+    if (
+      !translationEnabled ||
+      message.messageType !==
+        "text"
+    ) {
+      return "";
+    }
+
+    const original =
+      message.originalBody?.trim() ||
+      "";
+
+    const translated =
+      message.translations?.[
+        primaryChatLanguage
+      ]?.trim() ||
+      "";
+
+    /*
+     * Show the original only when an actual translation exists.
+     *
+     * Example:
+     *
+     * สวัสดี คุณเป็นอย่างไรบ้าง?
+     * Hello, how are you?
+     *
+     * If the original is already in the preferred language,
+     * only one line is shown.
+     */
+    if (
+      !original ||
+      !translated ||
+      translated === original
+    ) {
+      return "";
+    }
+
+    return original;
+  }
   async function sendPayload(
     payload:
       ChatMessagePayload,
@@ -1681,6 +2079,7 @@ export function ChatConversationPane({
           );
 
         if (saved) {
+          shouldScrollToEndRef.current = true;
           const mapped =
             directToRender(
               saved,
@@ -1882,54 +2281,6 @@ export function ChatConversationPane({
       );
     } catch {
       // Error is displayed by sendPayload.
-    }
-  }
-
-  async function shareLocation() {
-    if (sending) {
-      return;
-    }
-
-    setStickerOpen(
-      false,
-    );
-
-    try {
-      const place =
-        await getCurrentMeloPlace(
-          {
-            locale,
-
-            fallbackLabel:
-              t.currentLocation,
-          },
-        );
-
-      const label =
-        place.name ||
-        t.currentLocation;
-
-      await sendPayload(
-        {
-          messageType:
-            "location",
-
-          latitude:
-            place.latitude,
-
-          longitude:
-            place.longitude,
-
-          locationLabel:
-            label,
-        },
-
-        `📍 ${label}`,
-      );
-    } catch {
-      setError(
-        t.locationFailed,
-      );
     }
   }
 
@@ -2451,6 +2802,8 @@ export function ChatConversationPane({
       </div>
 
       <div
+        ref={messageListRef}
+        onScroll={handleMessageScroll}
         className={
           styles.messageScroll
         }
@@ -2464,7 +2817,7 @@ export function ChatConversationPane({
             {t.loading}
           </div>
         ) : renderedMessages.length ? (
-          renderedMessages.map(
+renderedMessages.map(
             (
               message,
               index,
@@ -2536,6 +2889,14 @@ export function ChatConversationPane({
                 "sticker"
                   ? ""
                   : displayedBody(
+                      message,
+                    );
+
+              const originalBody =
+                message.messageType ===
+                "sticker"
+                  ? ""
+                  : originalBodyUnderTranslation(
                       message,
                     );
 
@@ -2668,6 +3029,27 @@ export function ChatConversationPane({
                   {body ? (
                     <p>
                       {body}
+                    </p>
+                  ) : null}
+
+                  {originalBody ? (
+                    <p
+                      style={{
+                        marginTop:
+                          "5px",
+                        paddingTop:
+                          "5px",
+                        borderTop:
+                          "1px solid currentColor",
+                        opacity:
+                          0.58,
+                        fontSize:
+                          "0.78em",
+                        lineHeight:
+                          1.35,
+                      }}
+                    >
+                      {originalBody}
                     </p>
                   ) : null}
 
@@ -2833,6 +3215,9 @@ export function ChatConversationPane({
             }
           >
             <textarea
+              ref={
+                composerTextareaRef
+              }
               value={
                 draft
               }
@@ -2897,27 +3282,6 @@ export function ChatConversationPane({
                 }
               >
                 <IconSticker />
-              </button>
-
-              <button
-                type="button"
-                className={
-                  styles.composerTool
-                }
-                onClick={() =>
-                  void shareLocation()
-                }
-                disabled={
-                  sending
-                }
-                aria-label={
-                  t.shareLocation
-                }
-                title={
-                  t.shareLocation
-                }
-              >
-                <IconLocation />
               </button>
 
               <button
@@ -3019,3 +3383,9 @@ export function ChatConversationPane({
     </section>
   );
 }
+
+
+
+
+
+

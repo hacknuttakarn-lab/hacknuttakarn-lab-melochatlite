@@ -1,21 +1,21 @@
 :root {
-  --background: #f6f8fb;
+  --background: #e9eef5;
   --surface: #ffffff;
-  --surface-2: #f0f4f8;
-  --surface-3: #e9eef5;
+  --surface-2: #f3f6fa;
+  --surface-3: #e3e9f1;
   --text: #111827;
   --text-secondary: #667085;
   --primary: #148af7;
   --primary-2: #38a9ff;
   --primary-dark: #0b6fca;
   --primary-soft: #eaf5ff;
-  --border: #e1e7ef;
+  --border: #d7e0ea;
   --shadow: rgba(23, 50, 77, .12);
   --danger: #f0445e;
   --success: #21b573;
   --warning: #ffb020;
   --violet: #7c6df5;
-  --header-bg: rgba(246, 248, 251, .82);
+  --header-bg: rgba(233, 238, 245, .88);
 }
 
 html[data-theme='dark'] {
@@ -85,10 +85,11 @@ button { color: inherit; }
 .languageSelect, .countrySelect { padding: 0 8px 0 10px; gap: 5px; }
 .languageSelect > span { color: var(--primary); font-weight: 900; }
 .countrySelect > span { font-size: 16px; line-height: 1; }
-.languageSelect select, .countrySelect select { border: 0; background: transparent; color: var(--text); outline: none; cursor: pointer; }
+.languageSelect select, .countrySelect select { border: 0; background: transparent; color: var(--text); outline: none; cursor: pointer; color-scheme: dark; font: inherit; font-weight: 700; }
+html[data-theme="light"] .languageSelect select, html[data-theme="light"] .countrySelect select { color-scheme: light; }
 .languageSelect select { max-width: 105px; }
 .countrySelect select { max-width: 118px; }
-.languageSelect option, .countrySelect option { background: var(--surface); color: var(--text); }
+.languageSelect option, .countrySelect option { background: var(--surface); color: var(--text); padding: 8px 10px; }
 .themeButton { width: 40px; justify-content: center; cursor: pointer; font-size: 19px; }
 .menuButton { display: none; width: 40px; height: 40px; border: 0; background: transparent; padding: 9px; cursor: pointer; }
 .menuButton span { display: block; height: 2px; background: var(--text); margin: 5px 0; border-radius: 99px; transition: transform .2s ease, opacity .2s ease; }
@@ -1074,4 +1075,79 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
     flex-shrink: 0;
     margin-bottom: 56px !important;
   }
+}
+
+/* MELO LANDING DESKTOP LANGUAGE + THEME RESTORE */
+.publicHeaderControls {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.publicThemeButton {
+  flex: 0 0 40px;
+  width: 40px;
+  height: 40px;
+  padding: 0;
+  justify-content: center;
+  border: 1px solid var(--border);
+  border-radius: 13px;
+  background: var(--surface);
+  color: var(--text);
+  box-shadow: 0 7px 22px var(--shadow);
+  cursor: pointer;
+  font-size: 19px;
+  transition: transform .2s ease, border-color .2s ease, box-shadow .2s ease;
+}
+
+.publicThemeButton:hover {
+  transform: translateY(-1px);
+  border-color: color-mix(in srgb, var(--primary) 35%, var(--border));
+}
+
+@media (max-width: 900px) {
+  /* Mobile Landing/Login already expose Language + Theme inside the left drawer. */
+  .publicHeaderControls {
+    display: none !important;
+  }
+}
+
+/* MELO DATING LITE LANDING V1 */
+.meloLiteHero { min-height: calc(100vh - 76px); }
+.meloLiteStage .meloLiteMatchCard { z-index: 6; }
+.meloLiteStage .meloLiteChatCard { z-index: 7; }
+.meloLiteMode { grid-template-columns: 1fr !important; }
+.meloLiteFeedMock { margin: 22px 18px; padding: 14px; border-radius: 18px; background: rgba(255,255,255,.055); display: grid; grid-template-columns: 38px 1fr; gap: 10px; align-items: center; }
+.meloLiteFeedAvatar { width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; background: rgba(82,160,255,.22); font-weight: 800; }
+.meloLiteFeedMock strong, .meloLiteFeedMock small { display: block; }
+.meloLiteFeedMock small { opacity: .65; margin-top: 3px; }
+.meloLiteFeedPhoto { grid-column: 1 / -1; min-height: 205px; border-radius: 18px; margin-top: 5px; display: grid; place-items: center; font-size: 42px; background: radial-gradient(circle at 70% 25%, rgba(104,191,255,.3), transparent 32%), linear-gradient(145deg, rgba(62,101,120,.78), rgba(24,38,48,.92)); }
+.meloLiteFeatureGrid { display: grid; grid-template-columns: repeat(3, minmax(0,1fr)); gap: 18px; margin-top: 34px; }
+.meloLiteFeatureGrid .featureCardV2 { width: auto; min-width: 0; }
+.meloLiteCta { display: flex; flex-direction: column; align-items: center; text-align: center; }
+.meloLiteCta .heroActions { justify-content: center; }
+@media (max-width: 980px) { .meloLiteFeatureGrid { grid-template-columns: repeat(2,minmax(0,1fr)); } }
+@media (max-width: 700px) {
+  .meloLiteHero { min-height: auto; padding-top: 54px; padding-bottom: 42px; }
+  .meloLiteHero .heroV2Copy { text-align: center; }
+  .meloLiteHero .eyebrow { margin-inline: auto; }
+  .meloLiteHero .heroActions, .meloLiteHero .heroTrust { justify-content: center; }
+  .meloLiteFeatureGrid { grid-template-columns: 1fr; gap: 12px; }
+  .meloLiteStage { transform: scale(.88); transform-origin: top center; margin-bottom: -45px; }
+}
+@media (max-width: 480px) {
+  .meloLiteHero h1 { font-size: clamp(42px, 13vw, 58px); }
+  .meloLiteHero .heroActions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
+  .meloLiteHero .heroActions .button { width: 100%; justify-content: center; }
+  .meloLiteStage { transform: scale(.72); margin-left: -15%; margin-right: -15%; margin-bottom: -115px; }
+}
+
+/* Member header brand must follow the active theme. */
+html:not([data-theme='dark']) .memberSiteHeader .brand,
+html:not([data-theme='dark']) .memberSiteHeader .brand span {
+  color: #111827 !important;
+}
+html[data-theme='dark'] .memberSiteHeader .brand,
+html[data-theme='dark'] .memberSiteHeader .brand span {
+  color: #f8fafc !important;
 }

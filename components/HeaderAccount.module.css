@@ -942,3 +942,53 @@
 .notificationWrap{position:relative}.notificationButton,.safetyShortcutButton{position:relative;display:inline-grid;width:42px;height:40px;place-items:center;border:1px solid var(--border);background:var(--surface);color:var(--text);border-radius:13px;box-shadow:0 7px 22px var(--shadow);cursor:pointer;transition:border-color .2s ease,box-shadow .2s ease,transform .2s ease;text-decoration:none}.notificationButton:hover,.safetyShortcutButton:hover{border-color:color-mix(in srgb,var(--primary) 38%,var(--border));box-shadow:0 10px 26px var(--shadow);transform:translateY(-1px)}.notificationGlyph{font-size:16px;line-height:1}.safetyShortcutGlyph{font-size:18px;line-height:1;color:#ef5268;font-weight:900}.notificationBadge{position:absolute;top:-5px;right:-4px;display:inline-grid;min-width:18px;height:18px;padding:0 5px;place-items:center;border:2px solid var(--bg);border-radius:999px;background:#ef5d68;color:#fff;font-size:9px;font-weight:900;line-height:1;box-shadow:0 2px 8px rgba(239,93,104,.28)}.notificationDropdown{position:absolute;right:0;top:calc(100% + 10px);width:min(380px,calc(100vw - 28px));max-height:min(520px,70vh);display:grid;grid-template-rows:auto minmax(0,1fr) auto;padding:9px;border:1px solid var(--border);border-radius:19px;background:color-mix(in srgb,var(--surface) 96%,transparent);backdrop-filter:blur(22px) saturate(140%);box-shadow:0 24px 60px var(--shadow);animation:menuIn .16s ease-out;z-index:120}.notificationDropdownHead{display:flex;align-items:center;justify-content:space-between;gap:8px;padding:6px 6px 10px}.notificationDropdownHead strong{font-size:12px;font-weight:820}.notificationDropdownHead span{color:var(--text-secondary);font-size:10px;font-weight:700}.notificationList{display:grid;gap:8px;max-height:360px;overflow:auto;padding-right:2px}.notificationRow{display:grid;grid-template-columns:48px minmax(0,1fr) 16px;gap:10px;align-items:start;padding:10px;border-radius:15px;color:var(--text);text-decoration:none;border:1px solid transparent;background:transparent;transition:background .16s ease,border-color .16s ease}.notificationRow:hover{background:var(--surface-2);border-color:color-mix(in srgb,var(--primary) 18%,var(--border))}.notificationRowUnread{background:color-mix(in srgb,var(--primary-soft) 48%,transparent);border-color:color-mix(in srgb,var(--primary) 18%,var(--border))}.notificationAvatar{width:46px;height:46px;border-radius:50%!important;overflow:hidden;background:linear-gradient(160deg,#2691ff,#4fb7ff);color:#fff;display:grid;place-items:center;font-size:16px;font-weight:900;box-shadow:inset 0 0 0 1px rgba(255,255,255,.22)}.notificationAvatar img{width:100%;height:100%;object-fit:cover;display:block}.notificationAvatar b{font-style:normal;letter-spacing:.02em}.notificationCopy strong,.notificationCopy small,.notificationCopy time{display:block}.notificationCopy strong{font-size:11px;font-weight:820;line-height:1.35}.notificationCopy small{margin-top:4px;color:var(--text-secondary);font-size:10px;line-height:1.45;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.notificationCopy time{margin-top:7px;color:var(--text-secondary);font-size:9px;font-weight:700;line-height:1}.notificationStatus{display:grid;place-items:center;min-height:46px;color:#2b93ff;font-size:22px;line-height:1}.notificationEmpty{padding:18px 8px;color:var(--text-secondary);font-size:11px;text-align:center}.notificationFooterButton{margin-top:8px;min-height:42px;border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));background:var(--primary-soft);color:var(--primary);border-radius:13px;font:inherit;font-size:11px;font-weight:850;cursor:pointer}.notificationFooterButton:hover{border-color:var(--primary)}
 
 .partnerModeMenuButton{width:100%;min-height:44px;border:0;background:transparent;color:var(--text);display:flex;align-items:center;gap:11px;padding:0 10px;border-radius:11px;text-align:left;cursor:pointer}.partnerModeMenuButton:hover{background:var(--primary-soft);color:var(--primary)}.partnerModeMenuButton>span{width:24px;height:24px;display:grid;place-items:center;border-radius:8px;background:var(--primary-soft);color:var(--primary);font-size:12px}.partnerModeMenuButton strong{font-size:11px;font-weight:850}.mobilePartnerModeButton{width:100%;min-height:42px;border:0;border-radius:12px;background:var(--primary-soft);color:var(--primary);display:flex;align-items:center;gap:10px;padding:0 12px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.mobilePartnerModeButton span{font-size:14px}
+
+
+/* =========================================================
+   V20 — Desktop signed-in header uses the viewport edges.
+   Keep mobile safe-area/header sizing unchanged.
+   ========================================================= */
+@media (min-width: 901px) {
+  .memberHeaderInner {
+    width: calc(100% - 32px) !important;
+    max-width: none !important;
+    margin-left: 16px !important;
+    margin-right: 16px !important;
+    padding-left: 0 !important;
+    padding-right: 0 !important;
+  }
+
+  .memberHeaderInner > :global(.brand) {
+    margin-left: 0 !important;
+  }
+
+  .memberHeaderTools {
+    margin-left: auto !important;
+    margin-right: 0 !important;
+  }
+}
+
+
+/* Desktop account identity uses the signed-in user's real profile photo. */
+.avatarPhoto {
+  overflow: hidden;
+}
+
+.avatarPhoto img {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: cover;
+  border-radius: inherit;
+}
+
+/* Melo Chat Lite: admin warning/notice detail opened from Notification Center */
+.adminNoticeBackdrop{position:fixed;inset:0;z-index:2600;background:rgba(3,8,16,.68);display:grid;place-items:center;padding:20px}
+.adminNoticeModal{position:relative;width:min(620px,100%);max-height:min(720px,calc(100dvh - 40px));overflow:auto;border:1px solid var(--border);border-radius:20px;background:var(--surface);color:var(--text);box-shadow:0 28px 80px rgba(0,0,0,.35);padding:28px}
+.adminNoticeModal>small{display:block;color:var(--primary);font-size:11px;font-weight:900;letter-spacing:.11em;margin-bottom:8px}
+.adminNoticeModal h2{margin:0 42px 4px 0;font-size:25px;line-height:1.2}
+.adminNoticeModal time{display:block;color:var(--text-secondary);font-size:12px;margin-bottom:20px}
+.adminNoticeMessage{white-space:pre-wrap;overflow-wrap:anywhere;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);padding:16px;font-size:14px;line-height:1.7}
+.adminNoticeClose{position:absolute;right:16px;top:14px;width:36px;height:36px;border:0;background:transparent;color:var(--text-secondary);font-size:28px;cursor:pointer}
+.adminNoticeAcknowledge{display:block;margin:18px 0 0 auto;border:1px solid var(--primary);border-radius:11px;background:var(--primary);color:#fff;padding:10px 18px;font:inherit;font-weight:850;cursor:pointer}
+@media(max-width:600px){.adminNoticeBackdrop{padding:calc(12px + env(safe-area-inset-top)) 10px calc(12px + env(safe-area-inset-bottom))}.adminNoticeModal{padding:22px 16px;border-radius:16px;max-height:calc(100dvh - 24px)}.adminNoticeModal h2{font-size:21px}}

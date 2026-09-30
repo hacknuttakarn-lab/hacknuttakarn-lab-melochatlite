@@ -13,6 +13,8 @@ export default function RegisterPage() {
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
+  const [showPassword, setShowPassword] = useState(false);
+  const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [success, setSuccess] = useState('');
@@ -26,7 +28,7 @@ export default function RegisterPage() {
     if (password.length < 6) return setError(copy.passwordTooShort);
     if (password !== confirmPassword) return setError(copy.passwordMismatch);
     setBusy(true);
-    const { error: signUpError } = await signUpWithPassword(email.trim(), password, `${window.location.origin}/account`);
+    const { error: signUpError } = await signUpWithPassword(email.trim(), password, `${window.location.origin}/onboarding`);
     setBusy(false);
     if (signUpError) return setError(signUpError || copy.registerFailed);
     setSuccess(copy.checkEmail);
@@ -39,8 +41,8 @@ export default function RegisterPage() {
         {error && <div className={styles.error}>{error}</div>}
         {success && <div className={styles.success}>{success}</div>}
         <div className={styles.field}><label htmlFor="email">{copy.email}</label><input id="email" type="email" autoComplete="email" value={email} onChange={(e) => setEmail(e.target.value)} required /></div>
-        <div className={styles.field}><label htmlFor="password">{copy.password}</label><input id="password" type="password" autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /></div>
-        <div className={styles.field}><label htmlFor="confirmPassword">{copy.confirmPassword}</label><input id="confirmPassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} /></div>
+        <div className={styles.field}><label htmlFor="password">{copy.password}</label><div className={styles.passwordField}><input id="password" type={showPassword ? "text" : "password"} autoComplete="new-password" value={password} onChange={(e) => setPassword(e.target.value)} required minLength={6} /><button type="button" className={styles.passwordToggle} onClick={() => setShowPassword((value) => !value)} aria-label={showPassword ? "Hide password" : "Show password"} aria-pressed={showPassword}>{showPassword ? "◉" : "◎"}</button></div></div>
+        <div className={styles.field}><label htmlFor="confirmPassword">{copy.confirmPassword}</label><div className={styles.passwordField}><input id="confirmPassword" type={showConfirmPassword ? "text" : "password"} autoComplete="new-password" value={confirmPassword} onChange={(e) => setConfirmPassword(e.target.value)} required minLength={6} /><button type="button" className={styles.passwordToggle} onClick={() => setShowConfirmPassword((value) => !value)} aria-label={showConfirmPassword ? "Hide password" : "Show password"} aria-pressed={showConfirmPassword}>{showConfirmPassword ? "◉" : "◎"}</button></div></div>
         <button className={styles.submit} type="submit" disabled={!supabaseReady || busy}>{busy ? copy.registering : copy.createAccount}</button>
       </form>
       <p className={styles.bottomText}>{copy.haveAccount}<Link href="/login">{copy.login}</Link></p>

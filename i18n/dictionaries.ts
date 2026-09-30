@@ -1,4 +1,5 @@
 export const supportedLocales = ['th', 'en', 'de', 'zh', 'ja', 'ko'] as const;
+export const selectableLocales = ['th', 'en', 'de'] as const;
 export type Locale = (typeof supportedLocales)[number];
 
 export const localeLabels: Record<Locale, string> = {

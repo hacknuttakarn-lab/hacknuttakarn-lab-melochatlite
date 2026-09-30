@@ -24,16 +24,16 @@ export type ComposerActivity = {
   imagePath: string;
 };
 
-type NewImage = { id: string; file: File; preview: string };
+type NewImage = { id: string; file: File; preview: string; x: number; y: number };
 type ExistingImage = { path: string; url: string };
 
 const COPY = {
-  th: {create:"สร้างโพสต์",edit:"แก้ไขโพสต์",subtitle:"แชร์เรื่องราวกับชาว Melo",title:"หัวข้อ",titlePlaceholder:"เพิ่มหัวข้อโพสต์ (ไม่บังคับ)",body:"ข้อความ",bodyPlaceholder:"คุณกำลังคิดอะไรอยู่...",visibility:"ใครเห็นโพสต์นี้ได้",public:"สาธารณะ",friends:"เพื่อน",onlyMe:"เฉพาะฉัน",tripMembers:"สมาชิกทริป",eventParticipants:"ผู้เข้าร่วมอีเวนต์",communityMembers:"สมาชิกคอมมูนิตี้",cancel:"ยกเลิก",publish:"โพสต์",save:"บันทึก",saving:"กำลังบันทึก…",required:"เพิ่มข้อความ รูปภาพ หรือกิจกรรมก่อนโพสต์",attached:"แนบกับโพสต์",photo:"เพิ่มรูปภาพ",location:"เพิ่มโลเคชั่น",locationName:"ชื่อสถานที่",locationPlaceholder:"เช่น Siam Square, Bangkok",currentLocation:"ตำแหน่งปัจจุบัน",detect:"ใช้ตำแหน่งปัจจุบัน",locating:"กำลังค้นหาตำแหน่ง…",removeLocation:"ลบโลเคชั่น",locationUnavailable:"ไม่สามารถอ่านตำแหน่งปัจจุบันได้",searchingPlaces:"กำลังค้นหาสถานที่…",noPlaces:"ไม่พบสถานที่ที่ตรงกับคำค้น",maxImages:"เพิ่มรูปได้สูงสุด 8 รูป",largeImage:"รูปภาพแต่ละรูปต้องมีขนาดไม่เกิน 12 MB",removeImage:"ลบรูป",mediaHint:"รูปภาพและตำแหน่งจะแสดงกับโพสต์ทั้งบนเว็บและฟีด Melo"},
-  en: {create:"Create post",edit:"Edit post",subtitle:"Share something with Melo",title:"Title",titlePlaceholder:"Add a title (optional)",body:"Post",bodyPlaceholder:"What are you thinking about?",visibility:"Who can see this post",public:"Public",friends:"Friends",onlyMe:"Only me",tripMembers:"Trip members",eventParticipants:"Event participants",communityMembers:"Community members",cancel:"Cancel",publish:"Post",save:"Save",saving:"Saving…",required:"Add text, images, or an activity before posting",attached:"Attached to post",photo:"Add photos",location:"Add location",locationName:"Place name",locationPlaceholder:"e.g. Siam Square, Bangkok",currentLocation:"Current location",detect:"Use current location",locating:"Finding location…",removeLocation:"Remove location",locationUnavailable:"Current location is unavailable",searchingPlaces:"Searching places…",noPlaces:"No matching places found",maxImages:"You can add up to 8 images",largeImage:"Each image must be 12 MB or smaller",removeImage:"Remove image",mediaHint:"Photos and location will be saved with this Melo post"},
-  de: {create:"Beitrag erstellen",edit:"Beitrag bearbeiten",subtitle:"Mit Melo teilen",title:"Titel",titlePlaceholder:"Titel hinzufügen (optional)",body:"Beitrag",bodyPlaceholder:"Woran denkst du?",visibility:"Wer kann den Beitrag sehen",public:"Öffentlich",friends:"Freunde",onlyMe:"Nur ich",tripMembers:"Reisemitglieder",eventParticipants:"Event-Teilnehmer",communityMembers:"Community-Mitglieder",cancel:"Abbrechen",publish:"Posten",save:"Speichern",saving:"Speichern…",required:"Text, Bilder oder Aktivität hinzufügen",attached:"An Beitrag angehängt",photo:"Fotos hinzufügen",location:"Ort hinzufügen",locationName:"Ortsname",locationPlaceholder:"z. B. Siam Square, Bangkok",currentLocation:"Aktueller Standort",detect:"Aktuellen Standort verwenden",locating:"Standort wird gesucht…",removeLocation:"Ort entfernen",locationUnavailable:"Standort nicht verfügbar",searchingPlaces:"Orte werden gesucht…",noPlaces:"Keine passenden Orte gefunden",maxImages:"Maximal 8 Bilder",largeImage:"Jedes Bild darf höchstens 12 MB groß sein",removeImage:"Bild entfernen",mediaHint:"Fotos und Standort werden mit dem Melo-Beitrag gespeichert"},
-  zh: {create:"创建帖子",edit:"编辑帖子",subtitle:"与 Melo 分享",title:"标题",titlePlaceholder:"添加标题（可选）",body:"内容",bodyPlaceholder:"你在想什么？",visibility:"谁可以看到此帖子",public:"公开",friends:"好友",onlyMe:"仅自己",tripMembers:"旅行成员",eventParticipants:"活动参与者",communityMembers:"社区成员",cancel:"取消",publish:"发布",save:"保存",saving:"正在保存…",required:"请添加文字、图片或活动",attached:"帖子附件",photo:"添加图片",location:"添加位置",locationName:"地点名称",locationPlaceholder:"例如 Siam Square, Bangkok",currentLocation:"当前位置",detect:"使用当前位置",locating:"正在获取位置…",removeLocation:"移除位置",locationUnavailable:"无法获取当前位置",searchingPlaces:"正在搜索地点…",noPlaces:"未找到匹配的地点",maxImages:"最多可添加 8 张图片",largeImage:"每张图片不得超过 12 MB",removeImage:"删除图片",mediaHint:"图片和位置会与 Melo 帖子一起保存"},
-  ja: {create:"投稿を作成",edit:"投稿を編集",subtitle:"Meloに共有",title:"タイトル",titlePlaceholder:"タイトルを追加（任意）",body:"本文",bodyPlaceholder:"今、何を考えていますか？",visibility:"公開範囲",public:"公開",friends:"友達",onlyMe:"自分のみ",tripMembers:"Tripメンバー",eventParticipants:"Event参加者",communityMembers:"Communityメンバー",cancel:"キャンセル",publish:"投稿",save:"保存",saving:"保存中…",required:"テキスト、画像、またはアクティビティを追加してください",attached:"投稿に添付",photo:"画像を追加",location:"場所を追加",locationName:"場所名",locationPlaceholder:"例: Siam Square, Bangkok",currentLocation:"現在地",detect:"現在地を使用",locating:"位置情報を取得中…",removeLocation:"場所を削除",locationUnavailable:"現在地を取得できません",searchingPlaces:"場所を検索中…",noPlaces:"一致する場所が見つかりません",maxImages:"画像は最大8枚まで",largeImage:"各画像は12MB以下にしてください",removeImage:"画像を削除",mediaHint:"画像と場所はMelo投稿に保存されます"},
-  ko: {create:"게시물 만들기",edit:"게시물 수정",subtitle:"Melo에 공유",title:"제목",titlePlaceholder:"제목 추가 (선택)",body:"내용",bodyPlaceholder:"무슨 생각을 하고 있나요?",visibility:"공개 범위",public:"공개",friends:"친구",onlyMe:"나만 보기",tripMembers:"여행 멤버",eventParticipants:"이벤트 참여자",communityMembers:"커뮤니티 멤버",cancel:"취소",publish:"게시",save:"저장",saving:"저장 중…",required:"텍스트, 이미지 또는 활동을 추가하세요",attached:"게시물 첨부",photo:"사진 추가",location:"위치 추가",locationName:"장소 이름",locationPlaceholder:"예: Siam Square, Bangkok",currentLocation:"현재 위치",detect:"현재 위치 사용",locating:"위치 확인 중…",removeLocation:"위치 삭제",locationUnavailable:"현재 위치를 확인할 수 없습니다",searchingPlaces:"장소 검색 중…",noPlaces:"일치하는 장소를 찾을 수 없습니다",maxImages:"이미지는 최대 8장까지 추가할 수 있습니다",largeImage:"각 이미지는 12MB 이하여야 합니다",removeImage:"이미지 삭제",mediaHint:"사진과 위치가 Melo 게시물에 함께 저장됩니다"},
+  th: {create:"สร้างโพสต์",edit:"แก้ไขโพสต์",subtitle:"แชร์เรื่องราวกับชาว Melo",title:"หัวข้อ",titlePlaceholder:"เพิ่มหัวข้อโพสต์ (ไม่บังคับ)",body:"ข้อความ",bodyPlaceholder:"คุณกำลังคิดอะไรอยู่...",visibility:"ใครเห็นโพสต์นี้ได้",public:"สาธารณะ",friends:"เพื่อน",onlyMe:"เฉพาะฉัน",tripMembers:"สมาชิกทริป",eventParticipants:"ผู้เข้าร่วมอีเวนต์",communityMembers:"สมาชิกคอมมูนิตี้",cancel:"ยกเลิก",publish:"โพสต์",save:"บันทึก",saving:"กำลังบันทึก…",required:"เพิ่มข้อความ รูปภาพ หรือกิจกรรมก่อนโพสต์",attached:"แนบกับโพสต์",photo:"เพิ่มรูปภาพ",location:"เพิ่มโลเคชั่น",locationName:"ชื่อสถานที่",locationPlaceholder:"เช่น Siam Square, Bangkok",currentLocation:"ตำแหน่งปัจจุบัน",detect:"ใช้ตำแหน่งปัจจุบัน",locating:"กำลังค้นหาตำแหน่ง…",removeLocation:"ลบโลเคชั่น",locationUnavailable:"ไม่สามารถอ่านตำแหน่งปัจจุบันได้",searchingPlaces:"กำลังค้นหาสถานที่…",noPlaces:"ไม่พบสถานที่ที่ตรงกับคำค้น",maxImages:"เพิ่มรูปได้สูงสุด 4 รูป",largeImage:"รูปภาพแต่ละรูปต้องมีขนาดไม่เกิน 12 MB",removeImage:"ลบรูป",mediaHint:"รูปภาพและตำแหน่งจะแสดงกับโพสต์ทั้งบนเว็บและฟีด Melo"},
+  en: {create:"Create post",edit:"Edit post",subtitle:"Share something with Melo",title:"Title",titlePlaceholder:"Add a title (optional)",body:"Post",bodyPlaceholder:"What are you thinking about?",visibility:"Who can see this post",public:"Public",friends:"Friends",onlyMe:"Only me",tripMembers:"Trip members",eventParticipants:"Event participants",communityMembers:"Community members",cancel:"Cancel",publish:"Post",save:"Save",saving:"Saving…",required:"Add text, images, or an activity before posting",attached:"Attached to post",photo:"Add photos",location:"Add location",locationName:"Place name",locationPlaceholder:"e.g. Siam Square, Bangkok",currentLocation:"Current location",detect:"Use current location",locating:"Finding location…",removeLocation:"Remove location",locationUnavailable:"Current location is unavailable",searchingPlaces:"Searching places…",noPlaces:"No matching places found",maxImages:"You can add up to 4 images",largeImage:"Each image must be 12 MB or smaller",removeImage:"Remove image",mediaHint:"Photos and location will be saved with this Melo post"},
+  de: {create:"Beitrag erstellen",edit:"Beitrag bearbeiten",subtitle:"Mit Melo teilen",title:"Titel",titlePlaceholder:"Titel hinzufügen (optional)",body:"Beitrag",bodyPlaceholder:"Woran denkst du?",visibility:"Wer kann den Beitrag sehen",public:"Öffentlich",friends:"Freunde",onlyMe:"Nur ich",tripMembers:"Reisemitglieder",eventParticipants:"Event-Teilnehmer",communityMembers:"Community-Mitglieder",cancel:"Abbrechen",publish:"Posten",save:"Speichern",saving:"Speichern…",required:"Text, Bilder oder Aktivität hinzufügen",attached:"An Beitrag angehängt",photo:"Fotos hinzufügen",location:"Ort hinzufügen",locationName:"Ortsname",locationPlaceholder:"z. B. Siam Square, Bangkok",currentLocation:"Aktueller Standort",detect:"Aktuellen Standort verwenden",locating:"Standort wird gesucht…",removeLocation:"Ort entfernen",locationUnavailable:"Standort nicht verfügbar",searchingPlaces:"Orte werden gesucht…",noPlaces:"Keine passenden Orte gefunden",maxImages:"Maximal 4 Bilder",largeImage:"Jedes Bild darf höchstens 12 MB groß sein",removeImage:"Bild entfernen",mediaHint:"Fotos und Standort werden mit dem Melo-Beitrag gespeichert"},
+  zh: {create:"创建帖子",edit:"编辑帖子",subtitle:"与 Melo 分享",title:"标题",titlePlaceholder:"添加标题（可选）",body:"内容",bodyPlaceholder:"你在想什么？",visibility:"谁可以看到此帖子",public:"公开",friends:"好友",onlyMe:"仅自己",tripMembers:"旅行成员",eventParticipants:"活动参与者",communityMembers:"社区成员",cancel:"取消",publish:"发布",save:"保存",saving:"正在保存…",required:"请添加文字、图片或活动",attached:"帖子附件",photo:"添加图片",location:"添加位置",locationName:"地点名称",locationPlaceholder:"例如 Siam Square, Bangkok",currentLocation:"当前位置",detect:"使用当前位置",locating:"正在获取位置…",removeLocation:"移除位置",locationUnavailable:"无法获取当前位置",searchingPlaces:"正在搜索地点…",noPlaces:"未找到匹配的地点",maxImages:"最多可添加 4 张图片",largeImage:"每张图片不得超过 12 MB",removeImage:"删除图片",mediaHint:"图片和位置会与 Melo 帖子一起保存"},
+  ja: {create:"投稿を作成",edit:"投稿を編集",subtitle:"Meloに共有",title:"タイトル",titlePlaceholder:"タイトルを追加（任意）",body:"本文",bodyPlaceholder:"今、何を考えていますか？",visibility:"公開範囲",public:"公開",friends:"友達",onlyMe:"自分のみ",tripMembers:"Tripメンバー",eventParticipants:"Event参加者",communityMembers:"Communityメンバー",cancel:"キャンセル",publish:"投稿",save:"保存",saving:"保存中…",required:"テキスト、画像、またはアクティビティを追加してください",attached:"投稿に添付",photo:"画像を追加",location:"場所を追加",locationName:"場所名",locationPlaceholder:"例: Siam Square, Bangkok",currentLocation:"現在地",detect:"現在地を使用",locating:"位置情報を取得中…",removeLocation:"場所を削除",locationUnavailable:"現在地を取得できません",searchingPlaces:"場所を検索中…",noPlaces:"一致する場所が見つかりません",maxImages:"画像は最大4枚まで",largeImage:"各画像は12MB以下にしてください",removeImage:"画像を削除",mediaHint:"画像と場所はMelo投稿に保存されます"},
+  ko: {create:"게시물 만들기",edit:"게시물 수정",subtitle:"Melo에 공유",title:"제목",titlePlaceholder:"제목 추가 (선택)",body:"내용",bodyPlaceholder:"무슨 생각을 하고 있나요?",visibility:"공개 범위",public:"공개",friends:"친구",onlyMe:"나만 보기",tripMembers:"여행 멤버",eventParticipants:"이벤트 참여자",communityMembers:"커뮤니티 멤버",cancel:"취소",publish:"게시",save:"저장",saving:"저장 중…",required:"텍스트, 이미지 또는 활동을 추가하세요",attached:"게시물 첨부",photo:"사진 추가",location:"위치 추가",locationName:"장소 이름",locationPlaceholder:"예: Siam Square, Bangkok",currentLocation:"현재 위치",detect:"현재 위치 사용",locating:"위치 확인 중…",removeLocation:"위치 삭제",locationUnavailable:"현재 위치를 확인할 수 없습니다",searchingPlaces:"장소 검색 중…",noPlaces:"일치하는 장소를 찾을 수 없습니다",maxImages:"이미지는 최대 4장까지 추가할 수 있습니다",largeImage:"각 이미지는 12MB 이하여야 합니다",removeImage:"이미지 삭제",mediaHint:"사진과 위치가 Melo 게시물에 함께 저장됩니다"},
 } as const;
 
 function visibilityLabel(value: SocialPostVisibility, copy: any) {
@@ -50,6 +50,24 @@ function activityVisibility(type: SocialActivityType | null | undefined): Social
   if (type === "event") return "event_participants";
   if (type === "community") return "community_members";
   return null;
+}
+
+async function cropForPost(item: NewImage, imageCount: number): Promise<File> {
+  const bitmap = await createImageBitmap(item.file);
+  const targetAspect = imageCount === 1 ? 16 / 10 : 1.55;
+  const sourceAspect = bitmap.width / bitmap.height;
+  let sw = bitmap.width, sh = bitmap.height;
+  if (sourceAspect > targetAspect) sw = sh * targetAspect; else sh = sw / targetAspect;
+  const maxX = Math.max(0, bitmap.width - sw), maxY = Math.max(0, bitmap.height - sh);
+  const sx = maxX * (item.x / 100), sy = maxY * (item.y / 100);
+  const maxW = imageCount === 1 ? 1600 : 1200;
+  const outW = Math.min(maxW, Math.max(1, Math.round(sw)));
+  const outH = Math.max(1, Math.round(outW / targetAspect));
+  const canvas = document.createElement("canvas"); canvas.width = outW; canvas.height = outH;
+  const ctx = canvas.getContext("2d"); if (!ctx) return item.file;
+  ctx.drawImage(bitmap, sx, sy, sw, sh, 0, 0, outW, outH); bitmap.close();
+  const blob = await new Promise<Blob | null>((resolve) => canvas.toBlob(resolve, "image/jpeg", .9));
+  return blob ? new File([blob], item.file.name.replace(/\.[^.]+$/, "") + ".jpg", { type: "image/jpeg", lastModified: Date.now() }) : item.file;
 }
 
 export default function SocialPostComposerModal({ open, onClose, onSaved, post = null, activity = null }: {
@@ -130,6 +148,8 @@ export default function SocialPostComposerModal({ open, onClose, onSaved, post =
       id: `${Date.now()}-${index}-${Math.random().toString(36).slice(2)}`,
       file,
       preview: URL.createObjectURL(file),
+      x: 50,
+      y: 50,
     }));
     setNewImages((current) => [...current, ...next]);
   }
@@ -170,26 +190,25 @@ export default function SocialPostComposerModal({ open, onClose, onSaved, post =
 
   async function save() {
     const hasMedia = imageCount > 0;
-    const hasLocation = locationOpen && Boolean(locationName.trim() || latitude != null || longitude != null);
+    const hasLocation = false;
     if (!body.trim() && !title.trim() && !attached && !hasMedia && !hasLocation) { setError(copy.required); return; }
     if (saving) return;
     setSaving(true); setError("");
-    const location = locationOpen && (locationName.trim() || latitude != null || longitude != null)
-      ? { name: locationName.trim(), latitude, longitude }
-      : null;
+    const location = null;
     try {
+      const preparedNewImages = await Promise.all(newImages.map((image) => cropForPost(image, imageCount)));
       const postId = post
         ? await updateSocialPostWeb(post, {
-            title, body, visibility,
+            title, body, visibility: "public",
             existingImagePaths: existingImages.map((image) => image.path),
-            newImageFiles: newImages.map((image) => image.file),
+            newImageFiles: preparedNewImages,
             location,
           })
         : await createTextSocialPostWeb({
             title,
             body,
-            visibility,
-            imageFiles: newImages.map((image) => image.file),
+            visibility: "public",
+            imageFiles: preparedNewImages,
             location,
             activity: attached,
           });
@@ -210,40 +229,17 @@ export default function SocialPostComposerModal({ open, onClose, onSaved, post =
 
         <div className={styles.mediaToolbar}>
           <button type="button" onClick={()=>fileInputRef.current?.click()} disabled={imageCount>=MAX_SOCIAL_POST_IMAGES}><span>▧</span>{copy.photo}<b>{imageCount}/{MAX_SOCIAL_POST_IMAGES}</b></button>
-          <button type="button" className={locationOpen?styles.activeTool:""} onClick={()=>setLocationOpen((value)=>!value)}><span>⌖</span>{copy.location}</button>
           <input ref={fileInputRef} className={styles.fileInput} type="file" accept="image/*" multiple onChange={pickImages}/>
         </div>
 
         {imageCount ? <div className={styles.imageGrid}>
           {existingImages.map((image, index)=><div className={styles.imagePreview} key={`existing-${image.path}-${index}`}><img src={image.url} alt=""/><button type="button" title={copy.removeImage} onClick={()=>setExistingImages((current)=>current.filter((_,i)=>i!==index))}>×</button></div>)}
-          {newImages.map((image)=><div className={styles.imagePreview} key={image.id}><img src={image.preview} alt=""/><button type="button" title={copy.removeImage} onClick={()=>removeNewImage(image.id)}>×</button></div>)}
+          {newImages.map((image)=><div className={styles.imagePreview} key={image.id}><img src={image.preview} alt="" style={{objectPosition:`${image.x}% ${image.y}%`}}/><button type="button" title={copy.removeImage} onClick={()=>removeNewImage(image.id)}>×</button><div className={styles.positionControls}><input aria-label="Horizontal image position" type="range" min="0" max="100" value={image.x} onChange={(e)=>setNewImages(current=>current.map(item=>item.id===image.id?{...item,x:Number(e.target.value)}:item))}/><input aria-label="Vertical image position" type="range" min="0" max="100" value={image.y} onChange={(e)=>setNewImages(current=>current.map(item=>item.id===image.id?{...item,y:Number(e.target.value)}:item))}/></div></div>)}
         </div>:null}
 
-        {locationOpen?<section className={styles.locationPanel}>
-          <div className={styles.locationHead}><strong>⌖ {copy.location}</strong><button type="button" onClick={clearLocation}>{copy.removeLocation}</button></div>
-          <label><span>{copy.locationName}</span></label>
-          <PlaceSearchInput
-            value={locationName}
-            onChange={(value)=>{setLocationName(value);setLatitude(null);setLongitude(null)}}
-            onSelect={selectLocation}
-            placeholder={copy.locationPlaceholder}
-            locale={locale}
-            searchingLabel={copy.searchingPlaces}
-            noResultsLabel={copy.noPlaces}
-            latitude={latitude}
-            longitude={longitude}
-          />
-          <div className={styles.locationActions}><button type="button" onClick={()=>void detectLocation()} disabled={locating}>{locating?copy.locating:copy.detect}</button>{latitude!=null&&longitude!=null?<small>{latitude.toFixed(5)}, {longitude.toFixed(5)}</small>:null}</div>
-        </section>:null}
 
-        <small className={styles.mediaHint}>{copy.mediaHint}</small>
+        <small className={styles.mediaHint}>{locale==="th"?"รูปภาพจะถูกบันทึกพร้อมโพสต์ Melo":locale==="de"?"Fotos werden mit diesem Melo-Beitrag gespeichert":"Photos will be saved with this Melo post"}</small>
 
-        <section className={styles.visibility}><strong>{copy.visibility}</strong><div>
-          <button type="button" className={visibility==="public"?styles.selected:""} onClick={()=>setVisibility("public")}>🌐 {copy.public}</button>
-          <button type="button" className={visibility==="friends"?styles.selected:""} onClick={()=>setVisibility("friends")}>●● {copy.friends}</button>
-          <button type="button" className={visibility==="only_me"?styles.selected:""} onClick={()=>setVisibility("only_me")}>◉ {copy.onlyMe}</button>
-          {memberVisibility?<button type="button" className={visibility===memberVisibility?styles.selected:""} onClick={()=>setVisibility(memberVisibility)}>◎ {visibilityLabel(memberVisibility,copy)}</button>:null}
-        </div></section>
         {error?<div className={styles.error}>{error}</div>:null}
       </div>
       <footer className={styles.footer}><button type="button" className={styles.cancel} onClick={onClose}>{copy.cancel}</button><button type="button" className={styles.primary} onClick={()=>void save()} disabled={saving}>{saving?copy.saving:editing?copy.save:copy.publish}</button></footer>

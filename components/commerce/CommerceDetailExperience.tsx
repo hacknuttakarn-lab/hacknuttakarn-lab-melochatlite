@@ -113,8 +113,45 @@ function guestRange(service:Service,peopleLabel:string) {
   const range=service.minGuests!=null&&service.maxGuests!=null&&service.minGuests!==service.maxGuests?`${service.minGuests}–${service.maxGuests}`:String(service.minGuests??service.maxGuests??'');
   return range ? `${range} ${peopleLabel}` : '';
 }
-function serviceMediaSources(service:Service,business:Business) {
-  return uniqueStrings([...service.images,service.image,...business.covers,business.cover,...business.images,business.image]);
+const SERVICE_MEDIA_KEYS = [
+  'image_url','service_image_url','product_image_url','main_image_url','thumbnail_url','photo_url',
+  'image_storage_path','service_image_storage_path','product_image_storage_path','main_image_storage_path','media_storage_path','service_photo_storage_path','product_photo_storage_path',
+  'service_image_path','product_image_path','main_image_path','media_path','thumbnail_path','photo_path',
+  'image','service_image','product_image','main_image','photo','thumbnail','image_path','service_cover_path','service_cover_image_path',
+  'service_photo_path','product_photo_path','primary_image_path','main_photo_path','storage_path','path',
+  'image_urls','images','photos','gallery','media','image_paths','photo_paths','gallery_paths','gallery_images','service_images','product_images',
+  'additional_images','additional_image_paths','media_urls','media_paths','photo_urls','service_image_paths','product_image_paths','service_photos','product_photos','service_media','product_media',
+] as const;
+const SERVICE_EXPLICIT_MEDIA_KEYS = [
+  'service_image_url','product_image_url','main_image_url','service_image_storage_path','product_image_storage_path','main_image_storage_path',
+  'service_photo_storage_path','product_photo_storage_path','service_image_path','product_image_path','main_image_path','service_cover_path','service_cover_image_path',
+  'service_photo_path','product_photo_path','service_images','product_images','service_image_paths','product_image_paths','service_photos','product_photos','service_media','product_media',
+] as const;
+function mediaRecordFromKeys(source:Row,keys:readonly string[]) {
+  const record:Row={};
+  for(const key of keys) {
+    const value=source[key];
+    if(value!==undefined&&value!==null&&value!=='') record[key]=value;
+  }
+  return record;
+}
+function serviceMediaRecord(...sources:Row[]) {
+  const record:Row={};
+  for(const source of sources) {
+    for(const key of SERVICE_MEDIA_KEYS) {
+      const value=source[key];
+      if(record[key]===undefined&&value!==undefined&&value!==null&&value!=='') record[key]=value;
+    }
+  }
+  return record;
+}
+function serviceExplicitMediaRecord(...sources:Row[]) {
+  const record:Row={};
+  for(const source of sources) Object.assign(record,mediaRecordFromKeys(source,SERVICE_EXPLICIT_MEDIA_KEYS));
+  return record;
+}
+function serviceMediaSources(service:Service) {
+  return uniqueStrings([...service.images,service.image]);
 }
 
 function businessMapUrl(business:Business|null) {
@@ -144,31 +181,74 @@ async function loadBusiness(id:string,includeProfile=false):Promise<Business|nul
   ]);
   const detailRow=rowsOf(detail.data)[0]??{};
   const row={...publicRow,...detailRow};
+  const profileSource={
+    logo_url:row.logo_url,
+    logo_storage_path:row.logo_storage_path,
+    logo_path:row.logo_path,
+    profile_image_url:row.profile_image_url,
+    profile_photo_url:row.profile_photo_url,
+    profile_image_path:row.profile_image_path,
+    profile_photo_path:row.profile_photo_path,
+  };
+  const legacyProfileSource={ image_url:row.image_url, image_storage_path:row.image_storage_path, image_path:row.image_path };
   const coverSource={ cover_url: row.cover_url, cover_image_url: row.cover_image_url, cover_storage_path: row.cover_storage_path, cover_path: row.cover_path };
-  const [images,covers]=await Promise.all([
-    resolveCommerceMediaList(detailRow, publicRow, row),
-    resolveCommerceMediaList(coverSource, detailRow, publicRow, row),
+  const [profileImages,legacyProfileImages,covers]=await Promise.all([
+    resolveCommerceMediaList(profileSource),
+    resolveCommerceMediaList(legacyProfileSource),
+    resolveCommerceMediaList(coverSource),
   ]);
+  const images=profileImages.length?profileImages:legacyProfileImages;
   return { id, name:text(row,'display_name','legal_name')||'Melo Partner', description:text(row,'description'), category:text(row,'business_type','category'), city:text(row,'city'), country:text(row,'country'), address:text(row,'address'), phone:text(row,'phone'), email:text(row,'email'), website:text(row,'website'), language:text(row,'primary_language'), image:images[0]??'', images, cover:covers[0]??'', covers, profile:includeProfile?parseBusinessProfileExtras(profileResult.data,profileResult.error):emptyBusinessProfileExtras(), raw:row };
 }
 
+async function loadPublicServiceMediaRows(businessId:string):Promise<Row[]> {
+  const publicMedia=await rpcRequest<Row[]>('melo_public_partner_service_media',{p_business_id:businessId});
+  if(!publicMedia.error) {
+    const publicRows=rowsOf(publicMedia.data);
+    if(publicRows.length) return publicRows;
+  }
+
+  // Backward compatibility for deployments that already have the older viewer-safe RPC.
+  const legacyMedia=await rpcRequest<Row[]>('get_partner_service_media',{p_business_id:businessId});
+  return legacyMedia.error?[]:rowsOf(legacyMedia.data);
+}
+
 async function loadServices(businessId:string):Promise<Service[]> {
-  const [base,detail,sales]=await Promise.all([
+  const [base,detail,sales,mediaRows]=await Promise.all([
     rpcRequest<Row[]>('melo_business_services_for_viewer',{p_business_id:businessId}),
     rpcRequest<Row[]>('get_business_service_details',{p_business_id:businessId}),
     rpcRequest<Row[]>('get_business_service_sales_settings',{p_business_id:businessId}),
+    loadPublicServiceMediaRows(businessId),
   ]);
   if (base.error) throw new Error(base.error);
   const details=new Map<string,Row>();
   for (const row of rowsOf(detail.data)) { const key=text(row,'service_id','id'); if (key) details.set(key,row); }
   const salesMap=new Map<string,Row>();
   for (const row of rowsOf(sales.data)) { const key=text(row,'service_id','id'); if (key) salesMap.set(key,row); }
+  const mediaMap=new Map<string,Row[]>();
+  for (const row of mediaRows) {
+    const key=text(row,'service_id','id');
+    if(!key) continue;
+    const current=mediaMap.get(key)??[];
+    current.push(row);
+    mediaMap.set(key,current);
+  }
   return Promise.all(rowsOf(base.data).filter(r=>r.is_active!==false).map(async r=>{
-    const d:Row=details.get(text(r,'id'))??{}; const s:Row=salesMap.get(text(r,'id'))??{}; const merged={...r,...d,...s};
+    const serviceId=text(r,'id','service_id');
+    const d:Row=details.get(serviceId)??{}; const s:Row=salesMap.get(serviceId)??{}; const merged={...r,...d,...s};
     const sale=text(merged,'sale_mode'); const saleMode:Service['saleMode']=sale==='instant'||sale==='info'?'instant'===sale?'instant':'info':'inquiry';
-    const images=await resolveCommerceMediaList(s, d, r, merged);
+    const dedicatedRows=mediaMap.get(serviceId)??[];
+    const imageGroups=await Promise.all([
+      resolveCommerceMediaList(serviceMediaRecord(...dedicatedRows)),
+      resolveCommerceMediaList(serviceMediaRecord(s)),
+      resolveCommerceMediaList(serviceExplicitMediaRecord(d)),
+      resolveCommerceMediaList(serviceExplicitMediaRecord(r)),
+    ]);
+    // Do not fall back to a generic business image from the public service row. Some viewer RPCs
+    // include Partner logo/profile fields, which made product cards incorrectly show the shop avatar.
+    const images=uniqueStrings(imageGroups.flat());
     const img=images[0]??'';
-    return { id:text(r,'id'), businessId, category:text(merged,'category'), title:text(merged,'title','name')||'Melo Service', description:text(merged,'description','short_description'), price:num(merged,'price_from','price'), originalPrice:num(merged,'original_price'), currency:text(merged,'currency')||'THB', priceUnit:text(merged,'price_unit'), detailType:text(merged,'detail_type')||'standard', validUntil:text(merged,'valid_until'), memberOnly:bool(merged,'melo_member_only','member_only'), includes:text(merged,'includes_text','includes'), excludes:text(merged,'excludes_text','excludes'), duration:num(merged,'duration_minutes'), minGuests:num(merged,'min_guests'), maxGuests:num(merged,'max_guests'), saleMode, image:img, images, raw:merged };
+    return { id:serviceId, businessId, category:text(merged,'category'), title:text(merged,'title','name')||'Melo Service', description:text(merged,'description','short_description'), price:num(merged,'price_from','price'), originalPrice:num(merged,'original_price'), currency:text(merged,'currency')||'THB', priceUnit:text(merged,'price_unit'), detailType:text(merged,'detail_type')||'standard', validUntil:text(merged,'valid_until'), memberOnly:bool(merged,'melo_member_only','member_only'), includes:text(merged,'includes_text','includes'), excludes:text(merged,'excludes_text','excludes'), duration:num(merged,'duration_minutes'), minGuests:num(merged,'min_guests'), maxGuests:num(merged,'max_guests'), saleMode, image:img, images, raw:merged };
   }));
 }
 
@@ -306,7 +386,7 @@ export function CommerceDetailExperience({ mode, id, businessIdHint='', embedded
           <div className={styles.moreDealsViewport}>
             <div className={styles.moreDealsTrack} data-static={otherServices.length===1}>
               {[0,1].map(loop=><div className={styles.moreDealsSet} key={loop} aria-hidden={loop===1||undefined}>{otherServices.map(service=>{
-                const media=serviceMediaSources(service,business);
+                const media=serviceMediaSources(service);
                 return <Link className={styles.moreDealCard} key={`${loop}-${service.id}`} href={`/deals/${service.id}?business=${business.id}`} tabIndex={loop===1?-1:undefined}>
                   <div className={styles.moreDealMedia}><span className={styles.moreDealPlaceholder}>✦</span><FallbackImage sources={media} alt={service.title} className={styles.moreDealImage}/>{service.memberOnly&&<em>{copy.memberOnly}</em>}</div>
                   <div className={styles.moreDealBody}><small>{service.category||service.detailType}</small><strong>{service.title}</strong><div><b>{service.price!=null?money(service.price,service.currency,localeTag):copy.ask}</b>{service.priceUnit&&<span>/ {service.priceUnit}</span>}</div></div>
@@ -327,7 +407,38 @@ export function CommerceDetailExperience({ mode, id, businessIdHint='', embedded
   const shownServices=selectedServiceCategory?services.filter(service=>(service.category||service.detailType)===selectedServiceCategory):services;
   return <CommercePageFrame embedded={embedded}><section className={`${styles.shell} ${styles.partnerShell}`}>
     <div className={styles.breadcrumb}><Link href="/partners">← {copy.back}</Link><span>/</span><span>{copy.partner}</span></div>
-    <section className={styles.hero} style={heroImage?{backgroundImage:`url(${JSON.stringify(heroImage).slice(1,-1)})`}:undefined}><div className={styles.heroShade}/><div className={styles.heroContent}><div><span className={styles.kicker}>{copy.partner}</span><h1>{heroService?.title||business.name}</h1><p>{heroService?.description||business.description}</p><div className={styles.heroMeta}>{business.category&&<span>{business.category}</span>}{[business.city,business.country].filter(Boolean).length>0&&<span>⌖ {[business.city,business.country].filter(Boolean).join(', ')}</span>}{reviews.length>0&&<span>★ {avgRating.toFixed(1)} ({reviews.length})</span>}<span>✓ {copy.verified}</span></div></div><div className={styles.heroActions}><button disabled={busy} onClick={()=>void toggleBusiness()}>{savedBusiness?'★':'☆'} {savedBusiness?copy.saved:copy.save}</button></div></div></section>
+    <section className={styles.hero} style={heroImage?{backgroundImage:`url(${JSON.stringify(heroImage).slice(1,-1)})`}:undefined}>
+      <div className={styles.heroShade}/>
+      <div className={styles.heroContent}>
+        <div><span className={styles.kicker}>{copy.partner}</span><h1>{heroService?.title||business.name}</h1><p>{heroService?.description||business.description}</p><div className={styles.heroMeta}>{business.category&&<span>{business.category}</span>}{[business.city,business.country].filter(Boolean).length>0&&<span>⌖ {[business.city,business.country].filter(Boolean).join(', ')}</span>}{reviews.length>0&&<span>★ {avgRating.toFixed(1)} ({reviews.length})</span>}<span>✓ {copy.verified}</span></div></div>
+        <div className={styles.heroSide}><div className={styles.heroProfile}>{business.images.length?<FallbackImage sources={uniqueStrings([business.image,...business.images])} alt={business.name}/>:<span>{business.name.slice(0,1).toUpperCase()}</span>}</div><div className={styles.heroActions}><button disabled={busy} onClick={()=>void toggleBusiness()}>{savedBusiness?'★':'☆'} {savedBusiness?copy.saved:copy.save}</button></div></div>
+      </div>
+      <div className={styles.heroMobileCover} style={heroImage?{backgroundImage:`url(${JSON.stringify(heroImage).slice(1,-1)})`}:undefined}/>
+      <div className={styles.heroMobileIdentity}>
+        <div className={styles.heroMobileHeader}>
+          <div className={styles.heroMobileProfile}>{business.images.length?<FallbackImage sources={uniqueStrings([business.image,...business.images])} alt={business.name}/>:<span>{business.name.slice(0,1).toUpperCase()}</span>}</div>
+          <div className={styles.heroMobileTitle}><small>{categoryLabel(business.category)||copy.partner}</small><h1>{business.name}</h1>{[business.city,business.country].filter(Boolean).length>0&&<p>⌖ {[business.city,business.country].filter(Boolean).join(', ')}</p>}</div>
+          <button className={styles.heroMobileSave} aria-label={savedBusiness?copy.saved:copy.save} disabled={busy} onClick={()=>void toggleBusiness()}>{savedBusiness?'★':'☆'}</button>
+        </div>
+        <div className={styles.heroMobileMeta}>{reviews.length>0&&<span>★ {avgRating.toFixed(1)} ({reviews.length})</span>}<span>✓ {copy.verified}</span></div>
+        <section className={styles.heroMobileAbout}>
+          <h2>{copy.about}</h2>
+          <p className={styles.heroMobileAboutDescription}>{business.description||business.name}</p>
+          <button type="button" className={`${styles.reviewTrigger} ${styles.heroMobileReview}`} onClick={()=>setReviewsOpen(true)}><span>★ {reviews.length?avgRating.toFixed(1):'—'}</span><strong>{copy.viewReviews}</strong><em>{reviews.length}</em></button>
+          <div className={styles.heroMobileFacts}>
+            {business.address&&<div className={styles.heroMobileFactWide}><span>{copy.address}</span><strong>{business.address}</strong></div>}
+            {business.phone&&<div><span>{copy.contact}</span><strong>{business.phone}</strong></div>}
+            {business.email&&<div><span>Email</span><strong>{business.email}</strong></div>}
+            <div><span>{copy.language}</span><strong>{serviceLanguages||business.language.toUpperCase()||'—'}</strong></div>
+            {business.website&&<div><span>{copy.website}</span><a href={/^https?:\/\//i.test(business.website)?business.website:`https://${business.website}`} target="_blank" rel="noreferrer">{business.website}</a></div>}
+          </div>
+          <div className={styles.heroMobileAboutActions}>
+            {mode==='partner'&&mapUrl&&<a className={styles.bookingButton} href={mapUrl} target="_blank" rel="noreferrer">⌖ {copy.openMap}</a>}
+            <button type="button" className={styles.inlineLinkButton} onClick={()=>setPartnerDetailsOpen(true)}>{copy.seeMore} →</button>
+          </div>
+        </section>
+      </div>
+    </section>
     {notice&&<div className={styles.notice}>{notice}</div>}
     <div className={styles.layout}><div className={styles.mainCol}>
       <section className={styles.section}>
@@ -340,7 +451,7 @@ export function CommerceDetailExperience({ mode, id, businessIdHint='', embedded
           </div>
         </div>}
         {shownServices.length===0?<div className={styles.empty}>{copy.noServices}</div>:<div className={styles.services}>{shownServices.map(service=>{
-          const mediaSources=serviceMediaSources(service,business);
+          const mediaSources=serviceMediaSources(service);
           return <article className={styles.service} key={service.id}>
             <div className={styles.serviceImage}>
               {mediaSources.length?<FallbackImage sources={mediaSources} alt={service.title} className={styles.serviceMediaImage}/>:<span>✦</span>}

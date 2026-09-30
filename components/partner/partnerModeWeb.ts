@@ -2256,10 +2256,18 @@ export type PartnerBusinessOpeningHours = Record<
   }
 >;
 
+export type PartnerServiceMode =
+  | 'storefront'
+  | 'on_site'
+  | 'online'
+  | 'multi_area';
+
 export type PartnerBusinessProfileExtras = {
   secondaryCategories: string[];
   subcategory: string;
   serviceArea: string;
+  serviceModes: PartnerServiceMode[];
+  serviceRadiusKm: number | null;
   serviceLanguages: string[];
   amenities: string[];
   openingHours: PartnerBusinessOpeningHours;
@@ -2342,6 +2350,8 @@ export const EMPTY_PARTNER_BUSINESS_PROFILE_EXTRAS: PartnerBusinessProfileExtras
   secondaryCategories: [],
   subcategory: '',
   serviceArea: '',
+  serviceModes: [],
+  serviceRadiusKm: null,
   serviceLanguages: [],
   amenities: [],
   openingHours: DEFAULT_PARTNER_OPENING_HOURS,
@@ -2431,6 +2441,182 @@ function objectValue(
   }
 
   return {};
+}
+
+const PARTNER_SERVICE_AREA_PREFIX =
+  'melo-service-area-v2:';
+
+const PARTNER_SERVICE_MODES:
+  PartnerServiceMode[] = [
+    'storefront',
+    'on_site',
+    'online',
+    'multi_area',
+  ];
+
+function normalizePartnerServiceModes(
+  value: unknown,
+): PartnerServiceMode[] {
+  return stringList(
+    value,
+  ).filter(
+    (
+      mode,
+    ): mode is PartnerServiceMode =>
+      PARTNER_SERVICE_MODES.includes(
+        mode as PartnerServiceMode,
+      ),
+  );
+}
+
+function parsePartnerServiceArea(
+  value: unknown,
+) {
+  const raw =
+    String(
+      value ??
+        '',
+    ).trim();
+
+  if (
+    !raw.startsWith(
+      PARTNER_SERVICE_AREA_PREFIX,
+    )
+  ) {
+    return {
+      serviceArea:
+        raw,
+      serviceModes: [] as PartnerServiceMode[],
+      serviceRadiusKm:
+        null as number | null,
+    };
+  }
+
+  try {
+    const payload =
+      objectValue(
+        JSON.parse(
+          raw.slice(
+            PARTNER_SERVICE_AREA_PREFIX.length,
+          ),
+        ),
+      );
+
+    const areas =
+      stringList(
+        payload.areas,
+      );
+
+    const legacy =
+      String(
+        payload.legacy ??
+          '',
+      ).trim();
+
+    const radiusRaw =
+      payload.radiusKm === null ||
+      payload.radiusKm === undefined ||
+      payload.radiusKm === ''
+        ? Number.NaN
+        : Number(
+            payload.radiusKm,
+          );
+
+    return {
+      serviceArea:
+        areas.join(
+          ', ',
+        ) ||
+        legacy,
+      serviceModes:
+        normalizePartnerServiceModes(
+          payload.modes,
+        ),
+      serviceRadiusKm:
+        Number.isFinite(
+          radiusRaw,
+        ) &&
+        radiusRaw >=
+          0
+          ? radiusRaw
+          : null,
+    };
+  } catch {
+    return {
+      serviceArea:
+        raw,
+      serviceModes: [] as PartnerServiceMode[],
+      serviceRadiusKm:
+        null as number | null,
+    };
+  }
+}
+
+function serializePartnerServiceArea(
+  input: Pick<
+    PartnerBusinessProfileExtras,
+    | 'serviceArea'
+    | 'serviceModes'
+    | 'serviceRadiusKm'
+  >,
+) {
+  const serviceArea =
+    input.serviceArea.trim();
+
+  const modes =
+    normalizePartnerServiceModes(
+      input.serviceModes,
+    );
+
+  const radius =
+    input.serviceRadiusKm !==
+      null &&
+    Number.isFinite(
+      Number(
+        input.serviceRadiusKm,
+      ),
+    )
+      ? Math.max(
+          0,
+          Number(
+            input.serviceRadiusKm,
+          ),
+        )
+      : null;
+
+  if (
+    !modes.length &&
+    radius ===
+      null
+  ) {
+    return serviceArea;
+  }
+
+  const areas =
+    serviceArea
+      .split(
+        ',',
+      )
+      .map(
+        (
+          item,
+        ) =>
+          item.trim(),
+      )
+      .filter(
+        Boolean,
+      );
+
+  return `${PARTNER_SERVICE_AREA_PREFIX}${JSON.stringify(
+    {
+      modes,
+      areas,
+      radiusKm:
+        radius,
+      legacy:
+        serviceArea,
+    },
+  )}`;
 }
 
 function normalizePartnerOpeningHours(
@@ -2570,6 +2756,11 @@ export async function getPartnerBusinessProfileExtras(
       ? bookingModeRaw as PartnerBusinessProfileExtras['bookingMode']
       : 'chat';
 
+  const serviceArea =
+    parsePartnerServiceArea(
+      row.service_area,
+    );
+
   return {
     secondaryCategories:
       stringList(
@@ -2581,10 +2772,11 @@ export async function getPartnerBusinessProfileExtras(
         'subcategory',
       ),
     serviceArea:
-      text(
-        row,
-        'service_area',
-      ),
+      serviceArea.serviceArea,
+    serviceModes:
+      serviceArea.serviceModes,
+    serviceRadiusKm:
+      serviceArea.serviceRadiusKm,
     serviceLanguages:
       stringList(
         row.service_languages,
@@ -2643,7 +2835,9 @@ export async function savePartnerBusinessProfileExtras(
         p_subcategory:
           input.subcategory.trim(),
         p_service_area:
-          input.serviceArea.trim(),
+          serializePartnerServiceArea(
+            input,
+          ),
         p_service_languages:
           input.serviceLanguages,
         p_amenities:

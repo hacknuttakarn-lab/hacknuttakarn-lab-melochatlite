@@ -934,7 +934,7 @@ function PostCard({
   );
 }
 
-function CommentsDrawer({
+export function CommentsDrawer({
   post, locale, copy, onClose, onCount,
 }: {
   post: SocialFeedPost; locale: string; copy: any; onClose: () => void; onCount: (count: number) => void;
@@ -943,6 +943,21 @@ function CommentsDrawer({
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+
+  useEffect(() => {
+    const textarea = commentTextareaRef.current;
+    if (!textarea) return;
+    textarea.style.height = "auto";
+    const style = window.getComputedStyle(textarea);
+    const lineHeight = Number.parseFloat(style.lineHeight) || 21;
+    const padding = (Number.parseFloat(style.paddingTop) || 0) + (Number.parseFloat(style.paddingBottom) || 0);
+    const border = (Number.parseFloat(style.borderTopWidth) || 0) + (Number.parseFloat(style.borderBottomWidth) || 0);
+    const maxHeight = (lineHeight * 7) + padding + border;
+    const nextHeight = Math.min(textarea.scrollHeight, maxHeight);
+    textarea.style.height = `${nextHeight}px`;
+    textarea.style.overflowY = textarea.scrollHeight > maxHeight ? "auto" : "hidden";
+  }, [body]);
 
   async function load() {
     setLoading(true);
@@ -989,7 +1004,7 @@ function CommentsDrawer({
           )) : <div className={styles.commentState}>{copy.noComments}</div>}
         </div>
         <div className={styles.commentComposer}>
-          <textarea rows={2} value={body} onChange={(event) => setBody(event.target.value)} placeholder={copy.commentPlaceholder} />
+          <textarea ref={commentTextareaRef} rows={1} value={body} onChange={(event) => setBody(event.target.value)} placeholder={copy.commentPlaceholder} />
           <button onClick={send} disabled={!body.trim() || sending}>{copy.send}</button>
         </div>
       </aside>

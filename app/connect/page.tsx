@@ -1,5 +1,10 @@
-import ConnectHub from '@/components/connect/ConnectHub';
+import { Suspense } from 'react';
+import LiteMockExperience from '@/components/lite/LiteMockExperience';
 
 export default function ConnectPage() {
-  return <ConnectHub />;
+  return (
+    <Suspense fallback={null}>
+      <LiteMockExperience kind="connect" />
+    </Suspense>
+  );
 }

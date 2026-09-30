@@ -14,13 +14,14 @@ import { resolveCommerceMedia } from '@/components/commerce/commerceMedia';
 
 import {
   getCurrentUser,
+  restSelect,
+  restUpsert,
   rpcRequest,
   uploadStorageObject,
 } from '@/lib/supabase/browser';
 
 import PartnerModeHeader from './PartnerModeHeader';
 import PartnerServiceSpecificMultiSelect from './PartnerServiceSpecificMultiSelect';
-import PartnerPromotionPricePreview from './PartnerPromotionPricePreview';
 
 import {
   deletePartnerService,
@@ -53,13 +54,18 @@ type PromotionMode =
   | 'percent';
 
 type ItemFormat =
-  | 'food_drink'
   | 'accommodation'
-  | 'activity'
-  | 'service'
-  | 'product'
-  | 'transport'
-  | 'other';
+  | 'food_drink'
+  | 'tours_guides'
+  | 'transport_rental'
+  | 'activities_experiences'
+  | 'sports_outdoor'
+  | 'attractions'
+  | 'events_entertainment'
+  | 'wellness_lifestyle'
+  | 'shopping_equipment'
+  | 'traveler_services'
+  | 'local_other';
 
 type InquiryRequirement =
   | 'date'
@@ -89,6 +95,12 @@ type ServiceForm = {
   saleMode: SaleMode;
   inquiryRequirements: InquiryRequirement[];
   legacyDetailType: string;
+  legacyOriginalPrice: string;
+  legacyDurationMinutes: string;
+  legacyValidFrom: string;
+  legacyValidUntil: string;
+  legacyStockLimit: string;
+  legacyMeloMemberOnly: boolean;
 };
 
 const COPY = {
@@ -138,7 +150,7 @@ const COPY = {
       'แก้ไขสินค้า / บริการ',
 
     formIntro:
-      'กรอกข้อมูลตามรูปแบบเดียวกับ Melo Partner บน Android โดยจัดหน้าให้เหมาะกับการใช้งานบนเว็บ',
+      'แยกข้อมูลสินค้า/บริการออกจากโปรโมชั่น โดยหมวดที่เลือกในหน้านี้จะเป็นหมวดหลักที่หน้า Deals ใช้ค้นหาและกรอง',
 
     close: 'ปิด',
 
@@ -149,37 +161,58 @@ const COPY = {
       'ข้อมูลหลักที่ลูกค้าจะเห็นก่อนตัดสินใจซื้อ จอง หรือสอบถาม',
 
     businessFit:
-      'เหมาะกับธุรกิจ',
+      'หมวดที่ใช้ในดีลพิเศษ',
 
     businessFitFallback:
       'สินค้า บริการ ร้านอาหาร คาเฟ่ ที่พัก กิจกรรม และธุรกิจท้องถิ่น',
 
     itemFormat:
-      'รูปแบบรายการ',
+      'หมวดสินค้า / บริการ',
 
     itemFormatRequired:
-      'รูปแบบรายการ *',
+      'หมวดสินค้า / บริการที่แสดงในดีลพิเศษ *',
 
     formatFood:
-      'เมนู / อาหารและเครื่องดื่ม',
+      'อาหาร & เครื่องดื่ม',
 
     formatAccommodation:
-      'ที่พัก / ห้องพัก',
+      'ที่พัก',
 
     formatActivity:
-      'กิจกรรม / ประสบการณ์',
+      'กิจกรรม & ประสบการณ์',
 
     formatService:
-      'บริการ',
+      'บริการนักท่องเที่ยว',
 
     formatProduct:
-      'สินค้า',
+      'ร้านค้า & อุปกรณ์',
 
     formatTransport:
-      'การเดินทาง / รถรับส่ง',
+      'การเดินทาง & รถเช่า',
 
     formatOther:
-      'อื่น ๆ',
+      'ธุรกิจ / บริการอื่น ๆ',
+
+    formatTours:
+      'ทัวร์ & ไกด์',
+
+    formatSports:
+      'กีฬา & Outdoor',
+
+    formatAttractions:
+      'สถานที่ท่องเที่ยว',
+
+    formatEntertainment:
+      'อีเวนต์ & ความบันเทิง',
+
+    formatWellness:
+      'Wellness & Lifestyle',
+
+    dealArchitectureTitle:
+      'โปรโมชั่น / ดีล',
+
+    dealArchitectureBody:
+      'รายการนี้กำหนดสิ่งที่ร้านขายและหมวดที่ใช้ในหน้า Deals เท่านั้น โปรโมชั่นต้องผูกกับสินค้า/บริการ และแยกเป็น ลดราคา, 1 แถม 1 หรือคูปอง ส่วนสิทธิ์ Melo Member ควบคุมโดยระบบ Melo',
 
     subcategory:
       'ประเภทย่อย *',
@@ -284,7 +317,7 @@ const COPY = {
       'ราคาและเงื่อนไข',
 
     priceHint:
-      'กำหนดราคาปกติ โปรโมชั่น สกุลเงิน และจำนวนลูกค้าที่รองรับ',
+      'กำหนดราคาปกติ สกุลเงิน จำนวนลูกค้า และเงื่อนไขของสินค้า/บริการ',
 
     regularPrice:
       'ราคาปกติ',
@@ -353,10 +386,10 @@ const COPY = {
       'เช่น เมนูพิเศษ Service charge หรือวันหยุดนักขัตฤกษ์',
 
     flowSection:
-      'วิธีให้ลูกค้าซื้อ / จอง',
+      'Action ของสินค้า / บริการ',
 
     flowHint:
-      'กำหนด Flow ของรายการนี้ โดยการชำระเงินจะเปลี่ยนตามรูปแบบที่เลือก',
+      'กำหนด Action ของรายการนี้เพื่อ Override ค่าเริ่มต้นของร้าน หากไม่ต้องการรับคำสั่งซื้อให้เลือกแสดงข้อมูลเท่านั้น',
 
     displayOnly:
       'แสดงข้อมูลเท่านั้น',
@@ -374,7 +407,7 @@ const COPY = {
       'ซื้อได้ทันที',
 
     instantDesc:
-      'เหมาะกับคูปอง Voucher โปรโมชั่น แพ็กเกจ และสินค้าที่ราคาและเงื่อนไขชัดเจน',
+      'สำหรับสินค้า/บริการที่ราคาและเงื่อนไขชัดเจนและรองรับการซื้อทันที',
 
     inquirySection:
       'ข้อมูลที่ต้องถามลูกค้าก่อนสร้างใบงาน',
@@ -498,7 +531,7 @@ const COPY = {
       'Edit product / service',
 
     formIntro:
-      'Uses the same information structure as Melo Partner on Android, arranged for a desktop workspace',
+      'Keep product/service data separate from promotions. The category selected here is the source of truth used by Deals search and filters.',
 
     close:
       'Close',
@@ -510,37 +543,58 @@ const COPY = {
       'Core information customers see before buying, booking or asking your store',
 
     businessFit:
-      'Suitable for',
+      'Deals category',
 
     businessFitFallback:
       'Food, cafes, accommodation, activities, services and local businesses',
 
     itemFormat:
-      'Item format',
+      'Product / service category',
 
     itemFormatRequired:
-      'Item format *',
+      'Product / service category shown in Deals *',
 
     formatFood:
-      'Menu / food & beverage',
+      'Food & Drink',
 
     formatAccommodation:
-      'Accommodation / room',
+      'Accommodation',
 
     formatActivity:
-      'Activity / experience',
+      'Activities & Experiences',
 
     formatService:
-      'Service',
+      'Traveler Services',
 
     formatProduct:
-      'Product',
+      'Shopping & Equipment',
 
     formatTransport:
-      'Transport / transfer',
+      'Transport & Rental',
 
     formatOther:
-      'Other',
+      'Other business / services',
+
+    formatTours:
+      'Tours & Guides',
+
+    formatSports:
+      'Sports & Outdoor',
+
+    formatAttractions:
+      'Attractions',
+
+    formatEntertainment:
+      'Events & Entertainment',
+
+    formatWellness:
+      'Wellness & Lifestyle',
+
+    dealArchitectureTitle:
+      'Promotion / Deal',
+
+    dealArchitectureBody:
+      'This item defines what the store sells and which category Deals uses. Promotions must be linked to a product/service and are handled as Discount, Buy X Get Y, or Coupon. Melo Member benefits are controlled by the Melo system.',
 
     subcategory:
       'Subcategory *',
@@ -645,7 +699,7 @@ const COPY = {
       'Pricing & conditions',
 
     priceHint:
-      'Set regular price, promotion, currency and customer limits',
+      'Set the regular price, currency, customer limits and product/service conditions',
 
     regularPrice:
       'Regular price',
@@ -714,10 +768,10 @@ const COPY = {
       'e.g. special menu, service charge or public holidays',
 
     flowSection:
-      'How customers buy / book',
+      'Product / service action',
 
     flowHint:
-      'Choose the transaction flow for this item',
+      'Set an action override for this item. Choose information only when this item should not start a purchase flow.',
 
     displayOnly:
       'Information only',
@@ -735,7 +789,7 @@ const COPY = {
       'Buy instantly',
 
     instantDesc:
-      'For vouchers, promotions, packages and items with fixed terms and pricing',
+      'For products/services with clear fixed pricing and terms that can be purchased instantly.',
 
     inquirySection:
       'Information required before creating a work order',
@@ -860,7 +914,7 @@ const COPY = {
       'Produkt / Service bearbeiten',
 
     formIntro:
-      'Die Android-Datenstruktur von Melo Partner wurde für die Web-Nutzung angepasst',
+      'Produkt-/Servicedaten bleiben von Promotionen getrennt. Die hier gewählte Kategorie ist die Quelle für Suche und Filter auf Deals.',
 
     close:
       'Schließen',
@@ -872,37 +926,58 @@ const COPY = {
       'Die wichtigsten Informationen für Kunden vor Kauf, Buchung oder Anfrage',
 
     businessFit:
-      'Geeignet für',
+      'Deals-Kategorie',
 
     businessFitFallback:
       'Gastronomie, Cafés, Unterkünfte, Aktivitäten und lokale Services',
 
     itemFormat:
-      'Eintragsformat',
+      'Produkt-/Servicekategorie',
 
     itemFormatRequired:
-      'Eintragsformat *',
+      'Produkt-/Servicekategorie für Deals *',
 
     formatFood:
-      'Speisen / Getränke',
+      'Essen & Getränke',
 
     formatAccommodation:
-      'Unterkunft / Zimmer',
+      'Unterkunft',
 
     formatActivity:
-      'Aktivität / Erlebnis',
+      'Aktivitäten & Erlebnisse',
 
     formatService:
-      'Service',
+      'Reiseservices',
 
     formatProduct:
-      'Produkt',
+      'Shopping & Ausrüstung',
 
     formatTransport:
-      'Transport / Transfer',
+      'Transport & Vermietung',
 
     formatOther:
-      'Sonstiges',
+      'Andere Unternehmen / Services',
+
+    formatTours:
+      'Touren & Guides',
+
+    formatSports:
+      'Sport & Outdoor',
+
+    formatAttractions:
+      'Attraktionen',
+
+    formatEntertainment:
+      'Events & Unterhaltung',
+
+    formatWellness:
+      'Wellness & Lifestyle',
+
+    dealArchitectureTitle:
+      'Promotion / Deal',
+
+    dealArchitectureBody:
+      'Dieser Eintrag definiert das Angebot und die Deals-Kategorie. Promotionen werden mit einem Produkt/Service verknüpft und als Rabatt, X kaufen Y gratis oder Coupon geführt. Melo-Member-Vorteile werden vom Melo-System gesteuert.',
 
     subcategory:
       'Unterkategorie *',
@@ -1007,7 +1082,7 @@ const COPY = {
       'Preis & Bedingungen',
 
     priceHint:
-      'Preis, Aktion, Währung und Kundengrenzen festlegen',
+      'Regulären Preis, Währung, Kundengrenzen und Bedingungen festlegen',
 
     regularPrice:
       'Normalpreis',
@@ -1076,10 +1151,10 @@ const COPY = {
       'z. B. Sondermenüs, Servicegebühr oder Feiertage',
 
     flowSection:
-      'Kauf- / Buchungsablauf',
+      'Aktion für Produkt / Service',
 
     flowHint:
-      'Wähle den passenden Ablauf für diesen Eintrag',
+      'Eine Aktion für diesen Eintrag festlegen, die den Standard des Shops überschreibt. „Nur Information“ wählen, wenn kein Kaufvorgang gestartet werden soll.',
 
     displayOnly:
       'Nur Informationen',
@@ -1097,7 +1172,7 @@ const COPY = {
       'Sofort kaufen',
 
     instantDesc:
-      'Für Voucher, Aktionen, Pakete und Angebote mit festem Preis',
+      'Für Produkte/Services mit klaren Festpreisen und Bedingungen, die sofort gekauft werden können.',
 
     inquirySection:
       'Benötigte Kundendaten',
@@ -1222,7 +1297,7 @@ const COPY = {
       '编辑商品 / 服务',
 
     formIntro:
-      '采用 Melo Partner Android 的信息结构，并针对网页端重新布局',
+      '将商品/服务与促销分开。此处选择的分类是 Deals 搜索与筛选所使用的唯一商品/服务分类来源。',
 
     close:
       '关闭',
@@ -1234,37 +1309,58 @@ const COPY = {
       '顾客在购买、预订或咨询前看到的主要信息',
 
     businessFit:
-      '适合业务',
+      'Deals 分类',
 
     businessFitFallback:
       '餐饮、咖啡店、住宿、活动、服务及本地商家',
 
     itemFormat:
-      '项目形式',
+      '商品 / 服务分类',
 
     itemFormatRequired:
-      '项目形式 *',
+      '在 Deals 中显示的商品 / 服务分类 *',
 
     formatFood:
-      '菜单 / 餐饮',
+      '餐饮',
 
     formatAccommodation:
-      '住宿 / 房间',
+      '住宿',
 
     formatActivity:
-      '活动 / 体验',
+      '活动与体验',
 
     formatService:
-      '服务',
+      '旅行者服务',
 
     formatProduct:
-      '商品',
+      '购物与装备',
 
     formatTransport:
-      '交通 / 接送',
+      '交通与租赁',
 
     formatOther:
-      '其他',
+      '其他业务 / 服务',
+
+    formatTours:
+      '旅行团与导游',
+
+    formatSports:
+      '运动与户外',
+
+    formatAttractions:
+      '景点',
+
+    formatEntertainment:
+      '活动与娱乐',
+
+    formatWellness:
+      '健康与生活方式',
+
+    dealArchitectureTitle:
+      '促销 / Deal',
+
+    dealArchitectureBody:
+      '此项目只定义商家销售的商品/服务以及 Deals 使用的分类。促销必须绑定商品/服务，并分为折扣、买 X 送 Y 或优惠券；Melo Member 权益由 Melo 系统控制。',
 
     subcategory:
       '子分类 *',
@@ -1369,7 +1465,7 @@ const COPY = {
       '价格与条件',
 
     priceHint:
-      '设置正常价格、优惠、货币和人数限制',
+      '设置正常价格、货币、人数限制和商品/服务条件',
 
     regularPrice:
       '正常价格',
@@ -1438,10 +1534,10 @@ const COPY = {
       '例如特殊菜单、服务费或节假日',
 
     flowSection:
-      '顾客如何购买 / 预订',
+      '商品 / 服务操作',
 
     flowHint:
-      '选择此项目适用的交易流程',
+      '为此项目设置覆盖商家默认设置的操作。不需要发起购买流程时请选择“仅显示信息”。',
 
     displayOnly:
       '仅展示信息',
@@ -1459,7 +1555,7 @@ const COPY = {
       '立即购买',
 
     instantDesc:
-      '适合优惠券、促销、套餐和固定价格商品',
+      '适用于价格和条件明确、可立即购买的商品/服务。',
 
     inquirySection:
       '创建订单前需要的顾客信息',
@@ -1584,7 +1680,7 @@ const COPY = {
       '商品・サービスを編集',
 
     formIntro:
-      'Melo Partner Android と同じ情報構成をWeb向けに最適化しています',
+      '商品・サービス情報とプロモーションを分離します。ここで選ぶカテゴリが Deals の検索・絞り込みで使われる基準になります。',
 
     close:
       '閉じる',
@@ -1596,37 +1692,58 @@ const COPY = {
       '購入・予約・問い合わせ前に顧客が確認する基本情報です',
 
     businessFit:
-      'おすすめ業種',
+      'Deals カテゴリ',
 
     businessFitFallback:
       '飲食店、カフェ、宿泊、アクティビティ、ローカルサービス',
 
     itemFormat:
-      '項目形式',
+      '商品・サービスカテゴリ',
 
     itemFormatRequired:
-      '項目形式 *',
+      'Deals に表示する商品・サービスカテゴリ *',
 
     formatFood:
-      'メニュー / 飲食',
+      '飲食',
 
     formatAccommodation:
-      '宿泊 / 部屋',
+      '宿泊',
 
     formatActivity:
-      'アクティビティ / 体験',
+      'アクティビティ & 体験',
 
     formatService:
-      'サービス',
+      '旅行者向けサービス',
 
     formatProduct:
-      '商品',
+      'ショッピング & 用具',
 
     formatTransport:
-      '交通 / 送迎',
+      '交通 & レンタル',
 
     formatOther:
-      'その他',
+      'その他のビジネス / サービス',
+
+    formatTours:
+      'ツアー & ガイド',
+
+    formatSports:
+      'スポーツ & Outdoor',
+
+    formatAttractions:
+      '観光スポット',
+
+    formatEntertainment:
+      'イベント & エンタメ',
+
+    formatWellness:
+      'Wellness & Lifestyle',
+
+    dealArchitectureTitle:
+      'プロモーション / Deal',
+
+    dealArchitectureBody:
+      'この項目では販売する商品・サービスと Deals のカテゴリだけを定義します。プロモーションは商品/サービスに紐づけ、値引き・Buy X Get Y・クーポンとして管理します。Melo Member 特典は Melo システムが管理します。',
 
     subcategory:
       'サブカテゴリ *',
@@ -1731,7 +1848,7 @@ const COPY = {
       '価格と条件',
 
     priceHint:
-      '通常価格、プロモーション、通貨、人数制限を設定します',
+      '通常価格、通貨、利用人数と商品・サービス条件を設定します',
 
     regularPrice:
       '通常価格',
@@ -1800,10 +1917,10 @@ const COPY = {
       '例：特別メニュー、サービス料、祝日',
 
     flowSection:
-      '購入 / 予約方法',
+      '商品・サービスのアクション',
 
     flowHint:
-      'この項目に適した取引フローを選択します',
+      '店舗のデフォルトを上書きするアクションを設定します。購入フローを開始しない場合は「情報のみ」を選択してください。',
 
     displayOnly:
       '情報表示のみ',
@@ -1821,7 +1938,7 @@ const COPY = {
       'すぐ購入',
 
     instantDesc:
-      'Voucher、キャンペーン、パッケージなど固定条件の商品向け',
+      '価格と条件が明確で、すぐに購入できる商品・サービス向けです。',
 
     inquirySection:
       '注文作成前に必要な顧客情報',
@@ -1946,7 +2063,7 @@ const COPY = {
       '상품 / 서비스 수정',
 
     formIntro:
-      'Melo Partner Android의 정보 구성을 웹 환경에 맞게 배치했습니다',
+      '상품/서비스 정보와 프로모션을 분리합니다. 여기서 선택한 카테고리가 Deals 검색과 필터의 기준이 됩니다.',
 
     close:
       '닫기',
@@ -1958,37 +2075,58 @@ const COPY = {
       '구매, 예약 또는 문의 전에 고객이 확인하는 기본 정보입니다',
 
     businessFit:
-      '적합한 업종',
+      'Deals 카테고리',
 
     businessFitFallback:
       '음식점, 카페, 숙박, 액티비티, 서비스 및 지역 비즈니스',
 
     itemFormat:
-      '항목 형식',
+      '상품 / 서비스 카테고리',
 
     itemFormatRequired:
-      '항목 형식 *',
+      'Deals에 표시할 상품 / 서비스 카테고리 *',
 
     formatFood:
-      '메뉴 / 음식 및 음료',
+      '음식 & 음료',
 
     formatAccommodation:
-      '숙박 / 객실',
+      '숙박',
 
     formatActivity:
-      '액티비티 / 체험',
+      '액티비티 & 체험',
 
     formatService:
-      '서비스',
+      '여행자 서비스',
 
     formatProduct:
-      '상품',
+      '쇼핑 & 장비',
 
     formatTransport:
-      '교통 / 픽업',
+      '교통 & 렌탈',
 
     formatOther:
-      '기타',
+      '기타 비즈니스 / 서비스',
+
+    formatTours:
+      '투어 & 가이드',
+
+    formatSports:
+      '스포츠 & Outdoor',
+
+    formatAttractions:
+      '관광지',
+
+    formatEntertainment:
+      '이벤트 & 엔터테인먼트',
+
+    formatWellness:
+      'Wellness & Lifestyle',
+
+    dealArchitectureTitle:
+      '프로모션 / Deal',
+
+    dealArchitectureBody:
+      '이 항목은 판매하는 상품/서비스와 Deals에서 사용할 카테고리만 정의합니다. 프로모션은 상품/서비스에 연결하고 할인, Buy X Get Y 또는 쿠폰으로 관리합니다. Melo Member 혜택은 Melo 시스템에서 관리합니다.',
 
     subcategory:
       '하위 카테고리 *',
@@ -2093,7 +2231,7 @@ const COPY = {
       '가격 및 조건',
 
     priceHint:
-      '정상가, 프로모션, 통화 및 고객 수를 설정합니다',
+      '정상가, 통화, 고객 수 제한 및 상품/서비스 조건을 설정합니다',
 
     regularPrice:
       '정상 가격',
@@ -2162,10 +2300,10 @@ const COPY = {
       '예: 특별 메뉴, 서비스 요금 또는 공휴일',
 
     flowSection:
-      '고객 구매 / 예약 방법',
+      '상품 / 서비스 Action',
 
     flowHint:
-      '이 항목의 거래 방식을 선택하세요',
+      '이 항목이 매장 기본값을 덮어쓸 Action을 설정합니다. 구매 흐름이 필요하지 않으면 정보만 표시를 선택하세요.',
 
     displayOnly:
       '정보만 표시',
@@ -2183,7 +2321,7 @@ const COPY = {
       '즉시 구매',
 
     instantDesc:
-      'Voucher, 프로모션, 패키지 등 가격과 조건이 확정된 상품에 적합합니다',
+      '가격과 조건이 명확하고 즉시 구매할 수 있는 상품/서비스에 적합합니다.',
 
     inquirySection:
       '작업 생성 전 필요한 고객 정보',
@@ -2292,6 +2430,24 @@ const EMPTY_FORM: ServiceForm = {
 
   legacyDetailType:
     'standard',
+
+  legacyOriginalPrice:
+    '',
+
+  legacyDurationMinutes:
+    '',
+
+  legacyValidFrom:
+    '',
+
+  legacyValidUntil:
+    '',
+
+  legacyStockLimit:
+    '',
+
+  legacyMeloMemberOnly:
+    false,
 };
 
 function copyFor(locale: string) {
@@ -2440,174 +2596,91 @@ function extensionOf(file: File) {
   return 'jpg';
 }
 
-function formatOptions(copy: Copy) {
+function formatOptions(copy: Copy): Array<{ value: ItemFormat; label: string }> {
   return [
-    {
-      value:
-        'food_drink' as ItemFormat,
-      label:
-        copy.formatFood,
-    },
-    {
-      value:
-        'accommodation' as ItemFormat,
-      label:
-        copy.formatAccommodation,
-    },
-    {
-      value:
-        'activity' as ItemFormat,
-      label:
-        copy.formatActivity,
-    },
-    {
-      value:
-        'service' as ItemFormat,
-      label:
-        copy.formatService,
-    },
-    {
-      value:
-        'product' as ItemFormat,
-      label:
-        copy.formatProduct,
-    },
-    {
-      value:
-        'transport' as ItemFormat,
-      label:
-        copy.formatTransport,
-    },
-    {
-      value:
-        'other' as ItemFormat,
-      label:
-        copy.formatOther,
-    },
+    { value: 'accommodation' as ItemFormat, label: copy.formatAccommodation },
+    { value: 'food_drink' as ItemFormat, label: copy.formatFood },
+    { value: 'tours_guides' as ItemFormat, label: copy.formatTours },
+    { value: 'transport_rental' as ItemFormat, label: copy.formatTransport },
+    { value: 'activities_experiences' as ItemFormat, label: copy.formatActivity },
+    { value: 'sports_outdoor' as ItemFormat, label: copy.formatSports },
+    { value: 'attractions' as ItemFormat, label: copy.formatAttractions },
+    { value: 'events_entertainment' as ItemFormat, label: copy.formatEntertainment },
+    { value: 'wellness_lifestyle' as ItemFormat, label: copy.formatWellness },
+    { value: 'shopping_equipment' as ItemFormat, label: copy.formatProduct },
+    { value: 'traveler_services' as ItemFormat, label: copy.formatService },
+    { value: 'local_other' as ItemFormat, label: copy.formatOther },
   ];
 }
 
 function subcategoryOptions(
   format: ItemFormat,
   copy: Copy,
-) {
+): Array<{ value: string; label: string }> {
   switch (format) {
     case 'food_drink':
       return [
-        {
-          value:
-            'menu_food',
-          label:
-            copy.subFood,
-        },
-        {
-          value:
-            'drink',
-          label:
-            copy.subDrink,
-        },
-        {
-          value:
-            'set_menu',
-          label:
-            copy.subSetMenu,
-        },
-        {
-          value:
-            'cafe_dessert',
-          label:
-            copy.subCafe,
-        },
-        {
-          value:
-            'catering',
-          label:
-            copy.subCatering,
-        },
+        { value: 'menu_food', label: copy.subFood },
+        { value: 'drink', label: copy.subDrink },
+        { value: 'set_menu', label: copy.subSetMenu },
+        { value: 'cafe_dessert', label: copy.subCafe },
+        { value: 'catering', label: copy.subCatering },
       ];
 
     case 'accommodation':
       return [
-        {
-          value:
-            'room',
-          label:
-            copy.subRoom,
-        },
-        {
-          value:
-            'stay_package',
-          label:
-            copy.subPackageStay,
-        },
+        { value: 'room', label: copy.subRoom },
+        { value: 'stay_package', label: copy.subPackageStay },
       ];
 
-    case 'activity':
+    case 'tours_guides':
       return [
-        {
-          value:
-            'activity',
-          label:
-            copy.subActivity,
-        },
-        {
-          value:
-            'experience',
-          label:
-            copy.subExperience,
-        },
-        {
-          value:
-            'tour',
-          label:
-            copy.subTour,
-        },
+        { value: 'tour', label: copy.subTour },
+        { value: 'experience', label: copy.subExperience },
       ];
 
-    case 'service':
+    case 'transport_rental':
       return [
-        {
-          value:
-            'service',
-          label:
-            copy.subService,
-        },
-        {
-          value:
-            'beauty_wellness',
-          label:
-            copy.subBeauty,
-        },
+        { value: 'transport', label: copy.subTransport },
+        { value: 'service', label: copy.subService },
       ];
 
-    case 'product':
+    case 'activities_experiences':
+    case 'sports_outdoor':
+    case 'events_entertainment':
       return [
-        {
-          value:
-            'product',
-          label:
-            copy.subProduct,
-        },
+        { value: 'activity', label: copy.subActivity },
+        { value: 'experience', label: copy.subExperience },
       ];
 
-    case 'transport':
+    case 'attractions':
       return [
-        {
-          value:
-            'transport',
-          label:
-            copy.subTransport,
-        },
+        { value: 'experience', label: copy.subExperience },
+        { value: 'other', label: copy.subOther },
+      ];
+
+    case 'wellness_lifestyle':
+      return [
+        { value: 'beauty_wellness', label: copy.subBeauty },
+        { value: 'service', label: copy.subService },
+      ];
+
+    case 'shopping_equipment':
+      return [
+        { value: 'product', label: copy.subProduct },
+        { value: 'other', label: copy.subOther },
+      ];
+
+    case 'traveler_services':
+      return [
+        { value: 'service', label: copy.subService },
+        { value: 'transport', label: copy.subTransport },
       ];
 
     default:
       return [
-        {
-          value:
-            'other',
-          label:
-            copy.subOther,
-        },
+        { value: 'other', label: copy.subOther },
+        { value: 'service', label: copy.subService },
       ];
   }
 }
@@ -2619,121 +2692,65 @@ function formatFromCategory(
     String(category || '')
       .trim()
       .toLowerCase()
-      .replace(
-        /[\s-]+/g,
-        '_',
-      );
+      .replace(/[\s-]+/g, '_');
 
-  if (
-    clean.includes('food') ||
-    clean.includes('menu') ||
-    clean.includes('drink') ||
-    clean.includes('cafe') ||
-    clean.includes('catering') ||
-    clean.includes('dessert')
-  ) {
-    return 'food_drink';
+  const primary = new Set<ItemFormat>([
+    'accommodation',
+    'food_drink',
+    'tours_guides',
+    'transport_rental',
+    'activities_experiences',
+    'sports_outdoor',
+    'attractions',
+    'events_entertainment',
+    'wellness_lifestyle',
+    'shopping_equipment',
+    'traveler_services',
+    'local_other',
+  ]);
+
+  if (primary.has(clean as ItemFormat)) {
+    return clean as ItemFormat;
   }
 
-  if (
-    clean.includes('room') ||
-    clean.includes('hotel') ||
-    clean.includes('stay') ||
-    clean.includes('accommodation')
-  ) {
-    return 'accommodation';
-  }
+  // Backward compatibility for older rows where business_services.category
+  // stored a subtype/listing-format value instead of the Deals category.
+  if (/food|menu|drink|cafe|catering|dessert/.test(clean)) return 'food_drink';
+  if (/room|hotel|stay|accommodation/.test(clean)) return 'accommodation';
+  if (/tour|guide/.test(clean)) return 'tours_guides';
+  if (/transport|transfer|rental|car/.test(clean)) return 'transport_rental';
+  if (/sport|outdoor/.test(clean)) return 'sports_outdoor';
+  if (/attraction|ticket|admission/.test(clean)) return 'attractions';
+  if (/event|entertainment/.test(clean)) return 'events_entertainment';
+  if (/beauty|wellness|spa|fitness/.test(clean)) return 'wellness_lifestyle';
+  if (/product|shopping|equipment/.test(clean)) return 'shopping_equipment';
+  if (/traveler|travel_service/.test(clean)) return 'traveler_services';
+  if (/activity|experience/.test(clean)) return 'activities_experiences';
+  if (/service/.test(clean)) return 'traveler_services';
 
-  if (
-    clean.includes('activity') ||
-    clean.includes('experience') ||
-    clean.includes('tour')
-  ) {
-    return 'activity';
-  }
-
-  if (
-    clean.includes('transport') ||
-    clean.includes('transfer') ||
-    clean.includes('car')
-  ) {
-    return 'transport';
-  }
-
-  if (
-    clean.includes('product') ||
-    clean.includes('shopping')
-  ) {
-    return 'product';
-  }
-
-  if (
-    clean.includes('service') ||
-    clean.includes('beauty') ||
-    clean.includes('wellness')
-  ) {
-    return 'service';
-  }
-
-  return 'other';
+  return 'local_other';
 }
 
 function categoryLabel(
   category: string,
   copy: Copy,
 ) {
-  const clean =
-    String(category || '').trim();
+  const clean = String(category || '').trim();
+  if (!clean) return copy.formatOther;
 
-  if (!clean) {
-    return copy.subOther;
-  }
+  const normalized = clean.toLowerCase().replace(/[\s-]+/g, '_');
+  const primary = formatOptions(copy).find((option) => option.value === normalized);
+  if (primary) return primary.label;
 
-  const normalized =
-    clean
-      .toLowerCase()
-      .replace(
-        /[\s-]+/g,
-        '_',
-      );
-
-  const all =
-    (
-      [
-        'food_drink',
-        'accommodation',
-        'activity',
-        'service',
-        'product',
-        'transport',
-        'other',
-      ] as ItemFormat[]
-    ).flatMap<{
-  value: string;
-  label: string;
-}>(
-  (format) =>
-    subcategoryOptions(
-      format,
-      copy,
-    ),
-)
-
-  const found =
-    all.find(
-      (option) =>
-        option.value ===
-        normalized,
-    );
-
-  if (found) {
-    return found.label;
-  }
-
-  return clean.replace(
-    /[_-]+/g,
-    ' ',
+  const allSubtypes = formatOptions(copy).flatMap((option) =>
+    subcategoryOptions(option.value, copy),
   );
+  const subtype = allSubtypes.find((option) => option.value === normalized);
+  if (subtype) return subtype.label;
+
+  return clean
+    .replace(/_/g, ' ')
+    .replace(/\b\w/g, (letter) => letter.toUpperCase());
 }
 
 function normalizedSaleMode(
@@ -2770,23 +2787,20 @@ function inquiryArray(
   if (
     typeof raw === 'string'
   ) {
+    const rawText = raw;
+
     try {
       raw =
-        JSON.parse(raw);
+        JSON.parse(rawText);
     } catch {
-  raw =
-    String(
-      raw ?? '',
-    )
-      .split(',')
-      .map(
-        (item) =>
-          item.trim(),
-      )
-      .filter(
-        Boolean,
-      );
-}
+      raw =
+        rawText
+          .split(',')
+          .map(
+            (item) =>
+              item.trim(),
+          );
+    }
   }
 
   if (
@@ -3500,12 +3514,13 @@ export default function PartnerServicesExperience() {
     serviceId: string,
   ) {
     const result =
-      await rpcRequest<Row[]>(
-        'get_business_service_sales_settings',
-        {
-          p_business_id:
-            businessId,
-        },
+      await restSelect<Row[]>(
+        'business_service_sales_settings',
+        `select=*&business_id=eq.${encodeURIComponent(
+          businessId,
+        )}&service_id=eq.${encodeURIComponent(
+          serviceId,
+        )}&limit=1`,
       );
 
     if (
@@ -3518,10 +3533,37 @@ export default function PartnerServicesExperience() {
     }
 
     return (
+      result.data[0] ||
+      null
+    );
+  }
+
+  async function loadServiceDetail(
+    businessId: string,
+    serviceId: string,
+  ) {
+    const result =
+      await rpcRequest<Row[]>(
+        'get_business_service_details',
+        {
+          p_business_id:
+            businessId,
+        },
+      );
+
+    if (
+      result.error ||
+      !Array.isArray(result.data)
+    ) {
+      return null;
+    }
+
+    return (
       result.data.find(
         (row) =>
           String(
             row.service_id ||
+            row.id ||
             '',
           ) === serviceId,
       ) || null
@@ -3634,43 +3676,138 @@ export default function PartnerServicesExperience() {
     setFormOpen(true);
 
     if (access) {
-      void loadSalesSettings(
-        access.businessId,
-        service.id,
-      ).then(
-        async (sales) => {
-          if (!sales) {
-            return;
-          }
-
-          const salesImage =
+      void Promise.all([
+        loadSalesSettings(
+          access.businessId,
+          service.id,
+        ),
+        loadServiceDetail(
+          access.businessId,
+          service.id,
+        ),
+      ]).then(
+        async ([sales, detail]) => {
+          const savedSubtype =
             String(
-              sales
-                .image_storage_path ||
+              sales?.service_subtype ||
               '',
             ).trim();
 
           patchForm({
             saleMode:
-              normalizedSaleMode(
-                sales.sale_mode,
-              ),
+              sales
+                ? normalizedSaleMode(
+                    sales.sale_mode,
+                  )
+                : 'inquiry',
 
             inquiryRequirements:
-              inquiryArray(
-                sales.inquiry_requirements,
+              sales
+                ? inquiryArray(
+                    sales.inquiry_requirements,
+                  )
+                : [
+                    ...EMPTY_FORM
+                      .inquiryRequirements,
+                  ],
+
+            subcategory:
+              savedSubtype &&
+              options.some(
+                (option) =>
+                  option.value ===
+                  savedSubtype,
+              )
+                ? savedSubtype
+                : subcategory,
+
+            legacyDetailType:
+              String(
+                detail?.detail_type ||
+                service.detailType ||
+                'standard',
               ),
 
-            maxCustomers:
-              sales.max_per_user ===
-                null ||
-              sales.max_per_user ===
-                undefined
+            legacyOriginalPrice:
+              detail?.original_price === null ||
+              detail?.original_price === undefined
                 ? ''
                 : String(
-                    sales.max_per_user,
+                    detail.original_price,
                   ),
+
+            legacyDurationMinutes:
+              detail?.duration_minutes === null ||
+              detail?.duration_minutes === undefined
+                ? ''
+                : String(
+                    detail.duration_minutes,
+                  ),
+
+            legacyValidFrom:
+              String(
+                detail?.valid_from ||
+                '',
+              ),
+
+            legacyValidUntil:
+              String(
+                detail?.valid_until ||
+                '',
+              ),
+
+            legacyStockLimit:
+              detail?.stock_limit === null ||
+              detail?.stock_limit === undefined
+                ? ''
+                : String(
+                    detail.stock_limit,
+                  ),
+
+            legacyMeloMemberOnly:
+              Boolean(
+                detail?.melo_member_only,
+              ),
+
+            minCustomers:
+              detail?.min_guests === null ||
+              detail?.min_guests === undefined
+                ? '1'
+                : String(
+                    detail.min_guests,
+                  ),
+
+            maxCustomers:
+              sales?.max_per_user !== null &&
+              sales?.max_per_user !== undefined
+                ? String(
+                    sales.max_per_user,
+                  )
+                : detail?.max_guests !== null &&
+                    detail?.max_guests !== undefined
+                  ? String(
+                      detail.max_guests,
+                    )
+                  : '',
+
+            includes:
+              String(
+                detail?.includes_text ||
+                '',
+              ),
+
+            excludes:
+              String(
+                detail?.excludes_text ||
+                '',
+              ),
           });
+
+          const salesImage =
+            String(
+              sales?.image_storage_path ||
+              '',
+            ).trim();
 
           if (salesImage) {
             setExistingImagePath(
@@ -3856,84 +3993,20 @@ export default function PartnerServicesExperience() {
   }
 
   function calculatedPrice() {
-    const normal =
-      nullableNumber(
-        form.normalPrice,
-      );
-
-    const promotion =
-      nullableNumber(
-        form.promotionValue,
-      );
-
-    if (
-      form.promotionMode ===
-      'fixed'
-    ) {
-      return {
-        price:
-          promotion ??
-          normal,
-
-        originalPrice:
-          normal,
-
-        detailType:
-          'promotion',
-      };
-    }
-
-    if (
-      form.promotionMode ===
-        'percent' &&
-      normal !== null &&
-      promotion !== null
-    ) {
-      const percent =
-        Math.max(
-          0,
-          Math.min(
-            100,
-            promotion,
-          ),
-        );
-
-      return {
-        price:
-          Math.max(
-            0,
-            normal *
-              (
-                1 -
-                percent /
-                  100
-              ),
-          ),
-
-        originalPrice:
-          normal,
-
-        detailType:
-          'promotion',
-      };
-    }
-
     return {
       price:
-        normal,
+        nullableNumber(
+          form.normalPrice,
+        ),
 
       originalPrice:
-        null,
+        nullableNumber(
+          form.legacyOriginalPrice,
+        ),
 
       detailType:
-        form.legacyDetailType ===
-        'promotion'
-          ? 'standard'
-          : (
-              form
-                .legacyDetailType ||
-              'standard'
-            ),
+        form.legacyDetailType ||
+        'standard',
     };
   }
 
@@ -3992,35 +4065,45 @@ export default function PartnerServicesExperience() {
         form.maxCustomers,
       );
 
+    const payload: Row = {
+      business_id:
+        businessId,
+
+      service_id:
+        serviceId,
+
+      image_storage_path:
+        imagePath ||
+        null,
+
+      service_subtype:
+        form.subcategory.trim() ||
+        null,
+
+      sale_mode:
+        form.saleMode === 'display'
+          ? 'info'
+          : form.saleMode,
+
+      inquiry_requirements:
+        form.saleMode ===
+        'inquiry'
+          ? form.inquiryRequirements
+          : [],
+
+      max_per_user:
+        maxPerUser,
+
+      updated_at:
+        new Date()
+          .toISOString(),
+    };
+
     const result =
-      await rpcRequest(
-        'save_business_service_sales_settings',
-        {
-          p_business_id:
-            businessId,
-
-          p_service_id:
-            serviceId,
-
-          p_sale_mode:
-            form.saleMode ===
-            'display'
-              ? 'info'
-              : form.saleMode,
-
-          p_inquiry_requirements:
-            form.saleMode ===
-            'inquiry'
-              ? form.inquiryRequirements
-              : [],
-
-          p_max_per_user:
-            maxPerUser,
-
-          p_image_storage_path:
-            imagePath ||
-            null,
-        },
+      await restUpsert<Row[]>(
+        'business_service_sales_settings',
+        payload,
+        'service_id',
       );
 
     if (result.error) {
@@ -4073,7 +4156,7 @@ export default function PartnerServicesExperience() {
               editingId,
 
             p_category:
-              form.subcategory,
+              form.itemFormat,
 
             p_title:
               form.title.trim(),
@@ -4097,7 +4180,9 @@ export default function PartnerServicesExperience() {
               price.originalPrice,
 
             p_duration_minutes:
-              null,
+              nullableInteger(
+                form.legacyDurationMinutes,
+              ),
 
             p_min_guests:
               nullableInteger(
@@ -4116,16 +4201,20 @@ export default function PartnerServicesExperience() {
               form.excludes.trim(),
 
             p_valid_from:
+              form.legacyValidFrom ||
               null,
 
             p_valid_until:
+              form.legacyValidUntil ||
               null,
 
             p_melo_member_only:
-              false,
+              form.legacyMeloMemberOnly,
 
             p_stock_limit:
-              null,
+              nullableInteger(
+                form.legacyStockLimit,
+              ),
           },
         );
 
@@ -4770,8 +4859,12 @@ export default function PartnerServicesExperience() {
                       </strong>
 
                       <p>
-                        {access?.businessType ||
-                          copy.businessFitFallback}
+                        {formatList.find(
+                          (option) =>
+                            option.value ===
+                            form.itemFormat,
+                        )?.label ||
+                          copy.formatOther}
                       </p>
                     </div>
                   </div>
@@ -5307,133 +5400,15 @@ export default function PartnerServicesExperience() {
                     >
                       <strong>
                         {
-                          copy.promotion
+                          copy.dealArchitectureTitle
                         }
                       </strong>
 
-                      <div
-                        className={
-                          styles.segmented
+                      <p>
+                        {
+                          copy.dealArchitectureBody
                         }
-                      >
-                        <button
-                          type="button"
-                          data-active={
-                            form.promotionMode ===
-                            'none'
-                          }
-                          onClick={() =>
-                            patchForm({
-                              promotionMode:
-                                'none',
-                            })
-                          }
-                        >
-                          {
-                            copy.noPromotion
-                          }
-                        </button>
-
-                        <button
-                          type="button"
-                          data-active={
-                            form.promotionMode ===
-                            'fixed'
-                          }
-                          onClick={() =>
-                            patchForm({
-                              promotionMode:
-                                'fixed',
-                            })
-                          }
-                        >
-                          {
-                            copy.promoFixed
-                          }
-                        </button>
-
-                        <button
-                          type="button"
-                          data-active={
-                            form.promotionMode ===
-                            'percent'
-                          }
-                          onClick={() =>
-                            patchForm({
-                              promotionMode:
-                                'percent',
-                            })
-                          }
-                        >
-                          {
-                            copy.promoPercent
-                          }
-                        </button>
-                      </div>
-
-                      {form.promotionMode !==
-                      'none' ? (
-                        <>
-                          <label
-                            className={
-                              styles.field
-                            }
-                          >
-                            <span>
-                              {form.promotionMode ===
-                              'percent'
-                                ? copy.discountPercent
-                                : copy.promoPrice}
-                            </span>
-
-                            <input
-                              type="number"
-                              min="0"
-                              step="0.01"
-                              max={
-                                form.promotionMode ===
-                                'percent'
-                                  ? 100
-                                  : undefined
-                              }
-                              value={
-                                form.promotionValue
-                              }
-                              onChange={(
-                                event,
-                              ) =>
-                                patchForm({
-                                  promotionValue:
-                                    event
-                                      .target
-                                      .value,
-                                })
-                              }
-                            />
-                          </label>
-
-                          <PartnerPromotionPricePreview
-                            locale={
-                              locale
-                            }
-                            regularPrice={
-                              form.normalPrice
-                            }
-                            promotionMode={
-                              form.promotionMode
-                            }
-                            promotionValue={
-                              form.promotionValue
-                            }
-                            currency={
-                              form.currency
-                            }
-                            priceUnit={
-                              form.priceUnit
-                            }
-                          />
-                        </>
-                      ) : null}
+                      </p>
                     </div>
                   </div>
 

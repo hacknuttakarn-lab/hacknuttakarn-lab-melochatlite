@@ -1,0 +1,106 @@
+.page{min-height:calc(100vh - 70px);background:var(--background);color:var(--text);padding:24px}.shell{width:min(1440px,100%);margin:auto;display:grid;grid-template-columns:240px minmax(0,1fr);gap:22px}.sidebar{position:sticky;top:92px;height:max-content;border:1px solid var(--border);border-radius:20px;background:var(--surface);padding:18px}.sidebar small,.heading small,.profileTop small{font-size:10px;font-weight:900;letter-spacing:.12em;color:var(--primary)}.sidebar h1{margin:5px 0 18px;font-size:22px}.sidebar nav{display:grid;gap:6px}.sidebar nav button{border:0;border-radius:11px;background:transparent;color:var(--text-secondary);padding:11px 12px;text-align:left;font:inherit;font-size:12px;font-weight:800;cursor:pointer}.sidebar nav button[data-active=true]{background:var(--primary-soft);color:var(--primary)}.content{min-width:0}.heading{display:flex;justify-content:space-between;align-items:end;gap:16px;margin:4px 0 18px}.heading h2{margin:4px 0 0;font-size:28px}.heading p{margin:5px 0 0;color:var(--text-secondary);font-size:12px}.heading input{width:min(360px,45vw);border:1px solid var(--border);border-radius:12px;background:var(--surface);color:var(--text);padding:11px 13px}.tableWrap{overflow:auto;border:1px solid var(--border);border-radius:18px;background:var(--surface)}.tableWrap table{width:100%;border-collapse:collapse;min-width:800px}.tableWrap th,.tableWrap td{padding:13px 14px;border-bottom:1px solid var(--border);text-align:left;font-size:11px}.tableWrap th{color:var(--text-secondary);font-size:9px;text-transform:uppercase;letter-spacing:.08em}.tableWrap tbody tr{cursor:pointer}.tableWrap tbody tr:hover{background:var(--surface-2)}.tableWrap td small{color:var(--text-secondary)}.mono{font-family:ui-monospace,SFMono-Regular,Menlo,monospace}.status{display:inline-flex;border-radius:999px;background:#e8f8f0;color:#16875c;padding:5px 8px;font-weight:850}.status[data-off=true]{background:#fff0f1;color:#d13f50}.actions,.modalActions{display:flex;gap:6px;flex-wrap:wrap}.actions button,.modalActions button,.planGrid button,.empty button{border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--text);padding:7px 9px;font:inherit;font-size:10px;font-weight:800;cursor:pointer}.danger{color:#e24b5b!important;border-color:color-mix(in srgb,#e24b5b 40%,var(--border))!important}.primary{border:0!important;border-radius:11px!important;background:var(--primary)!important;color:white!important;padding:10px 14px!important;font-weight:850;cursor:pointer}.cards,.planGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));gap:12px}.cards article,.planGrid article,.stats article,.empty{border:1px solid var(--border);border-radius:17px;background:var(--surface);padding:16px}.cards p,.planGrid p{color:var(--text-secondary);font-size:11px}.planGrid article{display:grid;gap:8px}.planGrid h3{margin:0}.planGrid b{font-size:21px}.stats{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:14px}.stats article{display:grid;gap:6px}.stats b{font-size:25px}.stats span{font-size:10px;color:var(--text-secondary)}.empty{text-align:center;padding:45px;color:var(--text-secondary)}.empty b{display:block;color:var(--text);font-size:17px}.error{margin-bottom:12px;border:1px solid #e24b5b;border-radius:12px;padding:10px;color:#e24b5b}.backdrop{position:fixed;inset:0;z-index:5000;background:rgba(0,0,0,.58);display:grid;place-items:center;padding:18px}.modal{position:relative;width:min(650px,100%);max-height:88vh;overflow:auto;border:1px solid var(--border);border-radius:22px;background:var(--surface);color:var(--text);padding:22px;box-shadow:0 28px 80px rgba(0,0,0,.35)}.close{position:absolute;right:15px;top:13px;border:0;background:transparent;color:var(--text-secondary);font-size:25px;cursor:pointer}.profileTop{display:flex;gap:14px;align-items:center;padding-right:32px}.profileTop img,.avatar{width:72px;height:72px;border-radius:20px;object-fit:cover;background:var(--surface-2)}.profileTop h2{margin:4px 0}.profileTop p{margin:0;color:var(--text-secondary);font-size:11px}.modal dl{display:grid;gap:0;margin:20px 0}.modal dl div{display:grid;grid-template-columns:120px 1fr;gap:12px;border-top:1px solid var(--border);padding:11px 0}.modal dt{color:var(--text-secondary);font-size:10px}.modal dd{margin:0;font-size:11px;overflow-wrap:anywhere}.formGrid{display:grid;grid-template-columns:1fr 1fr;gap:12px;margin:16px 0}.formGrid label{display:grid;gap:6px;font-size:10px;font-weight:800}.formGrid input{border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);padding:10px}.check{display:flex;gap:8px;align-items:center;margin:10px 0 16px;font-size:11px}.state{min-height:60vh;display:grid;place-items:center;align-content:center;color:var(--text)}
+@media(max-width:900px){.page{padding:14px}.shell{grid-template-columns:1fr}.sidebar{position:static}.sidebar nav{display:flex;overflow:auto}.sidebar nav button{white-space:nowrap}.cards,.planGrid{grid-template-columns:1fr 1fr}.heading{align-items:stretch;flex-direction:column}.heading input{width:100%}}
+@media(max-width:600px){.page{padding:10px 10px calc(78px + env(safe-area-inset-bottom))}.cards,.planGrid,.stats,.formGrid{grid-template-columns:1fr}.modal{max-height:calc(100dvh - 24px - env(safe-area-inset-bottom));padding:18px}.modal dl div{grid-template-columns:1fr}.sidebar{border-radius:15px}.sidebar h1{font-size:19px}}
+
+/* Admin Center V2 readability + main-system header */
+.page{padding:0 0 32px}.shell{padding:24px;width:min(1440px,calc(100% - 32px))}.sidebar small,.heading small,.profileTop small{font-size:11px}.sidebar h1{font-size:24px}.sidebar nav button{font-size:14px;padding:12px 13px}.heading h2{font-size:30px}.heading p{font-size:14px}.heading input{font-size:14px}.tableWrap th{font-size:11px}.tableWrap td{font-size:13px;padding:15px 14px}.actions button,.modalActions button,.planGrid button,.empty button{font-size:12px;padding:8px 10px}.status{font-size:12px}.profileTop img,.avatar{width:82px;height:82px}.avatar{display:grid;place-items:center;font-size:28px;font-weight:900;color:var(--primary)}.profileTop h2{font-size:28px}.profileTop p{font-size:13px}.modal dt{font-size:12px}.modal dd{font-size:13px}.cards p,.planGrid p{font-size:13px}.stats span{font-size:12px}.packageChooserHead h2{margin:5px 0 4px;font-size:26px}.packageChooserHead p{margin:0 0 16px;color:var(--text-secondary);font-size:13px}.packageChoices{display:grid;gap:9px;margin:14px 0 18px}.packageChoices label{display:flex;gap:11px;align-items:center;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);padding:13px;cursor:pointer}.packageChoices label[data-selected=true]{border-color:var(--primary);box-shadow:0 0 0 2px color-mix(in srgb,var(--primary) 16%,transparent)}.packageChoices span{display:grid;gap:4px}.packageChoices b{font-size:14px}.packageChoices small{color:var(--text-secondary);font-size:12px}
+@media(max-width:900px){.shell{width:100%;padding:14px}}
+@media(max-width:600px){.shell{padding:10px 10px calc(78px + env(safe-area-inset-bottom))}.sidebar nav button{font-size:13px}.tableWrap td{font-size:12px}}
+
+/* Package report cancellation */
+.cancelButton{border:1px solid color-mix(in srgb,#e24b5b 48%,var(--border));border-radius:9px;background:transparent;color:#e24b5b;padding:7px 11px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.cancelButton:hover{background:color-mix(in srgb,#e24b5b 10%,transparent)}.transactionStatus{display:inline-flex;border-radius:999px;background:#e8f8f0;color:#16875c;padding:5px 9px;font-size:12px;font-weight:850}.transactionStatus[data-cancelled=true]{background:color-mix(in srgb,#e24b5b 12%,var(--surface));color:#e24b5b}.cancelledRow{opacity:.7}.cancelledText{color:var(--text-secondary);font-size:12px}.confirmModal{width:min(520px,100%)}.confirmIcon{width:46px;height:46px;border-radius:50%;display:grid;place-items:center;background:color-mix(in srgb,#e24b5b 14%,transparent);color:#e24b5b;font-size:24px;font-weight:950;margin-bottom:14px}.confirmHead small{color:#e24b5b;font-size:11px;font-weight:900;letter-spacing:.1em}.confirmHead h2{margin:5px 0 8px;font-size:26px}.confirmHead p{margin:0;color:var(--text-secondary);font-size:13px;line-height:1.55}.confirmActions{display:flex;justify-content:flex-end;gap:9px;margin-top:18px}.confirmActions button{border:1px solid var(--border);border-radius:10px;background:var(--surface-2);color:var(--text);padding:9px 13px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.confirmDanger{background:#e24b5b!important;border-color:#e24b5b!important;color:#fff!important}.confirmDanger:disabled{opacity:.6;cursor:wait}
+
+
+/* Admin Center V3: embedded document approval + wider workspace */
+.shell{width:min(1680px,calc(100% - 28px));grid-template-columns:240px minmax(0,1fr);gap:24px}
+.reviewWorkspace{min-width:0;width:100%}
+.reviewWorkspace>div{width:100%;max-width:none}
+@media(max-width:900px){.shell{width:100%;padding:14px}}
+@media(max-width:600px){.shell{padding:10px 10px calc(78px + env(safe-area-inset-bottom))}}
+
+/* Admin Center V4: align the left menu with the main content card/table area. */
+@media (min-width:901px){
+  .sidebar{margin-top:98px}
+}
+@media (max-width:900px){
+  .sidebar{margin-top:0}
+}
+
+/* Admin Center V5: granular admin permissions */
+.permissionModal{width:min(760px,100%)}
+.permissionRole{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:18px 0}
+.permissionRole label{display:grid;gap:7px;font-size:12px;font-weight:850}
+.permissionRole select{border:1px solid var(--border);border-radius:11px;background:var(--surface-2);color:var(--text);padding:11px 12px;font:inherit}
+.permissionActive{display:flex!important;grid-template-columns:none!important;align-items:center;align-content:center;grid-auto-flow:column;justify-content:start;gap:9px!important}
+.permissionList{display:grid;grid-template-columns:1fr 1fr;gap:9px;margin:14px 0 20px}
+.permissionList label{display:flex;align-items:center;justify-content:space-between;gap:14px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2);padding:12px 13px;cursor:pointer}
+.permissionList label span{display:grid;gap:3px}.permissionList b{font-size:13px}.permissionList small{font-size:10px;color:var(--text-secondary)}.permissionList input{width:18px;height:18px;accent-color:var(--primary)}
+.permissionNotice{border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));border-radius:13px;background:var(--primary-soft);color:var(--text);padding:13px 14px;margin:14px 0 20px;font-size:12px;line-height:1.55}
+@media(max-width:600px){.permissionRole,.permissionList{grid-template-columns:1fr}}
+
+
+/* Admin Center V6: promote flow + admin-only permissions list */
+.promoteButton,.managePermissionsButton{border:1px solid color-mix(in srgb,var(--primary) 46%,var(--border))!important;border-radius:9px!important;background:color-mix(in srgb,var(--primary) 13%,var(--surface-2))!important;color:var(--primary)!important;padding:8px 11px!important;font:inherit!important;font-size:12px!important;font-weight:850!important;cursor:pointer!important;transition:background .16s ease,border-color .16s ease,transform .16s ease}
+.promoteButton:hover,.managePermissionsButton:hover{background:color-mix(in srgb,var(--primary) 22%,var(--surface-2))!important;border-color:var(--primary)!important}
+.promoteButton:active,.managePermissionsButton:active{transform:translateY(1px)}
+.managePermissionsButton{white-space:nowrap}
+
+/* Admin Center V7: 10-row pagination + readable audit log */
+.pagination{display:flex;align-items:center;justify-content:flex-end;gap:9px;margin-top:12px}.pagination button{width:36px;height:34px;border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--text);font:inherit;font-weight:900;cursor:pointer}.pagination button:disabled{opacity:.38;cursor:not-allowed}.pagination span{min-width:58px;text-align:center;color:var(--text-secondary);font-size:12px;font-weight:800}.auditAction{font-weight:800;text-transform:none}.auditDetails{min-width:280px;max-width:520px;white-space:normal!important;overflow-wrap:anywhere;line-height:1.45}.auditDetails span{display:block;margin:0 0 4px}.auditDetails span:last-child{margin-bottom:0}
+
+/* Admin Center V8: report moderation + member warnings */
+.reportList{display:grid;gap:12px}.reportCard{border:1px solid var(--border);border-radius:15px;background:var(--surface);padding:16px;cursor:pointer}.reportCard:hover{border-color:color-mix(in srgb,var(--primary) 35%,var(--border))}
+.reportTop{display:flex;align-items:flex-start;justify-content:space-between;gap:16px}.reportTop h3{margin:3px 0 2px;font-size:17px}.reportTop p{margin:0;color:var(--text-secondary);font-size:12px}.reportCode{font-family:ui-monospace,SFMono-Regular,Menlo,monospace;color:var(--primary);font-size:11px;font-weight:900}
+.reportStatus{display:inline-flex;border-radius:999px;background:var(--primary-soft);color:var(--primary);padding:6px 9px;font-size:11px;font-weight:900;text-transform:capitalize}.reportStatus[data-status=resolved]{background:#e8f8f0;color:#16875c}.reportStatus[data-status=dismissed]{background:var(--surface-2);color:var(--text-secondary)}.reportStatus[data-status=warning_sent]{background:#fff4d9;color:#a86600}
+.reportSummary{display:grid;grid-template-columns:minmax(160px,.7fr) minmax(240px,1.5fr) minmax(120px,.5fr);gap:12px;margin:14px 0}.reportSummary div{display:grid;gap:4px}.reportSummary dt{color:var(--text-secondary);font-size:10px;font-weight:850;text-transform:uppercase}.reportSummary dd{margin:0;font-size:13px;line-height:1.45;overflow-wrap:anywhere}.reportActions{display:flex;gap:8px;flex-wrap:wrap}.reportActions button,.warningButton{border:1px solid var(--border);border-radius:9px;background:var(--surface-2);color:var(--text);padding:8px 11px;font:inherit;font-size:12px;font-weight:850;cursor:pointer}.warningButton{border-color:color-mix(in srgb,#f0a32f 45%,var(--border))!important;color:#d98a16!important;background:color-mix(in srgb,#f0a32f 10%,var(--surface-2))!important}
+.reportModal{width:min(720px,100%)}.adminNote{display:grid;gap:7px;margin-top:16px;font-size:12px;font-weight:850}.adminNote textarea,.warningForm textarea,.warningForm select{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;background:var(--surface-2);color:var(--text);padding:11px 12px;font:inherit}.adminNote textarea{min-height:90px;resize:vertical}
+.warningModal{width:min(720px,100%)}.warningForm{display:grid;gap:13px;margin:18px 0}.warningForm label{display:grid;gap:7px;font-size:12px;font-weight:850}.warningForm textarea{resize:vertical;min-height:180px;line-height:1.55}.warningForm>small{color:var(--text-secondary);line-height:1.45}
+@media(max-width:700px){.reportSummary{grid-template-columns:1fr}.reportTop{align-items:flex-start}.reportActions button{flex:1 1 auto}}
+
+/* Admin Center V9: localized warning composer + themed destructive confirms */
+.warningModal{font-size:14px}
+.warningModal .packageChooserHead small{font-size:12px}
+.warningModal .packageChooserHead h2{font-size:29px;line-height:1.2}
+.warningModal .packageChooserHead p{font-size:14px}
+.warningForm{gap:16px}
+.warningForm label{font-size:14px;gap:8px}
+.warningForm select,.warningForm textarea{font-size:14px;padding:12px 13px}
+.warningForm textarea{line-height:1.65}
+.warningForm>small{font-size:13px}
+.warningModal .modalActions button{font-size:13px;padding:10px 13px}
+.reportModal .modalActions{margin-top:20px;padding-top:4px}
+.confirmUserModal{width:min(560px,100%)}
+.confirmUserModal .confirmHead h2{font-size:26px;margin:5px 0 7px}
+.confirmUserModal .confirmHead p{font-size:14px;line-height:1.55;color:var(--text-secondary)}
+.confirmUserModal .confirmActions{margin-top:18px}
+@media(max-width:600px){.warningModal .packageChooserHead h2{font-size:24px}.warningForm label,.warningForm select,.warningForm textarea{font-size:13px}.reportModal .modalActions{margin-top:18px}}
+
+/* Admin Center V9: localized warning composer + themed destructive confirms */
+.warningModal{font-size:14px}
+.warningModal .packageChooserHead small{font-size:12px}
+.warningModal .packageChooserHead h2{font-size:29px;line-height:1.2}
+.warningModal .packageChooserHead p{font-size:14px}
+.warningForm{gap:16px}
+.warningForm label{font-size:14px;gap:8px}
+.warningForm select,.warningForm textarea{font-size:14px;padding:12px 13px}
+.warningForm textarea{line-height:1.65}
+.warningForm>small{font-size:13px}
+.warningModal .modalActions button{font-size:13px;padding:10px 13px}
+.reportModal .modalActions{margin-top:20px;padding-top:4px}
+.confirmUserModal{width:min(560px,100%)}
+.confirmUserModal .confirmHead h2{font-size:26px;margin:5px 0 7px}
+.confirmUserModal .confirmHead p{font-size:14px;line-height:1.55;color:var(--text-secondary)}
+.confirmUserModal .confirmActions{margin-top:18px}
+@media(max-width:600px){.warningModal .packageChooserHead h2{font-size:24px}.warningForm label,.warningForm select,.warningForm textarea{font-size:13px}.reportModal .modalActions{margin-top:18px}}
+
+/* Admin Center V10: audit filters + reversible account actions */
+.auditFilters{display:flex;gap:10px;align-items:end;flex-wrap:wrap}.auditFilters label{display:grid;gap:5px;color:var(--text-secondary);font-size:11px;font-weight:800}.auditFilters select,.auditFilters input{min-width:190px;border:1px solid var(--border);border-radius:11px;background:var(--surface);color:var(--text);padding:10px 12px;font:inherit;font-size:12px}.cancelDeleteButton{border-color:color-mix(in srgb,#e5a22b 46%,var(--border))!important;color:#d8951e!important;background:color-mix(in srgb,#e5a22b 8%,var(--surface-2))!important}@media(max-width:760px){.auditFilters{width:100%}.auditFilters label,.auditFilters select,.auditFilters input{width:100%;min-width:0}}
+
+/* Admin Center V11: guarded 90-day admin deletion */
+.deleteVerification{display:grid;gap:14px;margin-top:18px;padding-top:16px;border-top:1px solid var(--border)}
+.deleteVerification label{display:grid;gap:7px;color:var(--text);font-size:13px;font-weight:800}
+.deleteVerification input,.deleteVerification textarea{width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--text);padding:11px 13px;font:inherit;outline:none}
+.deleteVerification input:focus,.deleteVerification textarea:focus{border-color:#58a9f8;box-shadow:0 0 0 3px color-mix(in srgb,#58a9f8 15%,transparent)}
+.deleteVerification textarea{resize:vertical;min-height:96px;line-height:1.55}
+.deleteVerification small{justify-self:end;color:var(--text-secondary);font-size:11px;font-weight:600}
+.confirmDanger:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.55)}

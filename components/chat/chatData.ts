@@ -2354,9 +2354,16 @@ function dedupe(
 }
 
 async function directRooms() {
+  // MELO_DIRECT_ROOM_UNREAD_COUNTS_V1
+  //
+  // get_my_chat_list() provides the room/profile information.
+  // get_chat_unread_counts() provides the canonical unread
+  // message count for each direct conversation.
+
   const [
     people,
     businesses,
+    unreadResult,
   ] =
     await Promise.all([
       firstRpc([
@@ -2377,7 +2384,99 @@ async function directRooms() {
       ]),
 
       businessChatRows(),
+
+      rpcRequest<unknown>(
+        "get_chat_unread_counts",
+        {},
+      ),
     ]);
+
+  const unreadByConversation =
+    new Map<string, number>();
+
+  if (!unreadResult.error) {
+    const rawRows =
+      Array.isArray(unreadResult.data)
+        ? unreadResult.data
+        : unreadResult.data
+          ? [unreadResult.data]
+          : [];
+
+    for (const raw of rawRows) {
+      if (
+        !raw ||
+        typeof raw !== "object"
+      ) {
+        continue;
+      }
+
+      const row =
+        raw as Record<
+          string,
+          unknown
+        >;
+
+      const conversationId =
+        String(
+          row.conversation_id ??
+          row.chat_id ??
+          row.id ??
+          "",
+        ).trim();
+
+      if (!conversationId) {
+        continue;
+      }
+
+      const parsed =
+        Number(
+          row.unread_count ??
+          row.unread ??
+          row.count ??
+          0,
+        );
+
+      unreadByConversation.set(
+        conversationId,
+        Number.isFinite(parsed)
+          ? Math.max(
+              0,
+              parsed,
+            )
+          : 0,
+      );
+    }
+  } else {
+    console.warn(
+      "[Melo Chat] get_chat_unread_counts failed:",
+      unreadResult.error,
+    );
+  }
+
+  const directPeople =
+    people.data
+      .map((row) => {
+        const room =
+          directRoom(row);
+
+        if (!room) {
+          return null;
+        }
+
+        return {
+          ...room,
+
+          unreadCount:
+            unreadByConversation.get(
+              room.id,
+            ) ??
+            room.unreadCount ??
+            0,
+        };
+      })
+      .filter(
+        Boolean,
+      ) as ChatRoom[];
 
   const enrichedBusinesses =
     await enrichBusinessChatRows(
@@ -2385,15 +2484,7 @@ async function directRooms() {
     );
 
   return dedupe([
-    ...(
-      people.data
-        .map(
-          directRoom,
-        )
-        .filter(
-          Boolean,
-        ) as ChatRoom[]
-    ),
+    ...directPeople,
 
     ...(
       enrichedBusinesses
@@ -2780,205 +2871,64 @@ async function communityRooms(
 }
 
 export async function loadChatUnreadTotal(): Promise<number> {
-  ensureMeloWebPopupWatcherStarted();
+  const user = await getCurrentUser();
 
-  const [
-    direct,
-    businessDirect,
-    trip,
-    event,
-    community,
-    notifications,
-  ] =
-    await Promise.all([
-      firstRpc([
-        {
-          name:
-            "get_my_chat_list",
-        },
-
-        {
-          name:
-            "get_my_conversation_list",
-        },
-
-        {
-          name:
-            "get_my_conversations",
-        },
-      ]),
-
-      businessChatRows(),
-
-      firstRpc([
-        {
-          name:
-            "get_my_trip_chat_list",
-        },
-
-        {
-          name:
-            "get_my_trip_chats",
-        },
-      ]),
-
-      firstRpc([
-        {
-          name:
-            "get_my_event_chat_list",
-        },
-
-        {
-          name:
-            "get_my_event_chats",
-        },
-      ]),
-
-      firstRpc([
-        {
-          name:
-            "get_my_community_chat_list",
-        },
-
-        {
-          name:
-            "get_my_community_chats",
-        },
-      ]),
-
-      loadUnreadNotifications(),
-    ]);
-
-  const notificationSummary =
-    notificationCounts(
-      notifications,
-    );
-
-  const rawLists:
-    Record<
-      ChatCategory,
-      Row[]
-    > = {
-      direct: [
-        ...direct.data,
-        ...businessDirect.data,
-      ],
-
-      trip:
-        trip.data,
-
-      event:
-        event.data,
-
-      community:
-        community.data,
-    };
-
-  const counts =
-    {} as Record<
-      ChatCategory,
-      number
-    >;
-
-  for (
-    const category
-    of Object.keys(
-      rawLists,
-    ) as ChatCategory[]
-  ) {
-    const ids =
-      new Map<
-        string,
-        number
-      >();
-
-    for (
-      const row
-      of rawLists[
-        category
-      ]
-    ) {
-      const id =
-        category ===
-        "direct"
-          ? text(row, [
-              "conversation_id",
-              "chat_id",
-              "id",
-            ])
-          : category ===
-              "trip"
-            ? text(row, [
-                "trip_id",
-                "id",
-              ])
-            : category ===
-                "event"
-              ? text(row, [
-                  "event_id",
-                  "id",
-                ])
-              : text(row, [
-                  "community_id",
-                  "id",
-                ]);
-
-      const unread =
-        numberOf(row, [
-          "unread_count",
-          "unread",
-          "unread_messages",
-        ]);
-
-      if (!id) {
-        continue;
-      }
-
-      ids.set(
-        id,
-
-        Math.max(
-          ids.get(id) ||
-            0,
-
-          unread,
-        ),
-      );
-    }
-
-    const roomUnread =
-      [
-        ...ids.values(),
-      ].reduce(
-        (
-          sum,
-          unread,
-        ) =>
-          sum +
-          unread,
-
-        0,
-      );
-
-    counts[category] =
-      Math.max(
-        roomUnread,
-
-        notificationSummary
-          .totals[
-            category
-          ],
-      );
+  if (!user) {
+    return 0;
   }
 
-  return (
-    counts.direct +
-    counts.trip +
-    counts.event +
-    counts.community
-  );
-}
+  try {
+    const result = await rpcRequest<unknown>(
+      "get_chat_unread_count",
+      {},
+    );
 
+    if (!result.error) {
+      const raw = Array.isArray(result.data)
+        ? result.data[0]
+        : result.data;
+
+      if (typeof raw === "number") {
+        return Math.max(0, raw);
+      }
+
+      if (typeof raw === "string") {
+        const parsed = Number(raw);
+        return Number.isFinite(parsed)
+          ? Math.max(0, parsed)
+          : 0;
+      }
+
+      if (raw && typeof raw === "object") {
+        const record = raw as Record<string, unknown>;
+
+        const value =
+          record.get_chat_unread_count ??
+          record.unread_count ??
+          record.count ??
+          record.total;
+
+        const parsed = Number(value);
+
+        if (Number.isFinite(parsed)) {
+          return Math.max(0, parsed);
+        }
+      }
+    } else {
+      console.warn(
+        "[Melo Chat] get_chat_unread_count failed:",
+        result.error,
+      );
+    }
+  } catch (error) {
+    console.warn(
+      "[Melo Chat] Unable to load chat unread count:",
+      error,
+    );
+  }
+
+  return 0;
+}
 export async function loadChatSnapshot(): Promise<ChatSnapshot> {
   ensureMeloWebPopupWatcherStarted();
 
@@ -3696,93 +3646,56 @@ function directMessage(
   };
 }
 
-export async function loadDirectMessages(
-  conversationId:
-    string,
+export async function loadDirectMessagesPage(
+  conversationId: string,
+  options: { before?: string; limit?: number } = {},
 ) {
-  const rpc =
-    await firstRpc([
-      {
-        name:
-          "get_chat_messages",
+  const limit = Math.max(1, Math.min(50, options.limit ?? 15));
+  const beforeFilter = options.before
+    ? `&created_at=lt.${encodeURIComponent(options.before)}`
+    : "";
 
-        params: {
-          p_conversation_id:
-            conversationId,
-        },
-      },
-
-      {
-        name:
-          "get_conversation_messages",
-
-        params: {
-          p_conversation_id:
-            conversationId,
-        },
-      },
-
-      {
-        name:
-          "get_messages",
-
-        params: {
-          p_conversation_id:
-            conversationId,
-        },
-      },
-    ]);
-
-  if (
-    rpc.data.length
-  ) {
-    return hydrateDirectSenderNames(
-      rpc.data.map(
-        directMessage,
-      ),
+  let lastError = "";
+  for (const table of ["chat_messages", "messages"]) {
+    const result = await restSelect<Row[]>(
+      table,
+      `select=*&conversation_id=eq.${encodeURIComponent(conversationId)}${beforeFilter}&order=created_at.desc&limit=${limit}`,
     );
-  }
-
-  for (
-    const table
-    of [
-      "chat_messages",
-      "messages",
-    ]
-  ) {
-    const result =
-      await restSelect<
-        Row[]
-      >(
-        table,
-
-        `select=*&conversation_id=eq.${encodeURIComponent(
-          conversationId,
-        )}&order=created_at.asc&limit=300`,
-      );
-
-    if (
-      !result.error
-    ) {
-      return hydrateDirectSenderNames(
-        rows(
-          result.data,
-        ).map(
-          directMessage,
-        ),
-      );
+    if (!result.error) {
+      const page = rows(result.data).map(directMessage).reverse();
+      return hydrateDirectSenderNames(page);
     }
+    lastError = result.error;
   }
-
-  if (
-    rpc.error
-  ) {
-    throw new Error(
-      rpc.error,
-    );
-  }
-
+  if (lastError) throw new Error(lastError);
   return [];
+}
+
+export async function loadDirectMessages(conversationId: string) {
+  return loadDirectMessagesPage(conversationId, { limit: 15 });
+}
+
+export async function loadPinnedConversationIds() {
+  const user = await getCurrentUser();
+  if (!user?.id) return [] as string[];
+  const result = await restSelect<Row[]>(
+    "chat_conversation_preferences",
+    `select=conversation_id,pinned_at&user_id=eq.${encodeURIComponent(user.id)}&is_pinned=eq.true&order=pinned_at.desc`,
+  );
+  if (result.error) return [] as string[];
+  return rows(result.data).map((row) => text(row, ["conversation_id"])).filter(Boolean);
+}
+
+export async function setConversationPinned(conversationId: string, isPinned: boolean) {
+  const user = await getCurrentUser();
+  if (!user?.id) throw new Error("Please sign in");
+  const now = new Date().toISOString();
+  const result = await restUpsert(
+    "chat_conversation_preferences",
+    { user_id: user.id, conversation_id: conversationId, is_pinned: isPinned, pinned_at: isPinned ? now : null, updated_at: now },
+    "user_id,conversation_id",
+  );
+  if (result.error) throw new Error(result.error);
 }
 
 function richParams(
@@ -4507,6 +4420,41 @@ export async function markDirectRead(
   conversationId:
     string,
 ) {
+  // Melo Chat Lite V1:
+  // canonical read-state RPC
+  try {
+    const result = await rpcRequest<unknown>(
+      "mark_chat_as_read",
+      {
+        p_conversation_id: conversationId,
+      },
+    );
+
+    if (!result.error) {
+      const total = await loadChatUnreadTotal();
+
+      if (typeof window !== "undefined") {
+        window.dispatchEvent(
+          new CustomEvent("melo-chat-unread-changed", {
+            detail: { total },
+          }),
+        );
+      }
+
+      return;
+    }
+
+    console.warn(
+      "[Melo Chat] mark_chat_as_read failed; trying legacy RPCs:",
+      result.error,
+    );
+  } catch (error) {
+    console.warn(
+      "[Melo Chat] mark_chat_as_read failed; trying legacy RPCs:",
+      error,
+    );
+  }
+
   for (
     const candidate
     of [
@@ -6819,9 +6767,123 @@ function meloNotificationBody(
   );
 }
 
+function meloActivityNotificationCopy(
+  row: Row,
+) {
+  const locale =
+    meloWebPopupLocale();
+
+  const meta =
+    notificationMeta(
+      row,
+    );
+
+  const sourceText = [
+    text(row, [
+      "type",
+      "notification_type",
+      "kind",
+      "event_type",
+      "title",
+      "subject",
+      "heading",
+      "body",
+      "message",
+      "description",
+    ]),
+    text(meta, [
+      "type",
+      "notification_type",
+      "kind",
+      "activity_type",
+      "entity_type",
+      "title",
+      "subject",
+      "heading",
+      "body",
+      "message",
+      "description",
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const kind =
+    sourceText.includes("match")
+      ? "match"
+      : (
+          sourceText.includes("likes_you") ||
+          sourceText.includes("like_you") ||
+          sourceText.includes("likes you") ||
+          sourceText.includes("liked you") ||
+          sourceText.includes("dating_like_received") ||
+          sourceText.includes("love_like_received") ||
+          sourceText.includes("interested")
+        )
+        ? "likesYou"
+        : sourceText.includes("follow")
+          ? "follow"
+          : (
+              sourceText.includes("post") &&
+              sourceText.includes("comment")
+            )
+            ? "postComment"
+            : (
+                sourceText.includes("post") &&
+                sourceText.includes("like")
+              )
+              ? "postLike"
+              : "generic";
+
+  const copy = {
+    th: {
+      title: "การแจ้งเตือนใหม่ จาก Melo Chat",
+      match: "คุณมี Match ใหม่ เปิดดูรายละเอียดได้เลย",
+      likesYou: "มีคนสนใจคุณ เปิดดูรายละเอียดได้เลย",
+      follow: "มีคนเริ่มติดตามคุณ เปิดดูรายละเอียดได้เลย",
+      postLike: "มีคนถูกใจโพสต์ของคุณ เปิดดูรายละเอียดได้เลย",
+      postComment: "มีความคิดเห็นใหม่ในโพสต์ของคุณ เปิดดูรายละเอียดได้เลย",
+      generic: "คุณมีการแจ้งเตือนใหม่ เปิดดูรายละเอียดได้เลย",
+    },
+    en: {
+      title: "New notification from Melo Chat",
+      match: "You have a new Match. Open to view the details.",
+      likesYou: "Someone is interested in you. Open to view the details.",
+      follow: "Someone started following you. Open to view the details.",
+      postLike: "Someone liked your post. Open to view the details.",
+      postComment: "You have a new comment on your post. Open to view the details.",
+      generic: "You have a new notification. Open to view the details.",
+    },
+    de: {
+      title: "Neue Benachrichtigung von Melo Chat",
+      match: "Du hast ein neues Match. Öffne die Benachrichtigung für Details.",
+      likesYou: "Jemand interessiert sich für dich. Öffne die Benachrichtigung für Details.",
+      follow: "Jemand folgt dir jetzt. Öffne die Benachrichtigung für Details.",
+      postLike: "Jemandem gefällt dein Beitrag. Öffne die Benachrichtigung für Details.",
+      postComment: "Du hast einen neuen Kommentar zu deinem Beitrag. Öffne die Benachrichtigung für Details.",
+      generic: "Du hast eine neue Benachrichtigung. Öffne sie für Details.",
+    },
+  } as const;
+
+  const localized =
+    locale === "th" ||
+    locale === "de"
+      ? copy[locale]
+      : copy.en;
+
+  return {
+    title:
+      localized.title,
+    body:
+      localized[kind],
+  };
+}
+
 function meloNotificationHref(
   row: Row,
 ) {
+  // MELO_ACTIVITY_POPUP_ROUTING_V3
   if (
     typeof window ===
     "undefined"
@@ -6833,6 +6895,112 @@ function meloNotificationHref(
     notificationMeta(
       row,
     );
+
+  const sourceText = [
+    text(row, [
+      "type",
+      "notification_type",
+      "kind",
+      "event_type",
+      "title",
+      "subject",
+      "heading",
+      "body",
+      "message",
+      "description",
+    ]),
+    text(meta, [
+      "type",
+      "notification_type",
+      "kind",
+      "activity_type",
+      "entity_type",
+      "title",
+      "subject",
+      "heading",
+      "body",
+      "message",
+      "description",
+    ]),
+  ]
+    .filter(Boolean)
+    .join(" ")
+    .toLowerCase();
+
+  const postId =
+    text(meta, [
+      "post_id",
+      "feed_post_id",
+    ]) ||
+    text(row, [
+      "post_id",
+      "feed_post_id",
+    ]) ||
+    (
+      sourceText.includes("post")
+        ? (
+            text(meta, [
+              "activity_id",
+              "context_id",
+              "entity_id",
+            ]) ||
+            text(row, [
+              "activity_id",
+              "context_id",
+              "entity_id",
+            ])
+          )
+        : ""
+    );
+
+  const isPostNotification =
+    sourceText.includes("post") &&
+    (
+      sourceText.includes("like") ||
+      sourceText.includes("comment")
+    );
+
+  if (
+    isPostNotification &&
+    postId
+  ) {
+    return `/feed?post=${encodeURIComponent(
+      postId,
+    )}`;
+  }
+
+  if (
+    isPostNotification
+  ) {
+    return "/feed";
+  }
+
+  const isLikesYou =
+    sourceText.includes("likes_you") ||
+    sourceText.includes("like_you") ||
+    sourceText.includes("likes you") ||
+    sourceText.includes("liked you") ||
+    sourceText.includes("dating_like_received") ||
+    sourceText.includes("love_like_received");
+
+  if (
+    isLikesYou
+  ) {
+    return "/connect?tab=incoming";
+  }
+
+  const isMatch =
+    sourceText.includes("match") ||
+    sourceText.includes("matched") ||
+    sourceText.includes("new_match") ||
+    sourceText.includes("love_match") ||
+    sourceText.includes("dating_match");
+
+  if (
+    isMatch
+  ) {
+    return "/connect?tab=connected";
+  }
 
   const raw =
     text(row, [
@@ -6868,10 +7036,26 @@ function meloNotificationHref(
       return "";
     }
 
-    return (
-      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`
-    );
+    const route =
+      `${currentUrl.pathname}${currentUrl.search}${currentUrl.hash}`;
+
+    // Melo Chat Lite no longer uses /love.
+    if (
+      currentUrl.pathname ===
+      "/love"
+    ) {
+      return "/connect?tab=connected";
+    }
+
+    return route;
   } catch {
+    if (
+      raw === "/love" ||
+      raw.startsWith("/love?")
+    ) {
+      return "/connect?tab=connected";
+    }
+
     return raw.startsWith(
       "/",
     )
@@ -6879,7 +7063,6 @@ function meloNotificationHref(
       : "";
   }
 }
-
 async function meloActivePartnerBusinessId() {
   if (
     typeof window ===
@@ -7545,6 +7728,17 @@ function startMeloWebRealtimeWakeup(
                     "public",
 
                   table:
+                    "notifications",
+                },
+
+                {
+                  event:
+                    "INSERT",
+
+                  schema:
+                    "public",
+
+                  table:
                     "app_notifications",
                 },
               ],
@@ -7787,18 +7981,41 @@ function startMeloWebPopupWatcher() {
                   null,
               ),
 
-            restSelect<Row[]>(
-              "app_notifications",
-              "select=*&order=created_at.desc&limit=100",
-            ).catch(
-              () => ({
-                data:
-                  [] as Row[],
+            (async () => {
+              const primary =
+                await restSelect<Row[]>(
+                  "notifications",
+                  "select=*&order=created_at.desc&limit=100",
+                ).catch(
+                  () => ({
+                    data:
+                      [] as Row[],
 
-                error:
-                  "request_failed",
-              }),
-            ),
+                    error:
+                      "request_failed",
+                  }),
+                );
+
+              if (
+                !primary.error
+              ) {
+                return primary;
+              }
+
+              // Legacy fallback for older Melo deployments.
+              return restSelect<Row[]>(
+                "app_notifications",
+                "select=*&order=created_at.desc&limit=100",
+              ).catch(
+                () => ({
+                  data:
+                    [] as Row[],
+
+                  error:
+                    "request_failed",
+                }),
+              );
+            })(),
           ]);
 
         if (
@@ -8086,8 +8303,10 @@ function startMeloWebPopupWatcher() {
                 continue;
               }
 
-              const copy =
-                meloWebPopupCopy();
+              const activityCopy =
+                meloActivityNotificationCopy(
+                  row,
+                );
 
               showMeloWebPopup({
                 key:
@@ -8097,16 +8316,10 @@ function startMeloWebPopupWatcher() {
                   "notification",
 
                 title:
-                  meloNotificationTitle(
-                    row,
-                  ) ||
-                  copy.notification,
+                  activityCopy.title,
 
                 body:
-                  meloNotificationBody(
-                    row,
-                  ) ||
-                  copy.newNotification,
+                  activityCopy.body,
 
                 href:
                   meloNotificationHref(
@@ -8182,3 +8395,7 @@ function startMeloWebPopupWatcher() {
 }
 
 ensureMeloWebPopupWatcherStarted();
+
+
+
+

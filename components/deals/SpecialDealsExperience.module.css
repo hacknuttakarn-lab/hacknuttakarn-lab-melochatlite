@@ -29,3 +29,282 @@
   .pageHeader h1{margin-bottom:0!important}
   .categoryNav{margin-top:9px!important;margin-bottom:18px!important}
 }
+
+/* MELO FIXED DEAL TYPES + CATEGORY SEARCH — desktop/mobile */
+.categoryBrowser{margin:18px 0 28px;padding:15px 16px 16px;border:1px solid var(--border);border-radius:22px;background:var(--surface);box-shadow:0 10px 28px color-mix(in srgb,var(--shadow) 20%,transparent)}
+.categoryBrowserHeader{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:14px}.categoryBrowserHeader>div{min-width:0}.categoryBrowserHeader strong{display:block;color:var(--text);font-size:15px;font-weight:900}.categoryBrowserHeader p{margin:4px 0 0;color:var(--text-secondary);font-size:10px;line-height:1.5}
+.desktopCategoryGrid{display:grid;grid-template-columns:repeat(6,minmax(0,1fr));gap:8px}.categoryTile{min-width:0;min-height:78px;padding:7px 5px;border:1px solid transparent;border-radius:14px;background:transparent;color:var(--text);display:flex;flex-direction:column;align-items:center;justify-content:flex-start;gap:7px;text-align:center;font:inherit;cursor:pointer;transition:.18s ease}.categoryTile:hover{transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 24%,var(--border));background:color-mix(in srgb,var(--primary-soft) 34%,transparent)}.categoryTileActive{border-color:color-mix(in srgb,var(--primary) 52%,var(--border));background:var(--primary-soft)}.categoryTileIcon{width:44px;height:44px;flex:0 0 44px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:900;box-shadow:0 4px 12px color-mix(in srgb,var(--shadow) 20%,transparent)}.categoryTile>strong{width:100%;min-width:0;color:var(--text);font-size:9px;line-height:1.18;font-weight:900;display:-webkit-box;-webkit-box-orient:vertical;-webkit-line-clamp:2;overflow:hidden}.mobileCategoryGrid{display:none}
+.categorySearchPanel{scroll-margin-top:96px;margin:-12px 0 34px;padding:18px;border:1px solid color-mix(in srgb,var(--primary) 30%,var(--border));border-radius:22px;background:color-mix(in srgb,var(--primary-soft) 22%,var(--surface));box-shadow:0 12px 32px color-mix(in srgb,var(--shadow) 20%,transparent)}.categorySearchHeading{display:grid;grid-template-columns:48px minmax(0,1fr) auto;gap:13px;align-items:center}.categorySearchIcon{width:48px;height:48px;display:grid;place-items:center;border-radius:15px;color:#fff;font-size:21px;font-weight:900;box-shadow:0 7px 20px color-mix(in srgb,var(--primary) 18%,transparent)}.categorySearchHeading>div{min-width:0}.categorySearchHeading small{display:block;color:var(--primary);font-size:9px;font-weight:950;letter-spacing:.08em;text-transform:uppercase}.categorySearchHeading h2{margin:3px 0 0;color:var(--text);font-size:22px;line-height:1.2}.categorySearchHeading p{margin:5px 0 0;color:var(--text-secondary);font-size:10px;line-height:1.55}.categorySearchCount{align-self:start;padding:7px 10px;border:1px solid var(--border);border-radius:999px;background:var(--surface);color:var(--text-secondary);font-size:9px;white-space:nowrap}
+.categorySearchFilters{display:grid;grid-template-columns:minmax(170px,.9fr) minmax(160px,.85fr) minmax(240px,1.5fr) auto;gap:9px;align-items:end;margin-top:16px}.categorySearchFilters label{min-width:0;display:grid;gap:6px}.categorySearchFilters label>span{color:var(--text-secondary);font-size:8.5px;font-weight:850}.categorySearchFilters select,.categorySearchFilters input{width:100%;height:43px;min-width:0;border:1px solid var(--border);border-radius:12px;outline:0;background:var(--surface);color:var(--text);padding:0 11px;font:inherit;font-size:10px;font-weight:750}.categorySearchFilters select:disabled{opacity:.52}.categorySearchFilters select:focus,.categorySearchFilters input:focus{border-color:color-mix(in srgb,var(--primary) 65%,var(--border));box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent)}.categorySearchFilters input::placeholder{color:var(--text-secondary);font-weight:600}.categorySearchClear{height:43px;padding:0 13px;border:1px solid var(--border);border-radius:12px;background:var(--surface-2);color:var(--primary);font:inherit;font-size:9px;font-weight:900;white-space:nowrap;cursor:pointer}.categorySearchClear:disabled{opacity:.42;cursor:default}
+@media(max-width:980px){.categorySearchFilters{grid-template-columns:1fr 1fr}.categorySearchKeyword{grid-column:1/-1}.categorySearchClear{justify-self:start}}
+@media(max-width:760px){.categoryBrowser{margin:9px 0 18px;padding:14px 10px 16px;border-radius:19px}.categoryBrowserHeader{margin-bottom:13px;padding:0 4px}.categoryBrowserHeader strong{font-size:15px}.categoryBrowserHeader p{font-size:9.5px}.desktopCategoryGrid{display:none}.mobileCategoryGrid{display:grid;grid-template-columns:repeat(3,minmax(0,1fr));column-gap:6px;row-gap:14px}.mobileCategoryButton{min-width:0;padding:0 2px;border:0;background:transparent;color:var(--text);display:flex;flex-direction:column;align-items:center;text-align:center;font:inherit;cursor:pointer}.mobileCategoryIcon{width:48px;height:48px;border-radius:50%;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:900;box-shadow:0 5px 14px color-mix(in srgb,var(--shadow) 24%,transparent)}.mobileCategoryButton strong{width:100%;min-height:24px;margin-top:6px;color:var(--text);font-size:8px;line-height:10.5px;font-weight:900;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}.mobileCategoryButtonActive .mobileCategoryIcon{outline:3px solid color-mix(in srgb,var(--primary) 45%,transparent);outline-offset:2px}.mobileCategoryButtonActive strong{color:var(--primary)}.categorySearchPanel{scroll-margin-top:78px;margin:-2px 0 26px;padding:14px;border-radius:19px}.categorySearchHeading{grid-template-columns:43px minmax(0,1fr);gap:10px}.categorySearchIcon{width:43px;height:43px;border-radius:14px;font-size:19px}.categorySearchHeading small{font-size:8px}.categorySearchHeading h2{font-size:19px}.categorySearchHeading p{font-size:9px}.categorySearchCount{grid-column:2;justify-self:start;margin-top:-2px}.categorySearchFilters{grid-template-columns:1fr 1fr;margin-top:13px;gap:8px}.categorySearchFilters label>span{font-size:8px}.categorySearchFilters select,.categorySearchFilters input{height:42px;font-size:9.5px}.categorySearchKeyword{grid-column:1/-1}.categorySearchClear{grid-column:1/-1;width:100%;height:40px}}
+@media(max-width:430px){.categorySearchFilters{grid-template-columns:1fr}.categorySearchKeyword,.categorySearchClear{grid-column:1}.categorySearchCount{grid-column:1/-1;margin-left:53px}}
+
+/* MELO DEALS V3 — product/service category + province + grouped Partner results */
+.partnerDealGroups{display:grid;gap:22px}
+.partnerDealGroup{
+  min-width:0;
+  padding:16px;
+  border:1px solid var(--border);
+  border-radius:22px;
+  background:color-mix(in srgb,var(--surface) 94%,var(--primary-soft) 6%);
+  box-shadow:0 10px 28px color-mix(in srgb,var(--shadow) 22%,transparent);
+}
+.partnerDealGroupHeader{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:16px;
+  margin-bottom:14px;
+  padding-bottom:13px;
+  border-bottom:1px solid var(--border);
+}
+.partnerDealGroupIdentity{min-width:0;display:flex;align-items:center;gap:12px}
+.partnerDealGroupIcon{
+  width:46px;
+  height:46px;
+  flex:0 0 46px;
+  border-radius:14px;
+  display:grid;
+  place-items:center;
+  background:var(--primary-soft);
+  color:var(--primary);
+  font-size:20px;
+}
+.partnerDealGroupIdentity>div{min-width:0}
+.partnerDealGroupIdentity small{
+  display:block;
+  color:var(--primary);
+  font-size:8px;
+  font-weight:950;
+  letter-spacing:.08em;
+  text-transform:uppercase;
+}
+.partnerDealGroupIdentity h3{
+  margin:3px 0 2px;
+  color:var(--text);
+  font-size:18px;
+  line-height:1.2;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.partnerDealGroupIdentity p{
+  margin:0;
+  color:var(--text-secondary);
+  font-size:9px;
+  line-height:1.45;
+  white-space:nowrap;
+  overflow:hidden;
+  text-overflow:ellipsis;
+}
+.partnerDealViewButton{
+  min-height:36px;
+  flex:0 0 auto;
+  padding:0 13px;
+  border:1px solid color-mix(in srgb,var(--primary) 35%,var(--border));
+  border-radius:11px;
+  background:var(--primary-soft);
+  color:var(--primary);
+  font:inherit;
+  font-size:9px;
+  font-weight:900;
+  cursor:pointer;
+}
+.partnerDealViewButton:hover{border-color:var(--primary);transform:translateY(-1px)}
+.partnerDealGroup .dealGrid{gap:12px}
+.partnerDealGroup .dealCard{box-shadow:none;background:var(--surface)}
+.partnerDealGroup .dealBody h3{margin-top:2px}
+
+@media(max-width:760px){
+  .partnerDealGroups{gap:16px}
+  .partnerDealGroup{padding:12px;border-radius:19px}
+  .partnerDealGroupHeader{gap:10px;margin-bottom:12px;padding-bottom:11px}
+  .partnerDealGroupIcon{width:42px;height:42px;flex-basis:42px;border-radius:13px;font-size:18px}
+  .partnerDealGroupIdentity h3{font-size:16px}
+  .partnerDealGroupIdentity p{font-size:8px}
+  .partnerDealViewButton{min-height:34px;padding:0 10px;font-size:8.5px}
+  .partnerDealGroup .dealGrid{grid-template-columns:1fr}
+}
+@media(max-width:430px){
+  .partnerDealGroupHeader{align-items:flex-start}
+  .partnerDealViewButton{margin-top:1px}
+  .partnerDealGroupIdentity p{white-space:normal;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+}
+
+
+/* MELO DEALS + PARTNER UNIFIED EXPERIENCE V4 — PDF handoff 2026-09-11 */
+.unifiedSearch{
+  display:grid;
+  grid-template-columns:minmax(0,1fr) minmax(190px,250px);
+  gap:10px;
+  margin:18px 0 14px;
+}
+.unifiedSearchInput{
+  min-width:0;
+  height:48px;
+  display:flex;
+  align-items:center;
+  gap:9px;
+  padding:0 14px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface);
+  box-shadow:0 8px 22px color-mix(in srgb,var(--shadow) 16%,transparent);
+}
+.unifiedSearchInput>span{color:var(--primary);font-size:19px;font-weight:900}
+.unifiedSearchInput input{
+  flex:1;
+  min-width:0;
+  border:0;
+  outline:0;
+  background:transparent;
+  color:var(--text);
+  font:inherit;
+  font-size:12px;
+  font-weight:700;
+}
+.unifiedSearchInput input::placeholder{color:var(--text-secondary);font-weight:600}
+.unifiedSearch select{
+  height:48px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  outline:0;
+  padding:0 12px;
+  background:var(--surface);
+  color:var(--text);
+  font:inherit;
+  font-size:11px;
+  font-weight:800;
+  box-shadow:0 8px 22px color-mix(in srgb,var(--shadow) 16%,transparent);
+}
+
+.unifiedCategorySection{
+  margin:0 0 12px;
+  padding:15px 16px 16px;
+  border:1px solid var(--border);
+  border-radius:20px;
+  background:var(--surface);
+}
+.unifiedSectionIntro{margin-bottom:12px}
+.unifiedSectionIntro strong{display:block;color:var(--text);font-size:15px;font-weight:950}
+.unifiedSectionIntro p{margin:4px 0 0;color:var(--text-secondary);font-size:10px;line-height:1.5}
+.unifiedCategoryRail{
+  display:grid;
+  grid-template-columns:repeat(7,minmax(0,1fr));
+  gap:7px;
+}
+.unifiedCategoryButton{
+  min-width:0;
+  min-height:82px;
+  padding:7px 4px;
+  border:1px solid transparent;
+  border-radius:14px;
+  background:transparent;
+  color:var(--text);
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  justify-content:flex-start;
+  gap:7px;
+  text-align:center;
+  font:inherit;
+  cursor:pointer;
+  transition:.18s ease;
+}
+.unifiedCategoryButton:hover{background:var(--surface-2);border-color:color-mix(in srgb,var(--primary) 24%,var(--border));transform:translateY(-1px)}
+.unifiedCategoryButtonActive{background:var(--primary-soft);border-color:color-mix(in srgb,var(--primary) 58%,var(--border))}
+.unifiedCategoryIcon{width:44px;height:44px;flex:0 0 44px;border-radius:14px;display:grid;place-items:center;color:#fff;font-size:19px;font-weight:900;box-shadow:0 5px 14px color-mix(in srgb,var(--shadow) 22%,transparent)}
+.unifiedCategoryButton strong{width:100%;min-width:0;color:inherit;font-size:9px;line-height:1.2;font-weight:900;overflow-wrap:anywhere}
+.unifiedCategoryButtonActive strong{color:var(--primary)}
+
+.promotionFilter{
+  display:flex;
+  align-items:center;
+  gap:10px;
+  margin:0 0 28px;
+  padding:10px 12px;
+  border:1px solid var(--border);
+  border-radius:16px;
+  background:color-mix(in srgb,var(--surface) 92%,var(--surface-2) 8%);
+}
+.promotionFilter>strong{flex:0 0 auto;color:var(--text-secondary);font-size:10px;font-weight:900}
+.promotionChips{min-width:0;display:flex;align-items:center;gap:7px;overflow-x:auto;scrollbar-width:none}
+.promotionChips::-webkit-scrollbar{display:none}
+.promotionChips button{
+  flex:0 0 auto;
+  min-height:34px;
+  padding:0 11px;
+  border:1px solid var(--border);
+  border-radius:999px;
+  background:var(--surface);
+  color:var(--text-secondary);
+  display:inline-flex;
+  align-items:center;
+  gap:5px;
+  font:inherit;
+  font-size:9px;
+  font-weight:850;
+  cursor:pointer;
+}
+.promotionChips .promotionChipActive{background:var(--primary-soft);border-color:color-mix(in srgb,var(--primary) 52%,var(--border));color:var(--primary)}
+.clearAllButton{flex:0 0 auto;min-height:34px;padding:0 11px;border:0;border-radius:10px;background:transparent;color:var(--primary);font:inherit;font-size:9px;font-weight:900;cursor:pointer}
+
+.discoveryFeed{display:grid;gap:30px}
+.discoverySection{min-width:0}
+.discoveryHeading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:11px}
+.discoveryHeading h2{margin:0;color:var(--text);font-size:21px;letter-spacing:-.02em}
+.discoveryHeading button{border:0;background:transparent;color:var(--primary);font:inherit;font-size:10px;font-weight:900;cursor:pointer;white-space:nowrap}
+.dealRail{display:flex;gap:12px;overflow-x:auto;padding:2px 2px 10px;scrollbar-width:thin;scroll-snap-type:x proximity}
+.dealRailCard{flex:0 0 430px;scroll-snap-align:start;box-shadow:0 8px 22px color-mix(in srgb,var(--shadow) 24%,transparent)}
+.dealRailCard .dealMainButton{grid-template-columns:155px minmax(0,1fr)}
+.dealRailCard .dealImage{min-height:190px}
+
+.resultsMode{padding-top:2px}
+.resultsHeading{display:flex;align-items:center;justify-content:space-between;gap:16px;margin-bottom:13px}
+.resultsHeading>div{display:flex;align-items:center;gap:9px}
+.resultsHeading span{width:36px;height:36px;border-radius:11px;background:var(--primary-soft);display:grid;place-items:center;font-size:17px}
+.resultsHeading h2{margin:0;color:var(--text);font-size:21px}
+.resultsGrid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:15px}
+
+.imageBadges .featuredBadge{padding:6px 8px;border-radius:999px;background:rgba(7,12,20,.72);color:#fff;font-size:9px;font-weight:900;backdrop-filter:blur(8px)}
+.dealPartnerRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 15px;border-top:1px solid var(--border)}
+.partnerLink{min-width:0;display:flex;align-items:center;gap:7px;border:0;padding:0;background:transparent;color:var(--primary);font:inherit;cursor:pointer;text-align:left}
+.partnerLink strong{min-width:0;max-width:240px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;font-size:10px;font-weight:900}
+.partnerLink span{flex:0 0 auto;padding:3px 6px;border-radius:999px;background:var(--primary-soft);font-size:7px;font-weight:900}
+.dealPartnerRow>small{min-width:0;color:var(--text-secondary);font-size:8px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+
+@media(max-width:1100px){
+  .unifiedCategoryRail{grid-template-columns:repeat(5,minmax(0,1fr))}
+  .resultsGrid{grid-template-columns:1fr}
+}
+
+@media(max-width:760px){
+  .pageHeader>div:first-child>p{display:block!important;margin-top:5px!important;font-size:10px!important;line-height:1.5!important}
+  .unifiedSearch{grid-template-columns:1fr;margin-top:12px;gap:8px}
+  .unifiedSearchInput,.unifiedSearch select{height:44px}
+  .unifiedCategorySection{margin-bottom:10px;padding:13px 10px 14px;border-radius:18px;overflow:hidden}
+  .unifiedSectionIntro{padding:0 3px;margin-bottom:10px}
+  .unifiedSectionIntro strong{font-size:14px}.unifiedSectionIntro p{font-size:9px}
+  .unifiedCategoryRail{display:flex;gap:8px;overflow-x:auto;margin-inline:-10px;padding:1px 10px 8px;scrollbar-width:none;scroll-snap-type:x proximity}
+  .unifiedCategoryRail::-webkit-scrollbar{display:none}
+  .unifiedCategoryButton{flex:0 0 82px;min-height:82px;scroll-snap-align:start}
+  .unifiedCategoryIcon{width:48px;height:48px;flex-basis:48px;border-radius:50%}
+  .unifiedCategoryButton strong{font-size:8px;line-height:1.15}
+  .promotionFilter{align-items:flex-start;flex-direction:column;gap:7px;margin-bottom:22px;padding:10px;border-radius:15px;overflow:hidden}
+  .promotionChips{width:calc(100% + 20px);margin-inline:-10px;padding:0 10px}
+  .promotionChips button{min-height:32px;font-size:8.5px}
+  .clearAllButton{align-self:flex-end;min-height:28px}
+  .discoveryFeed{gap:24px}
+  .discoveryHeading h2{font-size:18px}.discoveryHeading button{font-size:9px}
+  .dealRail{margin-inline:-2px;gap:10px}
+  .dealRailCard{flex-basis:min(86vw,340px)}
+  .dealRailCard .dealMainButton{grid-template-columns:1fr}
+  .dealRailCard .dealImage{min-height:185px}
+  .dealRailCard .dealBody{min-height:168px}
+  .resultsHeading h2{font-size:18px;line-height:1.3}
+  .resultsGrid{grid-template-columns:1fr;gap:12px}
+  .dealPartnerRow{padding:9px 12px;align-items:flex-start;flex-direction:column;gap:4px}
+  .partnerLink strong{max-width:210px}
+  .dealPartnerRow>small{max-width:100%}
+}

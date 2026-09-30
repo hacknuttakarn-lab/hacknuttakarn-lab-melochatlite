@@ -337,6 +337,17 @@ export async function restSelect<T = Array<Record<string, unknown>>>(tableName: 
   return { data: (await response.json()) as T, error: null };
 }
 
+export async function restInsert(tableName: string, payload: Record<string, unknown> | Array<Record<string, unknown>>): Promise<SupabaseRestResult<true>> {
+  if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
+  const response = await authFetch(`${url}/rest/v1/${encodeURIComponent(tableName)}`, {
+    method: "POST",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) return { data: null, error: await readError(response) };
+  return { data: true, error: null };
+}
+
 export async function restUpsert<T = Record<string, unknown>>(tableName: string, payload: Record<string, unknown> | Array<Record<string, unknown>>, onConflict = ""): Promise<SupabaseRestResult<T>> {
   if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
   const query = onConflict ? `?on_conflict=${encodeURIComponent(onConflict)}` : "";

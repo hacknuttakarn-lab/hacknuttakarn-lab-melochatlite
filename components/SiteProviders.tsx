@@ -31,9 +31,6 @@ function detectLocale(): Locale {
   const browser = window.navigator.language.toLowerCase();
   if (browser.startsWith('th')) return 'th';
   if (browser.startsWith('de')) return 'de';
-  if (browser.startsWith('zh')) return 'zh';
-  if (browser.startsWith('ja')) return 'ja';
-  if (browser.startsWith('ko')) return 'ko';
   return 'en';
 }
 
@@ -63,6 +60,7 @@ export function SiteProviders({ children }: { children: React.ReactNode }) {
   const [countryScope, setCountryScopeState] = useState<CountryScope>(GLOBAL_COUNTRY_SCOPE);
   const [themeMode, setThemeModeState] = useState<ThemePreference>('system');
   const [theme, setThemeState] = useState<ThemeMode>('light');
+  const [themeReady, setThemeReady] = useState(false);
 
   useEffect(() => {
     setLocaleState(detectLocale());
@@ -70,24 +68,26 @@ export function SiteProviders({ children }: { children: React.ReactNode }) {
     const detectedThemeMode = detectThemeMode();
     setThemeModeState(detectedThemeMode);
     setThemeState(detectedThemeMode === 'system' ? systemTheme() : detectedThemeMode);
+    setThemeReady(true);
   }, []);
 
   useEffect(() => {
-    if (typeof window === 'undefined') return;
+    if (typeof window === 'undefined' || !themeReady) return;
     const media = window.matchMedia('(prefers-color-scheme: dark)');
     const apply = () => setThemeState(themeMode === 'system' ? (media.matches ? 'dark' : 'light') : themeMode);
     apply();
     if (themeMode !== 'system') return;
     media.addEventListener?.('change', apply);
     return () => media.removeEventListener?.('change', apply);
-  }, [themeMode]);
+  }, [themeMode, themeReady]);
 
   useEffect(() => {
+    if (!themeReady) return;
     document.documentElement.dataset.theme = theme;
     document.documentElement.style.colorScheme = theme;
     window.localStorage.setItem('melo-web-theme', theme);
     window.localStorage.setItem('melo-web-theme-mode', themeMode);
-  }, [theme, themeMode]);
+  }, [theme, themeMode, themeReady]);
 
   useEffect(() => {
     window.localStorage.setItem('melo-web-country-scope', countryScope);

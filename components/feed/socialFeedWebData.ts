@@ -27,6 +27,7 @@ export type SocialFeedPost = {
   id: string;
   authorId: string;
   authorName: string;
+  authorAge: number | null;
   authorPhotoUrl: string;
   authorCountry: string;
   authorCity: string;
@@ -74,7 +75,7 @@ export type FeedViewer = {
 };
 
 const SOCIAL_POSTS_BUCKET = "social-posts";
-export const MAX_SOCIAL_POST_IMAGES = 8;
+export const MAX_SOCIAL_POST_IMAGES = 4;
 export const MAX_SOCIAL_POST_TITLE_LENGTH = 120;
 export const MAX_SOCIAL_POST_IMAGE_BYTES = 12 * 1024 * 1024;
 
@@ -367,7 +368,7 @@ async function profileMap(authorIds: string[]) {
 
   const result = await restSelect<Row[]>(
     "profiles",
-    `select=id,display_name,photo_paths,city,province,country,nationality,primary_language&id=in.(${ids.map(encodeURIComponent).join(",")})`,
+    `select=id,first_name,last_name,display_name,date_of_birth,photo_paths,city,province,country,nationality,primary_language&id=in.(${ids.map(encodeURIComponent).join(",")})`,
   );
   if (result.error || !Array.isArray(result.data)) return map;
 
@@ -402,8 +403,21 @@ function mapPost(
     authorId,
     authorName:
       str(row, ["author_name"]) ||
-      str(profile, ["display_name"]) ||
+      str(profile, ["first_name", "display_name", "full_name", "name", "username"]) ||
       "Melo member",
+    authorAge: (() => {
+      const raw = str(profile, ["date_of_birth", "birth_date", "birthday"]);
+      if (!raw) return null;
+      const birth = new Date(`${raw.slice(0, 10)}T00:00:00`);
+      if (Number.isNaN(birth.getTime())) return null;
+      const today = new Date();
+      let age = today.getFullYear() - birth.getFullYear();
+      const beforeBirthday =
+        today.getMonth() < birth.getMonth() ||
+        (today.getMonth() === birth.getMonth() && today.getDate() < birth.getDate());
+      if (beforeBirthday) age -= 1;
+      return age >= 0 && age <= 120 ? age : null;
+    })(),
     authorPhotoUrl: profilePhoto(authorPhotoPath),
     authorCountry: str(profile, ["country", "nationality"]),
     authorCity: str(profile, ["city", "province"]),
@@ -474,14 +488,14 @@ export async function loadFeedViewer(): Promise<FeedViewer | null> {
 
   const result = await restSelect<Row[]>(
     "profiles",
-    `select=id,display_name,photo_paths,city,province,country,nationality&id=eq.${encodeURIComponent(user.id)}&limit=1`,
+    `select=id,first_name,last_name,display_name,photo_paths,city,province,country,nationality&id=eq.${encodeURIComponent(user.id)}&limit=1`,
   );
   const profile = Array.isArray(result.data) ? result.data[0] || {} : {};
   const paths = arr(profile.photo_paths);
 
   return {
     id: user.id,
-    name: str(profile, ["display_name"]) || user.email?.split("@")[0] || "Melo",
+    name: str(profile, ["first_name", "display_name", "full_name", "name", "username"]) || user.email?.split("@")[0] || "Melo",
     avatarUrl: profilePhoto(paths[0] || ""),
     city: str(profile, ["city", "province"]),
     country: str(profile, ["country", "nationality"]),

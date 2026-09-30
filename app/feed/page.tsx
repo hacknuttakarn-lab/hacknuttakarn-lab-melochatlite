@@ -1,5 +1,10 @@
-import SocialFeedExperience from "@/components/feed/SocialFeedExperience";
+import { Suspense } from 'react';
+import LiteMockExperience from '@/components/lite/LiteMockExperience';
 
 export default function FeedPage() {
-  return <SocialFeedExperience />;
+  return (
+    <Suspense fallback={null}>
+      <LiteMockExperience kind="feed" />
+    </Suspense>
+  );
 }

@@ -1,39 +1,14 @@
-MELO WEB - CHAT DATE SEPARATOR + TIME IN BUBBLE + ACTIVITY USER AVATAR
-Date: 2026-09-02
+Melo Chat Lite - Admin Support Chat useEffect runtime fix
 
-Changed:
-- components/chat/ChatConversationPane.tsx
-- components/chat/ChatMessageAvatar.module.css
+Fixed:
+- AdminSupportChat useEffect now explicitly returns undefined instead of returning the result of scrollIntoView().
+- Prevents React error: "useEffect must not return anything besides a function" / "destroy is not a function".
 
-Chat layout:
-1) Date is centered in the message timeline.
-   - Shown for the first message of a day.
-   - Shown again only when the calendar day changes.
+Changed file:
+components/support/AdminSupportChat.tsx
 
-2) Per-message timestamp:
-   - Shows TIME ONLY.
-   - Located inside the message bubble.
-   - Placed at the bottom on its own line.
+No SQL/database changes.
 
-3) Trip / Event / Community chat:
-   - Incoming messages now show the sender's Melo profile avatar.
-   - Profile data is loaded by sender_id from public.profiles.
-   - VerifiedUserAvatar is used, including verification badge when available.
-   - Sender name/avatar link to /users/{sender_id}.
-   - Own group messages remain on the right without an avatar.
-
-4) Direct User/Partner chat:
-   - Keeps the existing incoming avatar behavior.
-   - User/Partner identity separation is untouched.
-
-Preserved:
-- Live-schema direct message sending
-- User / Partner inbox separation
-- Translation
-- Images / location / stickers
-- Announcements
-- Realtime / notification / sounds
-
-No SQL.
-No npm install.
-No chatData.ts changes.
+After overlay:
+  npx tsc --noEmit
+  npm run dev

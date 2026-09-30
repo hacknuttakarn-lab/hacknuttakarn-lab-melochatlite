@@ -19,6 +19,7 @@ type SupportCopy = {
   contactTitle: string;
   contactBody: string;
   emailButton: string;
+  liveChatButton: string;
 
   faqTitle: string;
 
@@ -63,6 +64,7 @@ const COPY: Record<
 
     emailButton:
       'ส่งอีเมลถึงทีมงาน',
+    liveChatButton: 'Live Chat ติดต่อซัพพอร์ต',
 
     faqTitle:
       'คำถามที่พบบ่อย',
@@ -113,6 +115,7 @@ const COPY: Record<
 
     emailButton:
       'Email the team',
+    liveChatButton: 'Live Chat with Support',
 
     faqTitle:
       'Frequently asked questions',
@@ -163,6 +166,7 @@ const COPY: Record<
 
     emailButton:
       'E-Mail an das Team',
+    liveChatButton: 'Live-Chat mit dem Support',
 
     faqTitle:
       'Häufig gestellte Fragen',
@@ -213,6 +217,7 @@ const COPY: Record<
 
     emailButton:
       '发送邮件给团队',
+    liveChatButton: 'Live Chat',
 
     faqTitle:
       '常见问题',
@@ -243,6 +248,7 @@ const COPY: Record<
   },
 
   ja: {
+    liveChatButton: "ライブチャット",
     eyebrow:
       'MELO SUPPORT',
 
@@ -313,6 +319,7 @@ const COPY: Record<
 
     emailButton:
       '팀에 이메일 보내기',
+    liveChatButton: 'Live Chat',
 
     faqTitle:
       '자주 묻는 질문',
@@ -443,65 +450,25 @@ export default function SupportExperience() {
           </p>
         </header>
 
-        <section
-          className={
-            styles.contactCard
-          }
-        >
-          <div
-            className={
-              styles.contactIcon
-            }
-            aria-hidden="true"
-          >
-            ?
-          </div>
+        <section className={styles.contactGrid}>
+          <article className={styles.contactCard}>
+            <div className={styles.contactIcon} aria-hidden="true">✉</div>
+            <div className={styles.contactCopy}>
+              <h2>{t.emailButton}</h2>
+              <p>{t.contactBody}</p>
+              <a className={styles.emailText} href={`mailto:${SUPPORT_EMAIL}`}>{SUPPORT_EMAIL}</a>
+            </div>
+            <a className={styles.emailButton} href={`mailto:${SUPPORT_EMAIL}`}><span aria-hidden="true">✉</span>{t.emailButton}</a>
+          </article>
 
-          <div
-            className={
-              styles.contactCopy
-            }
-          >
-            <h2>
-              {
-                t.contactTitle
-              }
-            </h2>
-
-            <p>
-              {
-                t.contactBody
-              }
-            </p>
-
-            <a
-              className={
-                styles.emailText
-              }
-              href={`mailto:${SUPPORT_EMAIL}`}
-            >
-              {
-                SUPPORT_EMAIL
-              }
-            </a>
-          </div>
-
-          <a
-            className={
-              styles.emailButton
-            }
-            href={`mailto:${SUPPORT_EMAIL}`}
-          >
-            <span
-              aria-hidden="true"
-            >
-              ✉
-            </span>
-
-            {
-              t.emailButton
-            }
-          </a>
+          <article className={styles.contactCard}>
+            <div className={styles.contactIcon} aria-hidden="true">●</div>
+            <div className={styles.contactCopy}>
+              <h2>{t.liveChatButton}</h2>
+              <p>{locale === 'th' ? 'พูดคุยกับทีมสนับสนุน Melo Chat ผ่าน Live Chat ได้โดยตรง' : locale === 'de' ? 'Chatte direkt per Live-Chat mit dem Melo-Chat-Support.' : 'Chat directly with the Melo Chat support team via Live Chat.'}</p>
+            </div>
+            <Link href="/support/chat" className={styles.liveChatButton}>{t.liveChatButton}</Link>
+          </article>
         </section>
 
         <section

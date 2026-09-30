@@ -1,7 +1,6 @@
 'use client';
 
 import QuestRewardAdminWeb from './QuestRewardAdminWeb';
-
 import SettingsUtilityExperienceLegacy from './SettingsUtilityExperienceLegacy';
 
 export type SettingsUtilityMode =

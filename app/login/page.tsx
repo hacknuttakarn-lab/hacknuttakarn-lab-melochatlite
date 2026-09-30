@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useEffect, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { useRouter } from 'next/navigation';
 
 import { Header } from '@/components/Header';
@@ -10,9 +10,21 @@ import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
 import { isSupabaseConfigured, signInWithPassword } from '@/lib/supabase/browser';
+import { loadOwnProfile } from '@/components/profile/profileWebData';
 
 function createNumericCaptcha() {
   return String(Math.floor(100000 + Math.random() * 900000));
+}
+
+function captchaDigitStyle(code: string, index: number) {
+  const digit = Number(code[index] || 0);
+  const rotate = ((digit * 7 + index * 5) % 15) - 7;
+  const y = 43 + ((digit + index) % 3) * 4;
+  return {
+    x: 26 + index * 36,
+    y,
+    rotate,
+  };
 }
 
 export default function LoginPage() {
@@ -27,6 +39,11 @@ export default function LoginPage() {
   const [captchaInput, setCaptchaInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+
+  const captchaDigits = useMemo(
+    () => (captchaCode || '000000').split('').map((_, index) => captchaDigitStyle(captchaCode, index)),
+    [captchaCode],
+  );
 
   const supabaseReady = isSupabaseConfigured();
 
@@ -71,7 +88,8 @@ export default function LoginPage() {
       return;
     }
 
-    router.replace('/account');
+    const profile = await loadOwnProfile();
+    router.replace(profile.data?.profile?.onboarding_completed === false ? '/onboarding' : '/account');
     router.refresh();
   }
 
@@ -142,8 +160,41 @@ export default function LoginPage() {
             </div>
 
             <div className="captchaGrid">
-              <div className="captchaCode" aria-label={copy.captchaCodeAria}>
-                {captchaCode || '••••••'}
+              <div className="captchaCode">
+                {captchaCode ? (
+                  <svg
+                    className="captchaImage"
+                    viewBox="0 0 240 72"
+                    role="img"
+                    aria-label={copy.captchaCodeAria}
+                    preserveAspectRatio="xMidYMid meet"
+                  >
+                    <rect className="captchaImageBackground" x="0" y="0" width="240" height="72" rx="12" fill="transparent" />
+                    <path className="captchaNoiseLine captchaNoiseLineA" d="M8 54 C48 12, 92 70, 138 25 S208 18, 232 50" fill="none" stroke="currentColor" />
+                    <path className="captchaNoiseLine captchaNoiseLineB" d="M4 23 C48 58, 100 4, 146 50 S210 63, 236 20" fill="none" stroke="currentColor" />
+                    <circle className="captchaNoiseDot" cx="17" cy="18" r="2.5" fill="currentColor" />
+                    <circle className="captchaNoiseDot" cx="104" cy="14" r="2" fill="currentColor" />
+                    <circle className="captchaNoiseDot" cx="218" cy="57" r="2.5" fill="currentColor" />
+                    {captchaCode.split('').map((digit, index) => {
+                      const style = captchaDigits[index];
+                      return (
+                        <text
+                          key={`${digit}-${index}`}
+                          className="captchaDigit"
+                          x={style.x}
+                          y={style.y}
+                          transform={`rotate(${style.rotate} ${style.x} ${style.y})`}
+                          textAnchor="middle"
+                          fill="currentColor"
+                        >
+                          {digit}
+                        </text>
+                      );
+                    })}
+                  </svg>
+                ) : (
+                  <span className="captchaLoading">••••••</span>
+                )}
               </div>
               <input
                 id={captchaId}
@@ -203,7 +254,7 @@ export default function LoginPage() {
         </main>
       </div>
 
-      <style jsx>{`
+      <style jsx global>{`
         .desktopLoginOnly {
           display: contents;
         }
@@ -220,26 +271,62 @@ export default function LoginPage() {
         }
 
         .captchaCode {
+          position: relative;
           display: flex;
           align-items: center;
           justify-content: center;
-          min-height: 50px;
-          border: 1px solid rgba(59, 130, 246, 0.22);
+          min-height: 58px;
+          overflow: hidden;
+          border: 1px solid color-mix(in srgb, var(--primary) 28%, var(--border));
           border-radius: 14px;
-          background:
-            repeating-linear-gradient(
-              -14deg,
-              rgba(59, 130, 246, 0.04) 0,
-              rgba(59, 130, 246, 0.04) 8px,
-              transparent 8px,
-              transparent 16px
-            ),
-            #eef5ff;
-          color: #172033;
-          font-size: 22px;
-          font-weight: 900;
-          letter-spacing: 8px;
+          background: var(--primary-soft);
+          color: var(--primary);
           user-select: none;
+        }
+
+        .captchaImage {
+          display: block;
+          width: 100%;
+          height: 58px;
+          color: inherit;
+          pointer-events: none;
+          user-select: none;
+        }
+
+        .captchaImageBackground {
+          fill: transparent;
+        }
+
+        .captchaDigit {
+          fill: currentColor;
+          font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, monospace;
+          font-size: 30px;
+          font-weight: 900;
+          letter-spacing: 0;
+        }
+
+        .captchaNoiseLine {
+          fill: none;
+          stroke: currentColor;
+          stroke-width: 1.5;
+          opacity: 0.22;
+        }
+
+        .captchaNoiseLineB {
+          opacity: 0.14;
+          stroke-dasharray: 5 7;
+        }
+
+        .captchaNoiseDot {
+          fill: currentColor;
+          opacity: 0.25;
+        }
+
+        .captchaLoading {
+          color: var(--primary);
+          font-size: 20px;
+          font-weight: 900;
+          letter-spacing: 7px;
         }
 
         .captchaInput {
@@ -250,18 +337,35 @@ export default function LoginPage() {
         }
 
         .captchaRefreshButton {
-          border: 0;
-          padding: 0;
-          background: transparent;
-          color: #3b82f6;
+          min-height: 32px;
+          padding: 0 10px;
+          display: inline-flex;
+          align-items: center;
+          justify-content: center;
+          border: 1px solid var(--border);
+          border-radius: 10px;
+          background: var(--surface-2);
+          color: var(--primary);
+          box-shadow: 0 5px 16px color-mix(in srgb, var(--shadow) 70%, transparent);
           font: inherit;
           font-size: 12px;
           font-weight: 800;
+          line-height: 1;
           cursor: pointer;
+          transition:
+            background .18s ease,
+            border-color .18s ease,
+            transform .18s ease;
         }
 
         .captchaRefreshButton:hover {
-          text-decoration: underline;
+          border-color: color-mix(in srgb, var(--primary) 36%, var(--border));
+          background: var(--primary-soft);
+          transform: translateY(-1px);
+        }
+
+        .captchaRefreshButton:active {
+          transform: translateY(0);
         }
 
         .captchaHint {
@@ -272,22 +376,12 @@ export default function LoginPage() {
           line-height: 1.45;
         }
 
-        :global(html[data-theme='dark']) .captchaCode {
-          border-color: rgba(96, 165, 250, 0.28);
-          background:
-            repeating-linear-gradient(
-              -14deg,
-              rgba(96, 165, 250, 0.06) 0,
-              rgba(96, 165, 250, 0.06) 8px,
-              transparent 8px,
-              transparent 16px
-            ),
-            #1e293b;
-          color: #f8fafc;
+        html[data-theme='dark'] .captchaLoading {
+          color: var(--text);
         }
 
-        :global(html[data-theme='dark']) .captchaHint {
-          color: #a8b2c5;
+        html[data-theme='dark'] .captchaHint {
+          color: var(--text-secondary);
         }
 
         @media (max-width: 760px) {

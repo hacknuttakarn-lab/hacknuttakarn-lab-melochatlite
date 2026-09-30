@@ -90,7 +90,7 @@
 .comment small{display:block;margin:4px 0 0 6px;color:var(--text-secondary,#7a8697);font-size:10.5px}
 .commentState{display:grid;min-height:150px;place-items:center;color:var(--text-secondary,#667085)}
 .commentComposer{display:grid;grid-template-columns:1fr auto;gap:9px;padding:12px;border-top:1px solid var(--border,rgba(17,24,39,.08))}
-.commentComposer textarea{resize:none;border:1px solid var(--border,rgba(17,24,39,.1));border-radius:14px;background:var(--surface-2,#f7f9fc);color:var(--text,#111827);padding:10px 12px;outline:none}
+.commentComposer textarea{resize:none;border:1px solid var(--border,rgba(17,24,39,.1));border-radius:14px;background:var(--surface-2,#f7f9fc);color:var(--text,#111827);padding:10px 12px;outline:none;line-height:1.5;min-height:42px;max-height:calc(10.5em + 22px);overflow-y:hidden}
 .commentComposer button{align-self:end;min-height:42px;border:0;border-radius:13px;background:var(--primary,#347ff3);color:#fff;padding:0 15px;font-weight:800;cursor:pointer}
 .commentComposer button:disabled{opacity:.55;cursor:default}
 :global(html[data-theme="dark"]) .page{background:radial-gradient(circle at 88% 2%,rgba(56,169,255,.10),transparent 32rem),var(--background,#090d14)}
@@ -561,3 +561,37 @@
 }
 
 .loveSuggestionAvatar{position:absolute!important;inset:0!important;z-index:0;width:100%!important;height:100%!important;border-radius:14px!important}.loveSuggestionAvatar img{transition:transform .25s ease}.loveSuggestionCard:hover .loveSuggestionAvatar img{transform:scale(1.035)}
+
+/* Light-mode surface/text correction for Feed. Dark mode remains unchanged. */
+:global(html:not([data-theme="dark"])) .page {
+  color: #111827;
+}
+:global(html:not([data-theme="dark"])) .profileCard,
+:global(html:not([data-theme="dark"])) .shortcutCard,
+:global(html:not([data-theme="dark"])) .suggestionCard,
+:global(html:not([data-theme="dark"])) .composer,
+:global(html:not([data-theme="dark"])) .tabs,
+:global(html:not([data-theme="dark"])) .post,
+:global(html:not([data-theme="dark"])) .state,
+:global(html:not([data-theme="dark"])) .toast,
+:global(html:not([data-theme="dark"])) .drawer,
+:global(html:not([data-theme="dark"])) .postMenu > div {
+  border-color: #d7e0ea;
+  background: #ffffff;
+  color: #111827;
+}
+:global(html:not([data-theme="dark"])) .profileCard strong,
+:global(html:not([data-theme="dark"])) .suggestionCard h3,
+:global(html:not([data-theme="dark"])) .suggestRow strong,
+:global(html:not([data-theme="dark"])) .authorNameRow > a,
+:global(html:not([data-theme="dark"])) .body,
+:global(html:not([data-theme="dark"])) .post h2 {
+  color: #111827;
+}
+:global(html:not([data-theme="dark"])) .profileCard small,
+:global(html:not([data-theme="dark"])) .suggestRow small,
+:global(html:not([data-theme="dark"])) .author small,
+:global(html:not([data-theme="dark"])) .summary,
+:global(html:not([data-theme="dark"])) .actions button {
+  color: #667085;
+}
