@@ -8,7 +8,7 @@ import styles from "./LiteMockExperience.module.css";
 import { arrayOf, firstValue, loadOwnProfile, profileCoverUrl, profilePhotoUrl, updateOwnProfile, uploadProfileCoverWeb, uploadProfilePhotoWeb, type OwnProfileSnapshot } from "@/components/profile/profileWebData";
 import SocialPostComposerModal from "@/components/feed/SocialPostComposerModal";
 import { CommentsDrawer } from "@/components/feed/SocialFeedExperience";
-import { deleteSocialPostWeb, loadSocialFeedWeb, toggleSocialPostLikeWeb, toggleSocialPostSaveWeb, type SocialFeedPost } from "@/components/feed/socialFeedWebData";
+import { boostSocialPostWeb, deleteSocialPostWeb, loadSocialFeedWeb, toggleSocialPostLikeWeb, toggleSocialPostSaveWeb, type SocialFeedPost } from "@/components/feed/socialFeedWebData";
 import { loadDatingProfileById, loadLoveSnapshot, setLoveLike, loadFollowedProfileIds, loadProfileSocialState, setProfileFollow, setProfilePass, blockFriendWeb, type DatingProfileWeb } from "@/components/connect/connectData";
 import { getCurrentUser, rpcRequest, restInsert, restSelect } from "@/lib/supabase/browser";
 
@@ -16,6 +16,38 @@ type Kind = "feed"|"chat"|"profile"|"love"|"connect"|"settings"|"premium";
 type Person={id:string;name:string;age:number|null;country:string;photo:string;tags:string[];state:"incoming"|"outgoing"|"connected"};
 const CURRENT_USER_PLACEHOLDER_ID="";
 const EMPTY_PERSON:Person={id:"",name:"",age:null,country:"",photo:"",tags:[],state:"connected"};
+type PendingProfileMedia={kind:"avatar"|"cover";file:File;previewUrl:string;x:number;y:number;zoom:number};
+
+async function cropProfileMedia(file:File,kind:"avatar"|"cover",x:number,y:number,zoom:number):Promise<File>{
+ const image=await new Promise<HTMLImageElement>((resolve,reject)=>{
+  const img=new Image();
+  const url=URL.createObjectURL(file);
+  img.onload=()=>{URL.revokeObjectURL(url);resolve(img)};
+  img.onerror=()=>{URL.revokeObjectURL(url);reject(new Error("Unable to read image"))};
+  img.src=url;
+ });
+ const outW=kind==="avatar"?1200:1600;
+ const outH=kind==="avatar"?1200:374;
+ const safeZoom=Math.max(1,Math.min(2.5,zoom));
+ const baseScale=Math.max(outW/image.naturalWidth,outH/image.naturalHeight);
+ const scale=baseScale*safeZoom;
+ const cropW=Math.min(image.naturalWidth,outW/scale);
+ const cropH=Math.min(image.naturalHeight,outH/scale);
+ const maxX=Math.max(0,image.naturalWidth-cropW);
+ const maxY=Math.max(0,image.naturalHeight-cropH);
+ const sx=maxX*(Math.max(0,Math.min(100,x))/100);
+ const sy=maxY*(Math.max(0,Math.min(100,y))/100);
+ const canvas=document.createElement("canvas");
+ canvas.width=outW;canvas.height=outH;
+ const ctx=canvas.getContext("2d");
+ if(!ctx)throw new Error("Canvas is not available");
+ ctx.drawImage(image,sx,sy,cropW,cropH,0,0,outW,outH);
+ const mime=file.type==="image/png"?"image/png":"image/jpeg";
+ const blob=await new Promise<Blob>((resolve,reject)=>canvas.toBlob(value=>value?resolve(value):reject(new Error("Unable to crop image")),mime,mime==="image/jpeg"?0.92:undefined));
+ const ext=mime==="image/png"?"png":"jpg";
+ const base=(file.name.replace(/\.[^.]+$/,'')||`melo-${kind}`).slice(0,80);
+ return new File([blob],`${base}-adjusted.${ext}`,{type:mime,lastModified:Date.now()});
+}
 const people:Person[]=[];
 const postPhotos:string[]=[];
 function PersonGrid({rows=people.filter(p=>p.id!==CURRENT_USER_PLACEHOLDER_ID),mode="plain",onChanged}:{rows?:Person[];mode?:"plain"|"incoming"|"connected";onChanged?:()=>void}){
@@ -56,6 +88,11 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
  const [feedOwnAvatar,setFeedOwnAvatar]=useState("");
  const [feedOwnName,setFeedOwnName]=useState("");
  const [feedCommentsPost,setFeedCommentsPost]=useState<SocialFeedPost|null>(null);
+ const [feedEditingPost,setFeedEditingPost]=useState<SocialFeedPost|null>(null);
+ const [feedPostMenuId,setFeedPostMenuId]=useState<string|null>(null);
+ const [feedDeletePostTarget,setFeedDeletePostTarget]=useState<SocialFeedPost|null>(null);
+ const [feedBoostBusyId,setFeedBoostBusyId]=useState<string>("");
+ const [feedBoostNotice,setFeedBoostNotice]=useState<{kind:"success"|"error";message:string}|null>(null);
  const [feedFollowingPeople,setFeedFollowingPeople]=useState<Person[]>([]);
  const [feedViewerId,setFeedViewerId]=useState("");
  const [seenFeedIncomingIds,setSeenFeedIncomingIds]=useState<string[]>([]);
@@ -138,9 +175,11 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
       )===index
     )
     .sort(
-     (a,b)=>
-      new Date(b.createdAt).getTime()-
-      new Date(a.createdAt).getTime()
+     (a,b)=>{
+      const aTime=new Date(a.boostedAt||a.createdAt).getTime();
+      const bTime=new Date(b.boostedAt||b.createdAt).getTime();
+      return bTime-aTime;
+     }
     );
    if(!cancelled){setLiveFeedPosts(merged);setFeedOwnAvatar(own?.data?profilePhotoUrl(own.data.profile,0):"");setFeedOwnName(own?.data?String(firstValue(own.data.profile,["first_name","display_name"])||""):"");}
    if(user?.id){
@@ -183,9 +222,10 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
   loadFeed().catch(()=>{if(!cancelled){setLiveFeedPosts([]);setFeedConnectPeople([])}});
   const refresh=()=>{loadFeed().catch(()=>{})};
   window.addEventListener("melo-social-post-updated",refresh);
+  window.addEventListener("melo-feed-updated",refresh);
   window.addEventListener("melo-connect-updated",refresh);
    window.addEventListener("melo-following-updated",refresh);
-  return()=>{cancelled=true;window.removeEventListener("melo-social-post-updated",refresh);window.removeEventListener("melo-connect-updated",refresh);window.removeEventListener("melo-following-updated",refresh)};
+  return()=>{cancelled=true;window.removeEventListener("melo-social-post-updated",refresh);window.removeEventListener("melo-feed-updated",refresh);window.removeEventListener("melo-connect-updated",refresh);window.removeEventListener("melo-following-updated",refresh)};
  },[kind]);
  const connectCopy = ({
   th: { incoming: "สนใจคุณ", outgoing: "คุณสนใจ", connected: "แมตช์", matchedHint: "เมื่อสนใจกันทั้งสองฝ่าย จะสามารถเริ่มแชทได้", requestHint: "ดูสถานะความสนใจของคุณ" },
@@ -209,6 +249,26 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
    const saved=await toggleSocialPostSaveWeb(post.id);
    setLiveFeedPosts(current=>current.map(item=>item.id===post.id?{...item,isSaved:saved}:item));
   }catch(error){console.error("Unable to toggle saved post",error)}
+ };
+ const feedOwnerCopy=locale==="th"?{more:"ตัวเลือกโพสต์",boost:"บูทโพสต์",boosting:"กำลังบูท…",boostTitle:"บูทโพสต์สำเร็จ",boostSuccess:"โพสต์นี้ถูกย้ายกลับขึ้นด้านบนของ Feed แล้ว",boostErrorTitle:"บูทโพสต์ไม่สำเร็จ",boostError:"ไม่สามารถบูทโพสต์ได้ กรุณาลองอีกครั้ง",okay:"ตกลง",edit:"แก้ไข",del:"ลบ",deleteTitle:"ลบโพสต์",deleteMessage:"คุณต้องการลบโพสต์นี้หรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนได้",cancel:"ยกเลิก",confirm:"ลบโพสต์"}:locale==="de"?{more:"Beitragsoptionen",boost:"Beitrag boosten",boosting:"Wird geboostet…",boostTitle:"Beitrag geboostet",boostSuccess:"Dieser Beitrag wurde wieder an den Anfang des Feeds verschoben.",boostErrorTitle:"Boost fehlgeschlagen",boostError:"Beitrag konnte nicht geboostet werden. Bitte versuche es erneut.",okay:"OK",edit:"Bearbeiten",del:"Löschen",deleteTitle:"Beitrag löschen",deleteMessage:"Möchtest du diesen Beitrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",cancel:"Abbrechen",confirm:"Beitrag löschen"}:{more:"Post options",boost:"Boost post",boosting:"Boosting…",boostTitle:"Post boosted",boostSuccess:"This post has been moved back to the top of the Feed.",boostErrorTitle:"Boost failed",boostError:"Unable to boost this post. Please try again.",okay:"OK",edit:"Edit",del:"Delete",deleteTitle:"Delete post",deleteMessage:"Are you sure you want to delete this post? This action cannot be undone.",cancel:"Cancel",confirm:"Delete post"};
+ const boostFeedPost=async(post:SocialFeedPost)=>{
+  if(feedBoostBusyId)return;
+  setFeedPostMenuId(null);
+  setFeedBoostBusyId(post.id);
+  try{
+   await boostSocialPostWeb(post.id);
+   const boostedAt=new Date().toISOString();
+   setLiveFeedPosts(current=>{
+    const target=current.find(item=>item.id===post.id);
+    if(!target)return current;
+    return [{...target,boostedAt},...current.filter(item=>item.id!==post.id)];
+   });
+   window.dispatchEvent(new CustomEvent("melo-feed-updated"));
+   setFeedBoostNotice({kind:"success",message:feedOwnerCopy.boostSuccess});
+  }catch(error){
+   console.error("Unable to boost feed post",error);
+   setFeedBoostNotice({kind:"error",message:feedOwnerCopy.boostError});
+  }finally{setFeedBoostBusyId("")}
  };
  const settingsCopy=({
   th:{account:"บัญชี",email:"อีเมล",verification:"การยืนยันตัวตน",verified:"✓ ยืนยันแล้ว",preferences:"การตั้งค่าแอป",language:"ภาษา",theme:"ธีม",dark:"มืด",light:"สว่าง",translation:"การแปลแชท",enabled:"เปิดใช้งาน",notifications:"การแจ้งเตือน",messages:"ข้อความ",activity:"Connect และกิจกรรม",on:"เปิด"},
@@ -276,7 +336,7 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
   return()=>window.clearTimeout(timer);
  },[kind,requestedPostId,liveFeedPosts]);
 
- return <main className={styles.page}><Header/><section className={`${styles.shell} ${kind==="connect"?styles.connectShell:""}`}><div className={`${styles.head} ${kind==="connect"?styles.connectHead:""}`}><div>{kind!=="connect"?<small>MELO CHAT LITE</small>:null}<h1>{title}</h1></div></div>
+ return <main className={styles.page}><Header/><section className={`${styles.shell} ${kind==="connect"?styles.connectShell:""}`}><div className={`${styles.head} ${kind==="connect"?styles.connectHead:""} ${kind==="feed"?styles.feedMobileHead:""} ${kind==="profile"?styles.profileMobileHead:""}`}><div>{kind!=="connect"?<small>MELO CHAT LITE</small>:null}<h1>{title}</h1></div></div>
  {kind==="love"&&<PersonGrid rows={people.filter(p=>p.id!==CURRENT_USER_PLACEHOLDER_ID)}/>}
  {kind==="connect"&&<div className={styles.connectContent}><div className={styles.tabs}><button className={connectTab==="incoming"?styles.active:""} onClick={()=>setConnectTab("incoming")}>{connectCopy.incoming}</button><button className={connectTab==="outgoing"?styles.active:""} onClick={()=>setConnectTab("outgoing")}>{connectCopy.outgoing}</button><button className={connectTab==="connected"?styles.active:""} onClick={()=>setConnectTab("connected")}>{connectCopy.connected}</button></div><p className={styles.tabHint}>{connectTab==="connected"?connectCopy.matchedHint:connectCopy.requestHint}</p><PersonGrid rows={connectPeople.filter(p=>p.id!==CURRENT_USER_PLACEHOLDER_ID&&p.state===connectTab)} mode={connectTab==="incoming"?"incoming":connectTab==="connected"?"connected":"plain"} onChanged={()=>setConnectRefreshKey(v=>v+1)}/></div>}
  {kind==="feed"&&<div className={styles.feedLayout}>
@@ -287,10 +347,12 @@ export default function LiteMockExperience({kind}:{kind:Kind}){
   <div className={styles.feed}>
    <button type="button" className={styles.profileComposerTrigger} onClick={()=>setFeedComposerOpen(true)} aria-label={locale==="th"?"สร้างโพสต์":locale==="de"?"Beitrag erstellen":"Create post"}>{feedOwnAvatar?<img src={feedOwnAvatar} alt={feedOwnName}/>:<span className={styles.feedAvatarFallback} aria-hidden="true"/>}<span>{locale==="th"?"คุณกำลังคิดอะไรอยู่?":locale==="de"?"Was denkst du gerade?":"What’s on your mind?"}</span></button>
    <div role="tablist" aria-label="Feed filters" style={{display:"flex",alignItems:"center",gap:8,overflowX:"auto",padding:"2px 0 4px"}}>{([["all","▦"],["matches","♥"],["following","♙"],["saved","🔖"]] as const).map(([key,icon])=><button key={key} type="button" role="tab" aria-selected={feedFilter===key} onClick={()=>{setFeedFilter(key);setFeedPostLimit(10)}} style={{display:"inline-flex",alignItems:"center",gap:6,whiteSpace:"nowrap",border:"0",borderBottom:feedFilter===key?"2px solid currentColor":"2px solid transparent",background:"transparent",color:"inherit",opacity:feedFilter===key?1:.68,padding:"8px 10px",font:"inherit",fontWeight:feedFilter===key?700:600,cursor:"pointer"}}><span aria-hidden="true">{icon}</span><span>{feedFilterCopy[key]}</span></button>)}</div>
-   <SocialPostComposerModal open={feedComposerOpen} onClose={()=>setFeedComposerOpen(false)} onSaved={()=>{setFeedComposerOpen(false);window.dispatchEvent(new CustomEvent("melo-social-post-updated"))}}/>
+   <SocialPostComposerModal open={feedComposerOpen||Boolean(feedEditingPost)} post={feedEditingPost} onClose={()=>{setFeedComposerOpen(false);setFeedEditingPost(null)}} onSaved={()=>{setFeedComposerOpen(false);setFeedEditingPost(null);window.dispatchEvent(new CustomEvent("melo-social-post-updated"))}}/>
    {feedCommentsPost?<CommentsDrawer post={feedCommentsPost} locale={locale} copy={feedActionCopy} onClose={()=>setFeedCommentsPost(null)} onCount={(count)=>setLiveFeedPosts(current=>current.map(item=>item.id===feedCommentsPost.id?{...item,commentCount:count}:item))}/>:null}
-   {pagedFeedPosts.map(post=><article id={`feed-post-${post.id}`} className={styles.post} key={`live-${post.id}`}><header><Link href={post.canManage?"/profile":`/users/${post.authorId}`}>{post.authorPhotoUrl?<img src={post.authorPhotoUrl} alt=""/>:<span className={styles.feedAvatarFallback} aria-hidden="true"/>}</Link><div><strong>{post.authorName}{post.authorAge != null ? `, ${post.authorAge}` : ""}</strong><span>{new Intl.DateTimeFormat(locale==="th"?"th-TH":locale==="de"?"de-DE":"en-GB",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(post.createdAt))}</span></div></header>{post.title&&<strong className={styles.feedPostTitle}>{post.title}</strong>}{post.body.replace(/\u200B/g,"")&&<p>{post.body.replace(/\u200B/g,"")}</p>}{post.images.length>0&&<div className={`${styles.postGrid} ${styles[`postGrid${Math.min(post.images.length,4)}`]||""}`}>{post.images.slice(0,4).map((image,j)=>image.url?<img src={image.url} alt="" key={`${post.id}-${j}`}/>:null)}</div>}<footer><button type="button" onClick={()=>void toggleFeedLike(post)}>{post.isLiked?"♥":"♡"} {post.likeCount}</button><button type="button" onClick={()=>setFeedCommentsPost(post)}>◯ {post.commentCount}</button><button type="button" onClick={()=>void toggleFeedSave(post)}>{post.isSaved?"★":"☆"} {post.isSaved?feedActionCopy.savedDone:feedActionCopy.save}</button></footer></article>)}
+   {pagedFeedPosts.map(post=><article id={`feed-post-${post.id}`} className={styles.post} key={`live-${post.id}`}><header><Link href={post.canManage?"/profile":`/users/${post.authorId}`}>{post.authorPhotoUrl?<img src={post.authorPhotoUrl} alt=""/>:<span className={styles.feedAvatarFallback} aria-hidden="true"/>}</Link><div><strong>{post.authorName}{post.authorAge != null ? `, ${post.authorAge}` : ""}</strong><span>{new Intl.DateTimeFormat(locale==="th"?"th-TH":locale==="de"?"de-DE":"en-GB",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(post.createdAt))}</span></div>{post.canManage?<div className={styles.postActionsMenu}><button type="button" className={styles.postMoreButton} aria-label={feedOwnerCopy.more} title={feedOwnerCopy.more} aria-expanded={feedPostMenuId===post.id} onClick={()=>setFeedPostMenuId(current=>current===post.id?null:post.id)}>•••</button>{feedPostMenuId===post.id?<div className={styles.postActionsDropdown}><button type="button" className={styles.postBoostAction} disabled={feedBoostBusyId===post.id} onClick={()=>void boostFeedPost(post)}><span>↟</span>{feedBoostBusyId===post.id?feedOwnerCopy.boosting:feedOwnerCopy.boost}</button><button type="button" onClick={()=>{setFeedPostMenuId(null);setFeedEditingPost(post)}}><span>✎</span>{feedOwnerCopy.edit}</button><button type="button" className={styles.postDeleteAction} onClick={()=>{setFeedPostMenuId(null);setFeedDeletePostTarget(post)}}><span>⌫</span>{feedOwnerCopy.del}</button></div>:null}</div>:null}</header>{post.title&&<strong className={styles.feedPostTitle}>{post.title}</strong>}{post.body.replace(/\u200B/g,"")&&<p>{post.body.replace(/\u200B/g,"")}</p>}{post.images.length>0&&<div className={`${styles.postGrid} ${styles[`postGrid${Math.min(post.images.length,4)}`]||""}`}>{post.images.slice(0,4).map((image,j)=>image.url?<img src={image.url} alt="" key={`${post.id}-${j}`}/>:null)}</div>}<footer><button type="button" onClick={()=>void toggleFeedLike(post)}>{post.isLiked?"♥":"♡"} {post.likeCount}</button><button type="button" onClick={()=>setFeedCommentsPost(post)}>◯ {post.commentCount}</button><button type="button" onClick={()=>void toggleFeedSave(post)}>{post.isSaved?"★":"☆"} {post.isSaved?feedActionCopy.savedDone:feedActionCopy.save}</button></footer></article>)}
    {visibleFeedPosts.length>feedPostLimit?<div style={{display:"flex",justifyContent:"center",padding:"8px 0 18px"}}><button type="button" onClick={()=>setFeedPostLimit(current=>current+10)} style={{minWidth:160,border:"1px solid currentColor",borderRadius:999,background:"transparent",color:"inherit",padding:"10px 18px",font:"inherit",fontWeight:700,cursor:"pointer"}}>{locale==="th"?"ดูเพิ่มเติม":locale==="de"?"Mehr laden":"Load more"}</button></div>:null}
+   {feedDeletePostTarget?<div className={styles.themedDialogBackdrop} role="presentation" onMouseDown={()=>setFeedDeletePostTarget(null)}><section className={styles.themedDialog} role="alertdialog" aria-modal="true" aria-labelledby="feed-delete-post-title" onMouseDown={event=>event.stopPropagation()}><div className={styles.themedDialogIcon}>!</div><h3 id="feed-delete-post-title">{feedOwnerCopy.deleteTitle}</h3><p>{feedOwnerCopy.deleteMessage}</p><div className={styles.themedDialogActions}><button type="button" onClick={()=>setFeedDeletePostTarget(null)}>{feedOwnerCopy.cancel}</button><button type="button" className={styles.themedDialogDanger} onClick={async()=>{const target=feedDeletePostTarget;setFeedDeletePostTarget(null);await deleteSocialPostWeb(target.id);setLiveFeedPosts(current=>current.filter(item=>item.id!==target.id));window.dispatchEvent(new CustomEvent("melo-social-post-updated"))}}>{feedOwnerCopy.confirm}</button></div></section></div>:null}
+   {feedBoostNotice?<div className={styles.themedDialogBackdrop} role="presentation" onMouseDown={()=>setFeedBoostNotice(null)}><section className={styles.themedDialog} role="status" aria-modal="true" aria-labelledby="feed-boost-post-title" onMouseDown={event=>event.stopPropagation()}><div className={`${styles.themedDialogIcon} ${feedBoostNotice.kind==="success"?styles.boostDialogSuccess:styles.boostDialogError}`}>{feedBoostNotice.kind==="success"?"↟":"!"}</div><h3 id="feed-boost-post-title">{feedBoostNotice.kind==="success"?feedOwnerCopy.boostTitle:feedOwnerCopy.boostErrorTitle}</h3><p>{feedBoostNotice.message}</p><div className={styles.themedDialogActions}><button type="button" className={styles.themedDialogPrimary} onClick={()=>setFeedBoostNotice(null)}>{feedOwnerCopy.okay}</button></div></section></div>:null}
   </div>
   <aside className={`${styles.feedPeoplePanel} ${styles.followingPanel}`}><button type="button" className={styles.followingPanelHeadButton} onClick={openFollowingPopup} aria-label={followingPopupCopy.title}><div className={styles.feedPeopleHead}><div><small>SOCIAL</small><strong>{feedFilterCopy.following}</strong></div><span aria-hidden="true">›</span></div></button><div className={styles.feedPeopleList}>{feedFollowingPeople.slice(0,10).map(p=><Link href={`/users/${p.id}`} className={styles.feedPersonRow} key={p.id}>{p.photo?<img src={p.photo} alt={p.name}/>:<span className={styles.feedAvatarFallback} aria-hidden="true"/>}<div><strong>{p.name}{p.age != null ? `, ${p.age}` : ""}</strong><span>{p.country}</span></div><em aria-hidden="true">✓</em></Link>)}</div></aside>
  </div>}
@@ -325,10 +387,13 @@ export function ProfileDemo({personId=""}:{personId?:string}){
  const [composerImages,setComposerImages]=useState<string[]>([]);
  const [localPosts,setLocalPosts]=useState<{caption:string;images:string[]}[]>([]);
  const [realProfilePosts,setRealProfilePosts]=useState<SocialFeedPost[]>([]);
+ const [profileCommentsPost,setProfileCommentsPost]=useState<SocialFeedPost|null>(null);
  const [profilePostLimit,setProfilePostLimit]=useState(10);
  const [editingPost,setEditingPost]=useState<SocialFeedPost|null>(null);
  const [postMenuId,setPostMenuId]=useState<string|null>(null);
  const [deletePostTarget,setDeletePostTarget]=useState<SocialFeedPost|null>(null);
+ const [boostBusyId,setBoostBusyId]=useState<string>("");
+ const [boostNotice,setBoostNotice]=useState<{kind:"success"|"error";message:string}|null>(null);
  const [composerOpen,setComposerOpen]=useState(false);
  const isOwnProfile=!personId;
  const [ownSnapshot,setOwnSnapshot]=useState<OwnProfileSnapshot|null>(null);
@@ -368,6 +433,7 @@ export function ProfileDemo({personId=""}:{personId?:string}){
  const [bioDraft,setBioDraft]=useState("");
  const [profileSaving,setProfileSaving]=useState("");
  const [profileEditMessage,setProfileEditMessage]=useState("");
+ const [pendingProfileMedia,setPendingProfileMedia]=useState<PendingProfileMedia|null>(null);
  const [profileGalleryIndex,setProfileGalleryIndex]=useState(0);
  const profileGalleryRef=useRef<HTMLDivElement|null>(null);
  const profileGalleryPhotos=useMemo(()=>{
@@ -390,8 +456,30 @@ export function ProfileDemo({personId=""}:{personId?:string}){
   const target=node.children.item(profileGalleryIndex) as HTMLElement|null;
   if(target)node.scrollTo({left:target.offsetLeft-node.offsetLeft,behavior:"smooth"});
  },[profileGalleryIndex]);
- const postActionCopy=locale==="th"?{more:"ตัวเลือกโพสต์",edit:"แก้ไข",del:"ลบ",deleteTitle:"ลบโพสต์",deleteMessage:"คุณต้องการลบโพสต์นี้หรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนได้",cancel:"ยกเลิก",confirm:"ลบโพสต์"}:locale==="de"?{more:"Beitragsoptionen",edit:"Bearbeiten",del:"Löschen",deleteTitle:"Beitrag löschen",deleteMessage:"Möchtest du diesen Beitrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",cancel:"Abbrechen",confirm:"Beitrag löschen"}:{more:"Post options",edit:"Edit",del:"Delete",deleteTitle:"Delete post",deleteMessage:"Are you sure you want to delete this post? This action cannot be undone.",cancel:"Cancel",confirm:"Delete post"};
- const editCopy=locale==="th"?{cover:"แก้ไขรูปปก",photo:"แก้ไขรูปโปรไฟล์",about:"แก้ไข",save:"บันทึก",cancel:"ยกเลิก",saving:"กำลังบันทึก…",imageError:"ไม่สามารถอัปโหลดรูปภาพได้",saved:"บันทึกแล้ว"}:locale==="de"?{cover:"Titelbild ändern",photo:"Profilbild ändern",about:"Bearbeiten",save:"Speichern",cancel:"Abbrechen",saving:"Wird gespeichert…",imageError:"Bild konnte nicht hochgeladen werden",saved:"Gespeichert"}:{cover:"Edit cover",photo:"Edit profile photo",about:"Edit",save:"Save",cancel:"Cancel",saving:"Saving…",imageError:"Unable to upload image",saved:"Saved"};
+ const postActionCopy=locale==="th"?{more:"ตัวเลือกโพสต์",boost:"บูทโพสต์",boosting:"กำลังบูท…",boostTitle:"บูทโพสต์สำเร็จ",boostSuccess:"โพสต์นี้ถูกย้ายกลับขึ้นด้านบนของ Feed แล้ว",boostErrorTitle:"บูทโพสต์ไม่สำเร็จ",boostError:"ไม่สามารถบูทโพสต์ได้ กรุณาลองอีกครั้ง",okay:"ตกลง",edit:"แก้ไข",del:"ลบ",deleteTitle:"ลบโพสต์",deleteMessage:"คุณต้องการลบโพสต์นี้หรือไม่? เมื่อลบแล้วจะไม่สามารถกู้คืนได้",cancel:"ยกเลิก",confirm:"ลบโพสต์"}:locale==="de"?{more:"Beitragsoptionen",boost:"Beitrag boosten",boosting:"Wird geboostet…",boostTitle:"Beitrag geboostet",boostSuccess:"Dieser Beitrag wurde wieder an den Anfang des Feeds verschoben.",boostErrorTitle:"Boost fehlgeschlagen",boostError:"Beitrag konnte nicht geboostet werden. Bitte versuche es erneut.",okay:"OK",edit:"Bearbeiten",del:"Löschen",deleteTitle:"Beitrag löschen",deleteMessage:"Möchtest du diesen Beitrag wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.",cancel:"Abbrechen",confirm:"Beitrag löschen"}:{more:"Post options",boost:"Boost post",boosting:"Boosting…",boostTitle:"Post boosted",boostSuccess:"This post has been moved back to the top of the Feed.",boostErrorTitle:"Boost failed",boostError:"Unable to boost this post. Please try again.",okay:"OK",edit:"Edit",del:"Delete",deleteTitle:"Delete post",deleteMessage:"Are you sure you want to delete this post? This action cannot be undone.",cancel:"Cancel",confirm:"Delete post"};
+ const profileSocialCopy=({
+  th:{like:"ถูกใจ",comment:"ความคิดเห็น",save:"บันทึก",savedDone:"บันทึกแล้ว",comments:"ความคิดเห็น",commentPlaceholder:"เขียนความคิดเห็น...",send:"ส่ง",noComments:"ยังไม่มีความคิดเห็น"},
+  en:{like:"Like",comment:"Comment",save:"Save",savedDone:"Saved",comments:"Comments",commentPlaceholder:"Write a comment...",send:"Send",noComments:"No comments yet"},
+  de:{like:"Gefällt mir",comment:"Kommentar",save:"Speichern",savedDone:"Gespeichert",comments:"Kommentare",commentPlaceholder:"Kommentar schreiben...",send:"Senden",noComments:"Noch keine Kommentare"},
+ } as const)[locale === "th" || locale === "de" ? locale : "en"];
+ const toggleProfilePostLike=async(post:SocialFeedPost)=>{
+  try{
+   const result=await toggleSocialPostLikeWeb(post.id);
+   setRealProfilePosts(current=>current.map(item=>item.id===post.id?{...item,isLiked:result.isLiked,likeCount:result.likeCount}:item));
+  }catch(error){console.error("Unable to toggle profile post like",error)}
+ };
+ const toggleProfilePostSave=async(post:SocialFeedPost)=>{
+  try{
+   const saved=await toggleSocialPostSaveWeb(post.id);
+   setRealProfilePosts(current=>current.map(item=>item.id===post.id?{...item,isSaved:saved}:item));
+  }catch(error){console.error("Unable to toggle profile post save",error)}
+ };
+ const editCopy=locale==="th"?{cover:"แก้ไขรูปปก",photo:"แก้ไขรูปโปรไฟล์",about:"แก้ไข",save:"บันทึก",cancel:"ยกเลิก",saving:"กำลังบันทึก…",imageError:"ไม่สามารถอัปโหลดรูปภาพได้",saved:"บันทึกแล้ว",adjustTitle:"ปรับตำแหน่งรูปภาพ",adjustHint:"เลื่อนตำแหน่งและซูมภาพให้ได้มุมที่ต้องการก่อนบันทึก",horizontal:"แนวนอน",vertical:"แนวตั้ง",zoom:"ซูม"}:locale==="de"?{cover:"Titelbild ändern",photo:"Profilbild ändern",about:"Bearbeiten",save:"Speichern",cancel:"Abbrechen",saving:"Wird gespeichert…",imageError:"Bild konnte nicht hochgeladen werden",saved:"Gespeichert",adjustTitle:"Bildposition anpassen",adjustHint:"Passe Position und Zoom vor dem Speichern an.",horizontal:"Horizontal",vertical:"Vertikal",zoom:"Zoom"}:{cover:"Edit cover",photo:"Edit profile photo",about:"Edit",save:"Save",cancel:"Cancel",saving:"Saving…",imageError:"Unable to upload image",saved:"Saved",adjustTitle:"Adjust image position",adjustHint:"Position and zoom the image before saving.",horizontal:"Horizontal",vertical:"Vertical",zoom:"Zoom"};
+ useEffect(()=>{
+  if(!profileEditMessage.startsWith("✓"))return;
+  const timer=window.setTimeout(()=>setProfileEditMessage(""),2000);
+  return()=>window.clearTimeout(timer);
+ },[profileEditMessage]);
  useEffect(()=>{
   if(isOwnProfile||!personId)return;
 
@@ -521,17 +609,31 @@ export function ProfileDemo({personId=""}:{personId?:string}){
   void loadOwnProfile().then(result=>{
    if(!result.data)return;
    const snap=result.data; setOwnSnapshot(snap);
+   const verification=snap.verification||{};
+   const locallyApproved=Boolean((verification as Record<string,unknown>).is_verified) || String((verification as Record<string,unknown>).status||"").toLowerCase()==="approved";
+   setPublicVerified(locallyApproved);
+   void rpcRequest<boolean>("get_public_identity_verification",{p_user_id:snap.userId}).then(result=>{if(!result.error)setPublicVerified(result.data===true)}).catch(()=>{});
    const avatar=profilePhotoUrl(snap.profile,0); if(avatar)setProfileAvatarUrl(avatar);
    const cover=profileCoverUrl(snap.profile,snap.userMetadata); if(cover)setProfileCoverUrlState(cover);
    const bio=String(firstValue(snap.profile,["bio"])||""); if(bio){setProfileBio(bio);setBioDraft(bio)} else setBioDraft(profileBio);
   }).catch(()=>{});
  },[isOwnProfile]);
  useEffect(()=>{
-  if(!isOwnProfile||!ownSnapshot?.userId)return;
+  const profilePostAuthorId=isOwnProfile?ownSnapshot?.userId:personId;
+  if(!profilePostAuthorId){
+   setRealProfilePosts([]);
+   return;
+  }
   let active=true;
-  void loadSocialFeedWeb({authorId:ownSnapshot.userId,limit:30}).then(rows=>{if(active)setRealProfilePosts(rows)}).catch(()=>{});
+  setProfilePostLimit(10);
+  void loadSocialFeedWeb({authorId:profilePostAuthorId,limit:30})
+   .then(rows=>{if(active)setRealProfilePosts(rows)})
+   .catch(error=>{
+    console.error("Unable to load profile posts",error);
+    if(active)setRealProfilePosts([]);
+   });
   return()=>{active=false};
- },[isOwnProfile,ownSnapshot?.userId]);
+ },[isOwnProfile,ownSnapshot?.userId,personId]);
 
  const refreshOwnPosts=async()=>{if(!ownSnapshot?.userId)return;const rows=await loadSocialFeedWeb({authorId:ownSnapshot.userId,limit:30});setRealProfilePosts(rows)};
  const pagedProfilePosts=realProfilePosts.slice(0,profilePostLimit);
@@ -580,8 +682,31 @@ export function ProfileDemo({personId=""}:{personId?:string}){
 
   return()=>window.clearTimeout(timer);
  },[realProfilePosts]);
- const onInlineCover=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value="";if(!file)return;if(file.size>12*1024*1024){setProfileEditMessage("Image must be no larger than 12 MB");return}setProfileSaving("cover");setProfileEditMessage("");try{const result=await uploadProfileCoverWeb(file);setProfileCoverUrlState(result.url);setProfileEditMessage(`✓ ${editCopy.saved}`)}catch{setProfileEditMessage(editCopy.imageError)}finally{setProfileSaving("")}};
- const onInlineAvatar=async(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value="";if(!file||!ownSnapshot)return;if(file.size>12*1024*1024){setProfileEditMessage("Image must be no larger than 12 MB");return}setProfileSaving("avatar");setProfileEditMessage("");try{const current=arrayOf(firstValue(ownSnapshot.profile,["photo_paths"]));const result=await uploadProfilePhotoWeb({file,slotIndex:0,currentPaths:current});setProfileAvatarUrl(result.url);setOwnSnapshot({...ownSnapshot,profile:{...ownSnapshot.profile,photo_paths:result.paths}});window.dispatchEvent(new CustomEvent("melo-profile-updated",{detail:{avatarUrl:result.url}}));setProfileEditMessage(`✓ ${editCopy.saved}`)}catch{setProfileEditMessage(editCopy.imageError)}finally{setProfileSaving("")}};
+ const openProfileMediaEditor=(kind:"avatar"|"cover",file:File)=>{
+  if(file.size>12*1024*1024){setProfileEditMessage("Image must be no larger than 12 MB");return}
+  const previewUrl=URL.createObjectURL(file);
+  setPendingProfileMedia(current=>{if(current)URL.revokeObjectURL(current.previewUrl);return {kind,file,previewUrl,x:50,y:50,zoom:1}});
+  setProfileEditMessage("");
+ };
+ const onInlineCover=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value="";if(file)openProfileMediaEditor("cover",file)};
+ const onInlineAvatar=(event:ChangeEvent<HTMLInputElement>)=>{const file=event.target.files?.[0];event.target.value="";if(file)openProfileMediaEditor("avatar",file)};
+ const closeProfileMediaEditor=()=>setPendingProfileMedia(current=>{if(current)URL.revokeObjectURL(current.previewUrl);return null});
+ const saveAdjustedProfileMedia=async()=>{
+  const pending=pendingProfileMedia;if(!pending)return;if(pending.kind==="avatar"&&!ownSnapshot)return;
+  setProfileSaving(pending.kind);setProfileEditMessage("");
+  try{
+   const adjusted=await cropProfileMedia(pending.file,pending.kind,pending.x,pending.y,pending.zoom);
+   if(pending.kind==="cover"){
+    const result=await uploadProfileCoverWeb(adjusted);setProfileCoverUrlState(result.url);
+   }else if(ownSnapshot){
+    const current=arrayOf(firstValue(ownSnapshot.profile,["photo_paths"]));
+    const result=await uploadProfilePhotoWeb({file:adjusted,slotIndex:0,currentPaths:current});
+    setProfileAvatarUrl(result.url);setOwnSnapshot({...ownSnapshot,profile:{...ownSnapshot.profile,photo_paths:result.paths}});
+    window.dispatchEvent(new CustomEvent("melo-profile-updated",{detail:{avatarUrl:result.url}}));
+   }
+   closeProfileMediaEditor();setProfileEditMessage(`✓ ${editCopy.saved}`);
+  }catch(error){console.error("Unable to save adjusted profile image",error);setProfileEditMessage(editCopy.imageError)}finally{setProfileSaving("")}
+ };
  const saveInlineBio=async()=>{if(!ownSnapshot)return;const next=bioDraft.trim();if(next.length<20){setProfileEditMessage(locale==="th"?"About me ต้องมีอย่างน้อย 20 ตัวอักษร":locale==="de"?"Über mich benötigt mindestens 20 Zeichen":"About me must contain at least 20 characters");return}setProfileSaving("bio");setProfileEditMessage("");const result=await updateOwnProfile(ownSnapshot.userId,{bio:next});if(result.error)setProfileEditMessage(result.error);else{setProfileBio(next);setBioEditing(false);setProfileEditMessage(`✓ ${editCopy.saved}`)}setProfileSaving("")};
  const addImages=(files:FileList|null)=>{
   if(!files)return;
@@ -697,10 +822,11 @@ const toggleProfileInterested=async()=>{
 const toggleProfileFollow=async()=>{if(isOwnProfile||!personId)return;const nextFollowed=!followed;setFollowed(nextFollowed);try{await setProfileFollow(personId,nextFollowed);window.dispatchEvent(new CustomEvent("melo-following-updated"));}catch(error){setFollowed(!nextFollowed);console.error("Unable to update follow status",error)}};
  const reportReasons=locale==="th"?["สแปมหรือการโฆษณาที่ไม่พึงประสงค์","ใช้ตัวตนปลอมหรือแอบอ้างเป็นบุคคลอื่น","การกลั่นแกล้ง คุกคาม หรือพฤติกรรมไม่เหมาะสม","เนื้อหาทางเพศหรือเนื้อหาสำหรับผู้ใหญ่","การหลอกลวง ฉ้อโกง หรือขอเงิน","ความรุนแรง การข่มขู่ หรือการทำร้ายตนเอง","บุคคลอายุต่ำกว่า 20 ปี","อื่นๆ"]:locale==="de"?["Spam oder unerwünschte Werbung","Falsche Identität oder Identitätsmissbrauch","Belästigung, Mobbing oder unangemessenes Verhalten","Sexuelle oder nicht jugendfreie Inhalte","Betrug, Täuschung oder Geldforderungen","Gewalt, Drohungen oder Selbstverletzung","Person unter 20 Jahren","Sonstiges"]:["Spam or unwanted advertising","Fake identity or impersonation","Harassment, bullying or inappropriate behavior","Sexual or adult content","Scam, fraud or asking for money","Violence, threats or self-harm","Person under 20 years old","Other"];
  const submitProfileReport=async()=>{if(isOwnProfile||!personId||!profileReportReason||profileReportSending)return;setProfileReportSending(true);try{const user=await getCurrentUser();if(!user?.id)throw new Error("Please sign in first");const result=await restInsert("user_reports",{reporter_user_id:user.id,reported_user_id:personId,report_type:"profile",reason:profileReportReason,details:profileReportDetails.trim()||null,status:"new"});if(result.error)throw new Error(result.error);setProfileReportSent(true);setProfileReportReason("");setProfileReportDetails("");}catch(error){console.error("Unable to report profile",error);window.alert(locale==="th"?"ไม่สามารถส่งรายงานได้ กรุณาลองอีกครั้ง":locale==="de"?"Meldung konnte nicht gesendet werden. Bitte erneut versuchen.":"Unable to submit report. Please try again.");}finally{setProfileReportSending(false)}};
+ const boostProfilePost=async(post:SocialFeedPost)=>{if(boostBusyId)return;setPostMenuId(null);setBoostBusyId(post.id);try{await boostSocialPostWeb(post.id);setRealProfilePosts(current=>{const target=current.find(item=>item.id===post.id);if(!target)return current;return [{...target,boostedAt:new Date().toISOString()},...current.filter(item=>item.id!==post.id)]});await refreshOwnPosts();window.dispatchEvent(new CustomEvent("melo-feed-updated"));setBoostNotice({kind:"success",message:postActionCopy.boostSuccess});}catch(error){console.error("Unable to boost post",error);setBoostNotice({kind:"error",message:postActionCopy.boostError});}finally{setBoostBusyId("")}};
   const renderImages=(images:string[])=><div className={`${styles.postGrid} ${styles[`postGrid${Math.min(images.length,4)}`]||""}`}>{images.slice(0,4).map((photo,j)=><img src={photo} alt="" key={j}/>)}</div>;
  return <div className={styles.profile}>
   <div className={styles.profileHero}>{profileCoverUrlState?<img className={styles.profileCoverImage} src={profileCoverUrlState} alt=""/>:null}<div className={styles.profileHeroShade}/>{isOwnProfile&&<label className={`${styles.inlineMediaEdit} ${styles.inlineCoverEdit}`}>{profileSaving==="cover"?editCopy.saving:editCopy.cover}<input type="file" accept="image/*" onChange={onInlineCover}/></label>}{!isOwnProfile?<button type="button" className={styles.profileReportMenuButton} onClick={()=>{setProfileReportSent(false);setProfileReportOpen(true)}} aria-label={locale==="th"?"รายงานโปรไฟล์":locale==="de"?"Profil melden":"Report profile"} title={locale==="th"?"รายงานโปรไฟล์":locale==="de"?"Profil melden":"Report profile"}>⋮</button>:null}</div>
-  <div className={styles.profileIdentityRow}><div className={styles.profileAvatarWrap}>{profileAvatarUrl?<img className={styles.profileAvatar} src={profileAvatarUrl} alt={person.name}/>:<span className={styles.profileAvatar} aria-hidden="true"/>}{isOwnProfile&&<label className={styles.inlineAvatarEdit} title={editCopy.photo}>✎<input type="file" accept="image/*" onChange={onInlineAvatar}/></label>}</div><div className={styles.profileIdentity}><h2>{person.name}{person.age != null ? `, ${person.age}` : ""}{(!isOwnProfile&&publicVerified)?" ✓":""}</h2><p>{person.country}</p></div>{!isOwnProfile?<div className={styles.profileActions}>{/* MELO_MATCHED_BLOCK_BUTTON_V3 */}
+  <div className={styles.profileIdentityRow}><div className={styles.profileAvatarWrap}>{profileAvatarUrl?<img className={styles.profileAvatar} src={profileAvatarUrl} alt={person.name}/>:<span className={styles.profileAvatar} aria-hidden="true"/>}{isOwnProfile&&<label className={styles.inlineAvatarEdit} title={editCopy.photo}>✎<input type="file" accept="image/*" onChange={onInlineAvatar}/></label>}</div><div className={styles.profileIdentity}><h2>{person.name}{person.age != null ? `, ${person.age}` : ""}{publicVerified?" ✓":""}</h2><p>{person.country}</p></div>{!isOwnProfile?<div className={styles.profileActions}>{/* MELO_MATCHED_BLOCK_BUTTON_V3 */}
 {profileMatched?(
  <button
   type="button"
@@ -722,7 +848,7 @@ const toggleProfileFollow=async()=>{if(isOwnProfile||!personId)return;const next
  >
   ×
  </button>
-)}<button type="button" className={`${styles.profileFollowCircle} ${followed?styles.profileFollowActive:""}`} aria-label={followed?"Following":"Follow"} title={followed?"Following":"Follow"} onClick={()=>void toggleProfileFollow()}>{followed?"✓":"+"}</button><button type="button" className={`${styles.profileHeartCircle} ${profileMatched?styles.profileHeartMatched:interested?styles.profileHeartInterested:""}`} aria-label="Connect" title="Connect" onClick={()=>void toggleProfileInterested()}>♥</button></div>:null}</div>
+)}<button type="button" className={`${styles.profileFollowCircle} ${followed?styles.profileFollowActive:""}`} aria-label={followed?"Following":"Follow"} title={followed?"Following":"Follow"} onClick={()=>void toggleProfileFollow()}>{followed?"✓":"+"}</button>{profileMatched?<button type="button" className={styles.profileChatCircle} aria-label={locale==="th"?"แชท":locale==="de"?"Chat":"Chat"} title={locale==="th"?"แชท":locale==="de"?"Chat":"Chat"} onClick={()=>{window.dispatchEvent(new CustomEvent("melo-open-direct-chat",{detail:{userId:personId,title:person.name,subtitle:[person.age,person.country].filter(value=>value!==null&&value!=="").join(" · "),avatarUrl:person.photo,country:person.country,nationality:person.country}}))}}>💬</button>:<button type="button" className={`${styles.profileHeartCircle} ${interested?styles.profileHeartInterested:""}`} aria-label="Connect" title="Connect" onClick={()=>void toggleProfileInterested()}>♥</button>}</div>:null}</div>
   {profileEditMessage&&isOwnProfile?<div className={styles.inlineEditMessage}>{profileEditMessage}</div>:null}
   {dismissed?<div className={styles.dismissNotice}>ซ่อนโปรไฟล์นี้จากคำแนะนำแล้ว</div>:null}
   <div className={styles.profileLayout}>
@@ -736,16 +862,20 @@ const toggleProfileFollow=async()=>{if(isOwnProfile||!personId)return;const next
    </div>
    <section className={styles.profileContent}>
     <div className={styles.profileContentBar}><div><span className={styles.profileContentEyebrow}>PROFILE</span><h3>Posts</h3></div></div>
-    <button type="button" className={styles.profileComposerTrigger} onClick={()=>setComposerOpen(true)} aria-label="สร้างโพสต์">
+    {isOwnProfile?<button type="button" className={styles.profileComposerTrigger} onClick={()=>setComposerOpen(true)} aria-label="สร้างโพสต์">
      {profileAvatarUrl?<img src={profileAvatarUrl} alt={person.name}/>:null}<span>คุณกำลังคิดอะไรอยู่?</span>
-    </button>
+    </button>:null}
     <SocialPostComposerModal open={composerOpen||Boolean(editingPost)} post={editingPost} onClose={()=>{setComposerOpen(false);setEditingPost(null)}} onSaved={async()=>{setComposerOpen(false);setEditingPost(null);await refreshOwnPosts()}}/>
-     {pagedProfilePosts.map(post=><article id={`profile-post-${post.id}`} className={`${styles.post} ${styles.profilePostCard}`} key={post.id}><header>{post.authorPhotoUrl||profileAvatarUrl?<img src={post.authorPhotoUrl||profileAvatarUrl} alt={post.authorName||person.name}/>:null}<div><strong>{post.authorName||person.name}</strong><span>{new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(post.createdAt))}</span></div>{isOwnProfile?<div className={styles.postActionsMenu}><button type="button" className={styles.postMoreButton} aria-label={postActionCopy.more} title={postActionCopy.more} aria-expanded={postMenuId===post.id} onClick={()=>setPostMenuId(current=>current===post.id?null:post.id)}>•••</button>{postMenuId===post.id?<div className={styles.postActionsDropdown}><button type="button" onClick={()=>{setPostMenuId(null);setEditingPost(post)}}><span>✎</span>{postActionCopy.edit}</button><button type="button" className={styles.postDeleteAction} onClick={()=>{setPostMenuId(null);setDeletePostTarget(post)}}><span>⌫</span>{postActionCopy.del}</button></div>:null}</div>:null}</header>{post.title&&<strong>{post.title}</strong>}{post.body.replace(/\u200B/g,"")&&<p>{post.body.replace(/\u200B/g,"")}</p>}{post.images.length>0&&renderImages(post.images.map(image=>image.url))}<footer><button>♡ {post.likeCount}</button><button>◯ {post.commentCount}</button><button>☆ Save</button></footer></article>)}
+    {profileCommentsPost?<CommentsDrawer post={profileCommentsPost} locale={locale} copy={profileSocialCopy} onClose={()=>setProfileCommentsPost(null)} onCount={(count)=>setRealProfilePosts(current=>current.map(item=>item.id===profileCommentsPost.id?{...item,commentCount:count}:item))}/>:null}
+     {pagedProfilePosts.map(post=><article id={`profile-post-${post.id}`} className={`${styles.post} ${styles.profilePostCard}`} key={post.id}><header>{post.authorPhotoUrl||profileAvatarUrl?<img src={post.authorPhotoUrl||profileAvatarUrl} alt={post.authorName||person.name}/>:null}<div><strong>{post.authorName||person.name}</strong><span>{new Intl.DateTimeFormat("en-GB",{day:"2-digit",month:"long",year:"numeric"}).format(new Date(post.createdAt))}</span></div>{isOwnProfile?<div className={styles.postActionsMenu}><button type="button" className={styles.postMoreButton} aria-label={postActionCopy.more} title={postActionCopy.more} aria-expanded={postMenuId===post.id} onClick={()=>setPostMenuId(current=>current===post.id?null:post.id)}>•••</button>{postMenuId===post.id?<div className={styles.postActionsDropdown}><button type="button" className={styles.postBoostAction} disabled={boostBusyId===post.id} onClick={()=>void boostProfilePost(post)}><span>↟</span>{boostBusyId===post.id?postActionCopy.boosting:postActionCopy.boost}</button><button type="button" onClick={()=>{setPostMenuId(null);setEditingPost(post)}}><span>✎</span>{postActionCopy.edit}</button><button type="button" className={styles.postDeleteAction} onClick={()=>{setPostMenuId(null);setDeletePostTarget(post)}}><span>⌫</span>{postActionCopy.del}</button></div>:null}</div>:null}</header>{post.title&&<strong>{post.title}</strong>}{post.body.replace(/\u200B/g,"")&&<p>{post.body.replace(/\u200B/g,"")}</p>}{post.images.length>0&&renderImages(post.images.map(image=>image.url))}<footer><button type="button" onClick={()=>void toggleProfilePostLike(post)}>{post.isLiked?"♥":"♡"} {post.likeCount}</button><button type="button" onClick={()=>setProfileCommentsPost(post)}>◯ {post.commentCount}</button><button type="button" onClick={()=>void toggleProfilePostSave(post)}>{post.isSaved?"★":"☆"} {post.isSaved?profileSocialCopy.savedDone:profileSocialCopy.save}</button></footer></article>)}
      {realProfilePosts.length>profilePostLimit?<div style={{display:"flex",justifyContent:"center",padding:"8px 0 18px"}}><button type="button" onClick={()=>setProfilePostLimit(current=>current+10)} style={{minWidth:160,border:"1px solid currentColor",borderRadius:999,background:"transparent",color:"inherit",padding:"10px 18px",font:"inherit",fontWeight:700,cursor:"pointer"}}>{locale==="th"?"ดูเพิ่มเติม":locale==="de"?"Mehr laden":"Load more"}</button></div>:null}
      {deletePostTarget?<div className={styles.themedDialogBackdrop} role="presentation" onMouseDown={()=>setDeletePostTarget(null)}><section className={styles.themedDialog} role="alertdialog" aria-modal="true" aria-labelledby="delete-post-title" onMouseDown={event=>event.stopPropagation()}><div className={styles.themedDialogIcon}>!</div><h3 id="delete-post-title">{postActionCopy.deleteTitle}</h3><p>{postActionCopy.deleteMessage}</p><div className={styles.themedDialogActions}><button type="button" onClick={()=>setDeletePostTarget(null)}>{postActionCopy.cancel}</button><button type="button" className={styles.themedDialogDanger} onClick={async()=>{const target=deletePostTarget;setDeletePostTarget(null);await deleteSocialPostWeb(target.id);await refreshOwnPosts()}}>{postActionCopy.confirm}</button></div></section></div>:null}
+     {boostNotice?<div className={styles.themedDialogBackdrop} role="presentation" onMouseDown={()=>setBoostNotice(null)}><section className={styles.themedDialog} role="status" aria-modal="true" aria-labelledby="boost-post-title" onMouseDown={event=>event.stopPropagation()}><div className={`${styles.themedDialogIcon} ${boostNotice.kind==="success"?styles.boostDialogSuccess:styles.boostDialogError}`}>{boostNotice.kind==="success"?"↟":"!"}</div><h3 id="boost-post-title">{boostNotice.kind==="success"?postActionCopy.boostTitle:postActionCopy.boostErrorTitle}</h3><p>{boostNotice.message}</p><div className={styles.themedDialogActions}><button type="button" className={styles.themedDialogPrimary} onClick={()=>setBoostNotice(null)}>{postActionCopy.okay}</button></div></section></div>:null}
      {localPosts.map((post,i)=><article className={`${styles.post} ${styles.profilePostCard}`} key={`local-${i}`}><header>{person.photo?<img src={person.photo} alt={person.name}/>:<span className={styles.feedAvatarFallback} aria-hidden="true"/>}<div><strong>{person.name}</strong><span>เมื่อสักครู่</span></div></header>{post.caption&&<p>{post.caption}</p>}{post.images.length>0&&renderImages(post.images)}<footer><button>♡ 0</button><button>◯ 0</button><button>☆ Save</button></footer></article>)}
    </section>
   </div>
+
+  {pendingProfileMedia?<div className={styles.profileMediaEditorBackdrop} role="presentation" onMouseDown={()=>{if(!profileSaving)closeProfileMediaEditor()}}><section className={styles.profileMediaEditorModal} role="dialog" aria-modal="true" aria-labelledby="profile-media-editor-title" onMouseDown={event=>event.stopPropagation()}><div className={styles.profileMediaEditorHeader}><div><small>MELO PROFILE</small><h2 id="profile-media-editor-title">{editCopy.adjustTitle}</h2><p>{editCopy.adjustHint}</p></div><button type="button" onClick={closeProfileMediaEditor} disabled={Boolean(profileSaving)} aria-label="Close">×</button></div><div className={`${styles.profileMediaPreview} ${pendingProfileMedia.kind==="cover"?styles.profileMediaPreviewCover:styles.profileMediaPreviewAvatar}`}><img src={pendingProfileMedia.previewUrl} alt="" style={{objectPosition:`${pendingProfileMedia.x}% ${pendingProfileMedia.y}%`,transform:`scale(${pendingProfileMedia.zoom})`}}/></div><div className={styles.profileMediaControls}><label><span>{editCopy.horizontal}</span><input type="range" min="0" max="100" value={pendingProfileMedia.x} onChange={event=>setPendingProfileMedia(current=>current?{...current,x:Number(event.target.value)}:current)}/></label><label><span>{editCopy.vertical}</span><input type="range" min="0" max="100" value={pendingProfileMedia.y} onChange={event=>setPendingProfileMedia(current=>current?{...current,y:Number(event.target.value)}:current)}/></label><label><span>{editCopy.zoom}</span><input type="range" min="1" max="2.5" step="0.05" value={pendingProfileMedia.zoom} onChange={event=>setPendingProfileMedia(current=>current?{...current,zoom:Number(event.target.value)}:current)}/></label></div><div className={styles.profileMediaEditorActions}><button type="button" onClick={closeProfileMediaEditor} disabled={Boolean(profileSaving)}>{editCopy.cancel}</button><button type="button" className={styles.profileMediaEditorSave} onClick={()=>void saveAdjustedProfileMedia()} disabled={Boolean(profileSaving)}>{profileSaving?editCopy.saving:editCopy.save}</button></div></section></div>:null}
 
   {/* MELO_PROFILE_CONFIRM_MODAL_JSX_V2 */}
   {profileReportOpen&&!isOwnProfile?<div className={styles.profileReportBackdrop} onMouseDown={()=>{if(!profileReportSending)setProfileReportOpen(false)}}><section className={styles.profileReportModal} onMouseDown={e=>e.stopPropagation()} role="dialog" aria-modal="true"><div className={styles.profileReportHeader}><div><small>SAFETY</small><h2>{locale==="th"?"รายงานโปรไฟล์":locale==="de"?"Profil melden":"Report profile"}</h2></div><button type="button" onClick={()=>setProfileReportOpen(false)} disabled={profileReportSending} aria-label="Close">×</button></div>{profileReportSent?<div className={styles.profileReportSuccess}><b>{locale==="th"?"ส่งรายงานแล้ว":locale==="de"?"Meldung gesendet":"Report submitted"}</b><p>{locale==="th"?"ขอบคุณที่ช่วยดูแลชุมชน Melo Chat ทีมงานจะตรวจสอบรายงานนี้":locale==="de"?"Danke, dass du Melo Chat sicherer machst. Unser Team wird die Meldung prüfen.":"Thanks for helping keep Melo Chat safe. Our team will review this report."}</p><button type="button" onClick={()=>setProfileReportOpen(false)}>{locale==="th"?"เสร็จสิ้น":locale==="de"?"Fertig":"Done"}</button></div>:<><p className={styles.profileReportIntro}>{locale==="th"?`เหตุใดคุณจึงรายงานโปรไฟล์ของ ${person.name}?`:locale==="de"?`Warum meldest du das Profil von ${person.name}?`:`Why are you reporting ${person.name}'s profile?`}</p><div className={styles.profileReportReasons}>{reportReasons.map(reason=><button type="button" key={reason} className={profileReportReason===reason?styles.profileReportReasonActive:""} onClick={()=>setProfileReportReason(reason)}><span>{reason}</span><b>›</b></button>)}</div>{profileReportReason?<div className={styles.profileReportDetails}><label>{locale==="th"?"รายละเอียดเพิ่มเติม (ไม่บังคับ)":locale==="de"?"Weitere Details (optional)":"Additional details (optional)"}</label><textarea value={profileReportDetails} onChange={e=>setProfileReportDetails(e.target.value)} maxLength={500} rows={3} placeholder={locale==="th"?"บอกข้อมูลเพิ่มเติมเพื่อช่วยให้ทีมงานตรวจสอบได้ง่ายขึ้น...":locale==="de"?"Zusätzliche Informationen...":"Add information that may help our review..."}/><div><span>{profileReportDetails.length}/500</span><button type="button" disabled={profileReportSending} onClick={()=>void submitProfileReport()}>{profileReportSending?(locale==="th"?"กำลังส่ง...":"Sending..."):(locale==="th"?"ส่งรายงาน":locale==="de"?"Meldung senden":"Submit report")}</button></div></div>:null}</>}</section></div>:null}

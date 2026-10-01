@@ -104,3 +104,18 @@
 .deleteVerification textarea{resize:vertical;min-height:96px;line-height:1.55}
 .deleteVerification small{justify-self:end;color:var(--text-secondary);font-size:11px;font-weight:600}
 .confirmDanger:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.55)}
+
+/* Admin Center V12: pending badges + user document viewer */
+.sidebar nav button{display:flex;align-items:center;justify-content:space-between;gap:10px}.menuBadge{min-width:24px;height:22px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;background:var(--primary);color:#fff;font-size:10px;font-weight:950;line-height:1}.documentButton{border-color:color-mix(in srgb,var(--primary) 42%,var(--border))!important;color:var(--primary)!important;background:var(--primary-soft)!important}.documentModal{width:min(920px,100%)}.documentGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.documentPreview{display:grid;gap:8px;min-width:0}.documentPreview>strong{font-size:12px}.documentPreview img,.documentPreview iframe,.documentMissing{width:100%;height:360px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);object-fit:contain}.documentPreview iframe{background:#fff}.documentMissing{display:grid;place-items:center;color:var(--text-secondary)}.documentNote{margin-top:16px;padding:13px 14px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2)}.documentNote b{font-size:12px}.documentNote p{margin:6px 0 0;color:var(--text-secondary);line-height:1.55;font-size:13px}@media(max-width:700px){.documentGrid{grid-template-columns:1fr}.documentPreview img,.documentPreview iframe,.documentMissing{height:300px}.documentModal{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);overflow:auto}}
+
+/* Identity document watermark */
+.documentWatermarkWrap{position:relative;overflow:hidden;border-radius:14px;background:var(--surface-2)}.documentWatermarkWrap img{border-radius:14px}.documentWatermarkWrap span{position:absolute;left:50%;top:50%;width:145%;transform:translate(-50%,-50%) rotate(-24deg);pointer-events:none;user-select:none;text-align:center;color:rgba(255,255,255,.74);text-shadow:0 1px 4px rgba(0,0,0,.85);font-size:clamp(12px,1.2vw,17px);font-weight:900;line-height:1.35;background:rgba(0,0,0,.25);padding:8px 12px}
+
+/* V18 — mobile Admin Center uses the hamburger admin menu only */
+@media(max-width:900px){
+  .shell{grid-template-columns:minmax(0,1fr)!important;gap:0!important}
+  .sidebar{display:none!important}
+}
+@media(max-width:600px){
+  .shell{padding-top:10px!important}
+}

@@ -9,7 +9,7 @@ import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { isSupabaseConfigured, signInWithPassword } from '@/lib/supabase/browser';
+import { isSupabaseConfigured, signInWithGoogle, signInWithPassword } from '@/lib/supabase/browser';
 import { loadOwnProfile } from '@/components/profile/profileWebData';
 
 function createNumericCaptcha() {
@@ -39,6 +39,7 @@ export default function LoginPage() {
   const [captchaInput, setCaptchaInput] = useState('');
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
+  const [googleBusy, setGoogleBusy] = useState(false);
 
   const captchaDigits = useMemo(
     () => (captchaCode || '000000').split('').map((_, index) => captchaDigitStyle(captchaCode, index)),
@@ -93,6 +94,28 @@ export default function LoginPage() {
     router.refresh();
   }
 
+  async function signInGoogle() {
+    if (!supabaseReady || googleBusy) return;
+    setError('');
+    setGoogleBusy(true);
+    const result = await signInWithGoogle(`${window.location.origin}/onboarding`);
+    if (result.error) {
+      const message = result.code === "provider_disabled"
+        ? (locale === "th"
+          ? "ยังไม่ได้เปิดใช้งาน Google Login ใน Supabase กรุณาตั้งค่า Google Provider ก่อนใช้งาน"
+          : locale === "de"
+            ? "Google Login ist in Supabase noch nicht aktiviert. Bitte zuerst den Google-Provider konfigurieren."
+            : "Google Login is not enabled in Supabase yet. Please configure the Google provider first.")
+        : (locale === "th"
+          ? "ไม่สามารถเชื่อมต่อ Google Login ได้ในขณะนี้ กรุณาลองใหม่อีกครั้ง"
+          : locale === "de"
+            ? "Google Login ist derzeit nicht verfügbar. Bitte versuche es erneut."
+            : "Google Login is currently unavailable. Please try again.");
+      setError(message);
+      setGoogleBusy(false);
+    }
+  }
+
   function renderLoginContent(prefix: 'desktop' | 'mobile') {
     const emailId = `${prefix}-email`;
     const passwordId = `${prefix}-password`;
@@ -100,6 +123,12 @@ export default function LoginPage() {
 
     return (
       <>
+        <button className={styles.googleButton} type="button" disabled={!supabaseReady || googleBusy} onClick={()=>void signInGoogle()}>
+          <span className={styles.googleMark} aria-hidden="true">G</span>
+          {locale==="th"?(googleBusy?"กำลังเชื่อมต่อ Google…":"เข้าสู่ระบบด้วย Google"):locale==="de"?(googleBusy?"Google wird geöffnet…":"Mit Google anmelden"):(googleBusy?"Opening Google…":"Continue with Google")}
+        </button>
+        <div className={styles.oauthDivider}><span>{locale==="th"?"หรือ":locale==="de"?"oder":"or"}</span></div>
+
         <form
           className={`${styles.form} ${prefix === 'mobile' ? 'mobileLoginForm' : ''}`}
           onSubmit={submit}

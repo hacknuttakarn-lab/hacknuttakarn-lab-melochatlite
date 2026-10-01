@@ -204,3 +204,8 @@
   color: var(--text, currentColor);
   outline: none;
 }
+
+
+/* V9 — Google OAuth */
+.oauthDivider{display:flex;align-items:center;gap:12px;margin:18px 0;color:var(--text-secondary);font-size:11px;font-weight:800}.oauthDivider::before,.oauthDivider::after{content:"";height:1px;flex:1;background:var(--border)}
+.googleButton{width:100%;min-height:52px;border:1px solid var(--border);border-radius:15px;background:var(--surface);color:var(--text);display:flex;align-items:center;justify-content:center;gap:11px;font:inherit;font-size:13px;font-weight:850;cursor:pointer;box-shadow:0 7px 20px color-mix(in srgb,var(--shadow) 45%,transparent);transition:border-color .18s ease,background .18s ease,transform .18s ease}.googleButton:hover:not(:disabled){transform:translateY(-1px);border-color:color-mix(in srgb,var(--primary) 35%,var(--border));background:var(--surface-2)}.googleButton:disabled{opacity:.55;cursor:not-allowed}.googleMark{width:25px;height:25px;border:1px solid var(--border);border-radius:50%;display:grid;place-items:center;background:#fff;color:#4285f4;font-family:Arial,sans-serif;font-size:14px;font-weight:900;line-height:1}

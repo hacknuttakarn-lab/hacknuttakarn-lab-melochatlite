@@ -7,6 +7,7 @@ import {
   publicStorageUrl,
   restSelect,
   rpcRequest,
+  uploadStorageObject,
 } from "@/lib/supabase/browser";
 
 export type ProfileRow = Record<string, any>;
@@ -264,25 +265,11 @@ function extensionFromFile(file: File) {
 }
 
 async function uploadProfileFile(path: string, file: File) {
-  const session = getStoredSession();
-  if (!session?.access_token) throw new Error("AUTH_REQUIRED");
   if (!file.type.startsWith("image/")) throw new Error("IMAGE_REQUIRED");
   if (file.size > 12 * 1024 * 1024) throw new Error("IMAGE_TOO_LARGE");
-
-  const encodedPath = path.split("/").map(encodeURIComponent).join("/");
-  const response = await fetch(`${supabaseUrl}/storage/v1/object/${PROFILE_BUCKET}/${encodedPath}`, {
-    method: "POST",
-    headers: {
-      apikey: supabaseKey,
-      Authorization: `Bearer ${session.access_token}`,
-      "Content-Type": file.type || "application/octet-stream",
-      "x-upsert": "false",
-      "cache-control": "3600",
-    },
-    body: file,
-  });
-  if (!response.ok) throw new Error(await readResponseError(response));
-  return path;
+  const result = await uploadStorageObject(PROFILE_BUCKET, path, file, file.type || "application/octet-stream");
+  if (result.error || !result.data?.path) throw new Error(result.error || "UPLOAD_FAILED");
+  return result.data.path;
 }
 
 export async function uploadProfileCoverWeb(file: File) {
@@ -290,11 +277,11 @@ export async function uploadProfileCoverWeb(file: File) {
   if (!user?.id) throw new Error("AUTH_REQUIRED");
   const suffix = Math.random().toString(36).slice(2, 10);
   const path = `${user.id}/cover/${Date.now()}-${suffix}.${extensionFromFile(file)}`;
-  await uploadProfileFile(path, file);
-  await updateUserMetadata({ [COVER_PATH_KEY]: path });
-  const profileResult = await updateOwnProfile(user.id, { cover_path: path });
+  const storedPath = await uploadProfileFile(path, file);
+  await updateUserMetadata({ [COVER_PATH_KEY]: storedPath });
+  const profileResult = await updateOwnProfile(user.id, { cover_path: storedPath });
   if (profileResult.error) throw new Error(profileResult.error);
-  return { path, url: publicStorageUrl(PROFILE_BUCKET, path) };
+  return { path: storedPath, url: publicStorageUrl(PROFILE_BUCKET, storedPath) };
 }
 
 export async function uploadProfilePhotoWeb(input: {
@@ -307,15 +294,15 @@ export async function uploadProfilePhotoWeb(input: {
   const slotIndex = Math.max(0, Math.min(6, Math.round(input.slotIndex)));
   const suffix = Math.random().toString(36).slice(2, 10);
   const path = `${user.id}/${Date.now()}-${slotIndex}-${suffix}.${extensionFromFile(input.file)}`;
-  await uploadProfileFile(path, input.file);
+  const storedPath = await uploadProfileFile(path, input.file);
 
   const next = input.currentPaths.filter(Boolean).slice(0, 7);
-  if (slotIndex < next.length) next[slotIndex] = path;
-  else next.push(path);
+  if (slotIndex < next.length) next[slotIndex] = storedPath;
+  else next.push(storedPath);
 
   const result = await updateOwnProfile(user.id, { photo_paths: next });
   if (result.error) throw new Error(result.error);
-  return { paths: next, path, url: publicStorageUrl(PROFILE_BUCKET, path) };
+  return { paths: next, path: storedPath, url: publicStorageUrl(PROFILE_BUCKET, storedPath) };
 }
 
 export async function removeProfilePhotoWeb(input: {

@@ -29,6 +29,12 @@ export const metadata: Metadata = {
     icon: '/icon.png',
     apple: '/icon.png',
   },
+  manifest: '/manifest.webmanifest',
+  appleWebApp: {
+    capable: true,
+    title: 'Melo Chat',
+    statusBarStyle: 'default',
+  },
 };
 
 export const viewport: Viewport = {

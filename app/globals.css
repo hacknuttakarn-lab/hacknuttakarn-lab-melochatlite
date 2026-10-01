@@ -1151,3 +1151,36 @@ html[data-theme='dark'] .memberSiteHeader .brand,
 html[data-theme='dark'] .memberSiteHeader .brand span {
   color: #f8fafc !important;
 }
+
+/* Melo mobile V17: give the bottom nav content more breathing room above the device edge. */
+@media (max-width: 760px) {
+  body.meloMemberBottomNavVisible {
+    padding-bottom: calc(82px + env(safe-area-inset-bottom));
+  }
+
+  .meloMobileBottomNav {
+    height: calc(74px + env(safe-area-inset-bottom));
+    padding: 4px 8px calc(10px + env(safe-area-inset-bottom));
+  }
+
+  .meloMobileBottomNav > a,
+  .meloMobileBottomNav > button {
+    transform: translateY(-2px);
+  }
+}
+
+
+/* V19 — Admin mobile header: Support chat replaces top language selector. */
+.adminMobileSupportTop{display:none}
+@media(max-width:760px){
+  .memberSiteHeader .adminTopLanguage{display:none!important}
+  .memberSiteHeader .adminMobileSupportTop{
+    display:inline-flex;align-items:center;justify-content:center;gap:7px;
+    min-height:42px;max-width:150px;padding:0 11px;border:1px solid var(--border);
+    border-radius:13px;background:var(--surface);color:var(--text);font:inherit;cursor:pointer;
+    white-space:nowrap;
+  }
+  .memberSiteHeader .adminMobileSupportTop>span{font-size:15px;line-height:1}
+  .memberSiteHeader .adminMobileSupportTop>strong{font-size:11px;font-weight:850;overflow:hidden;text-overflow:ellipsis}
+  .memberSiteHeader .adminMobileSupportTop>b{display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ef5a65;color:#fff;font-size:9px;font-weight:950}
+}

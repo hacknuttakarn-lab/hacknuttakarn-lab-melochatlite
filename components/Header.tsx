@@ -20,6 +20,8 @@ import { loadTripsWeb } from '@/components/trips/tripWebData';
 import { loadEventsWeb } from '@/components/events/eventWebData';
 import { loadSettingsAccountSnapshot } from '@/components/settings/settingsWebData';
 import { loadSocialFeedWeb } from "@/components/feed/socialFeedWebData";
+import { subscribeSupportMessages } from '@/lib/supabase/realtime';
+import { prepareMeloWebPush } from '@/lib/notificationsWebPush';
 
 type HeaderUser = {
   id?: string;
@@ -51,6 +53,9 @@ type HeaderNotification = {
   avatarLabel: string;
   userId: string;
   isChat: boolean;
+  systemSourceKey?: string;
+  systemKind?: 'support' | 'verification';
+  supportThreadId?: string;
   adminNotice?: { id:string; level:string; subject:string; message:string; createdAt:string; readAt:string };
 };
 
@@ -1019,10 +1024,17 @@ function notificationKind(row: HeaderSearchRow) {
   return explicitType || 'generic';
 }
 
+function isSupportNotification(row: HeaderSearchRow) {
+  const raw = notificationSourceText(row);
+  return raw.includes('support_message_admin') || raw.includes('support_message_user') || raw.includes('support_context');
+}
+
 function isChatActivityNotification(row: HeaderSearchRow) {
+  if (isSupportNotification(row)) return false;
   const raw = notificationSourceText(row);
   return raw.includes('chat') || raw.includes('message') || raw.includes('conversation') || raw.includes('dm');
 }
+
 
 function notificationAvatarLabel(row: HeaderSearchRow) {
   const actor = notificationActorName(row);
@@ -1476,6 +1488,48 @@ async function loadOpenAttendanceHeaderNotifications(locale: string): Promise<He
   return results.filter((item): item is HeaderNotification => item !== null);
 }
 
+async function loadDirectSupportReplyNotifications(
+  locale: string,
+  userId: string,
+): Promise<HeaderNotification[]> {
+  if (!userId) return [];
+
+  const threadResult = await restSelect<HeaderSearchRow[]>(
+    'support_threads',
+    `select=id,user_id,status,updated_at&user_id=eq.${encodeURIComponent(userId)}&status=eq.open&order=updated_at.desc&limit=1`,
+  ).catch(() => ({ data: null, error: 'support_thread_unavailable' }));
+
+  const thread = searchRows(threadResult.data)[0];
+  const threadId = searchText(thread, 'id');
+  if (!threadId) return [];
+
+  const messagesResult = await restSelect<HeaderSearchRow[]>(
+    'support_messages',
+    `select=id,thread_id,sender_role,body,created_at,read_at&thread_id=eq.${encodeURIComponent(threadId)}&sender_role=eq.admin&order=created_at.desc&limit=24`,
+  ).catch(() => ({ data: null, error: 'support_messages_unavailable' }));
+
+  const copy = locale === 'th'
+    ? { title: 'มีการตอบกลับจาก Melo Chat Support', body: 'ทีมสนับสนุนตอบกลับข้อความของคุณ กดเพื่ออ่าน' }
+    : locale === 'de'
+      ? { title: 'Antwort von Melo Chat Support', body: 'Das Support-Team hat geantwortet. Tippe hier, um die Nachricht zu lesen.' }
+      : { title: 'Reply from Melo Chat Support', body: 'The support team replied to your message. Tap to read it.' };
+
+  return searchRows(messagesResult.data).map((row, index) => ({
+    id: `support-direct-${searchText(row, 'id') || `${threadId}-${index}`}`,
+    title: copy.title,
+    body: copy.body,
+    href: '/support/chat',
+    createdAt: searchText(row, 'created_at'),
+    unread: row.read_at === null || !searchText(row, 'read_at'),
+    imageUrl: '/melo-support-logo.png',
+    avatarLabel: 'M',
+    userId: '',
+    isChat: false,
+    systemKind: 'support',
+    supportThreadId: threadId,
+  } satisfies HeaderNotification));
+}
+
 export function Header() {
   const { t, locale, setLocale, localeLabels, supportedLocales, countryScope, setCountryScope, theme, toggleTheme } = useLocale();
   const router = useRouter();
@@ -1500,10 +1554,13 @@ export function Header() {
   const [notificationsLoading, setNotificationsLoading] = useState(false);
   const [notificationRefreshTick, setNotificationRefreshTick] = useState(0);
   const [adminNoticeOpen, setAdminNoticeOpen] = useState<HeaderNotification['adminNotice'] | null>(null);
+  const [adminActivityPopup, setAdminActivityPopup] = useState<HeaderNotification | null>(null);
   const accountRef = useRef<HTMLDivElement>(null);
   const memberMenuRef = useRef<HTMLDivElement>(null);
   const notificationRef = useRef<HTMLDivElement>(null);
   const attendanceNotificationCacheRef = useRef<{ at: number; items: HeaderNotification[] }>({ at: 0, items: [] });
+  const adminPopupKnownIdsRef = useRef<Set<string>>(new Set());
+  const adminPopupReadyRef = useRef(false);
 
   // MELO_HEADER_ACTIVITY_SOUND_V1
   const notificationKnownIdsRef = useRef<Set<string>>(new Set());
@@ -1647,6 +1704,72 @@ export function Header() {
   }, [signedIn]);
 
   useEffect(() => {
+    if (!signedIn) return;
+    prepareMeloWebPush();
+  }, [signedIn]);
+
+  useEffect(() => {
+    if (!signedIn || !adminArea) {
+      adminPopupReadyRef.current = false;
+      adminPopupKnownIdsRef.current = new Set();
+      setAdminActivityPopup(null);
+      return;
+    }
+    const candidates = visibleNotificationItems.filter((item) => item.unread && item.href?.startsWith('/admin'));
+    const ids = new Set(candidates.map((item) => item.id));
+    if (!adminPopupReadyRef.current) {
+      adminPopupReadyRef.current = true;
+      adminPopupKnownIdsRef.current = ids;
+      return;
+    }
+    const newest = candidates.find((item) => !adminPopupKnownIdsRef.current.has(item.id));
+    adminPopupKnownIdsRef.current = ids;
+    if (newest) {
+      window.dispatchEvent(new CustomEvent('melo-admin-activity-changed'));
+      setAdminActivityPopup(newest);
+      window.setTimeout(() => setAdminActivityPopup((current) => current?.id === newest.id ? null : current), 6500);
+    }
+  }, [signedIn, adminArea, visibleNotificationItems]);
+
+  useEffect(() => {
+    if (!signedIn || !adminArea) return undefined;
+    const seen = new Set<string>();
+    const stop = subscribeSupportMessages((row) => {
+      const id = String(row.id || '');
+      const role = String(row.sender_role || '');
+      if (!id || role !== 'member' || seen.has(id)) return;
+      seen.add(id);
+      try { void new Audio('/sounds/melo_chat_short_clear_v5.wav').play().catch(() => undefined); } catch {}
+      window.dispatchEvent(new CustomEvent('melo-support-unread-changed'));
+      setNotificationRefreshTick((v) => v + 1);
+    });
+    return () => { stop(); };
+  }, [signedIn, adminArea]);
+
+  useEffect(() => {
+    if (!signedIn || adminArea) return undefined;
+    const seen = new Set<string>();
+    const stop = subscribeSupportMessages((row) => {
+      const id = String(row.id || '');
+      const role = String(row.sender_role || '');
+      if (!id || role !== 'admin' || seen.has(id)) return;
+      seen.add(id);
+      try { void new Audio('/sounds/melo_chat_short_clear_v5.wav').play().catch(() => undefined); } catch {}
+      window.dispatchEvent(new CustomEvent('melo-support-unread-changed'));
+      setNotificationRefreshTick((v) => v + 1);
+    });
+    return () => { stop(); };
+  }, [signedIn, adminArea]);
+
+  useEffect(() => {
+    if (!signedIn || !adminArea || typeof window === 'undefined') return;
+    const threadId = new URLSearchParams(window.location.search).get('support_thread');
+    if (!threadId) return;
+    window.sessionStorage.setItem('melo-support-thread', threadId);
+    setChatDrawerOpen(true);
+  }, [signedIn, adminArea, pathname]);
+
+  useEffect(() => {
     const mobileCompactListingPages = new Set(['/deals', '/partners', '/trips', '/events', '/community']);
     if (signedIn && mobileCompactListingPages.has(pathname)) {
       document.body.setAttribute('data-melo-mobile-listing-page', pathname.slice(1));
@@ -1780,6 +1903,152 @@ export function Header() {
         } satisfies HeaderNotification;
       });
 
+      const directSupportItems = !adminArea && user?.id
+        ? await loadDirectSupportReplyNotifications(locale, user.id)
+        : [];
+      if (!active) return;
+
+      const userSystemItems: HeaderNotification[] = [];
+      let userSystemFeedAvailable = false;
+
+      if (!adminArea && user?.id) {
+        const sourceResult = await rpcRequest<HeaderSearchRow[]>(
+          'get_my_system_notification_feed',
+          { p_limit: 24 },
+        ).catch(() => ({ data: null, error: 'unavailable' }));
+
+        if (!active) return;
+
+        if (!sourceResult.error && Array.isArray(sourceResult.data)) {
+          userSystemFeedAvailable = true;
+
+          for (const row of searchRows(sourceResult.data)) {
+            const sourceKey = searchText(row, 'source_key');
+            const sourceKind = searchText(row, 'source_kind').toLowerCase();
+            const createdAt = searchText(row, 'created_at');
+            const unread = row.unread === true;
+
+            if (!sourceKey) continue;
+
+            if (sourceKind === 'support_reply') {
+              const supportCopy = locale === 'th'
+                ? { title: 'มีการตอบกลับจาก Melo Chat Support', body: 'ทีมสนับสนุนตอบกลับข้อความของคุณ กดเพื่ออ่าน' }
+                : locale === 'de'
+                  ? { title: 'Antwort von Melo Chat Support', body: 'Das Support-Team hat geantwortet. Tippe hier, um die Nachricht zu lesen.' }
+                  : { title: 'Reply from Melo Chat Support', body: 'The support team replied to your message. Tap to read it.' };
+
+              userSystemItems.push({
+                id: `system-${sourceKey}`,
+                title: supportCopy.title,
+                body: supportCopy.body,
+                href: '/support/chat',
+                createdAt,
+                unread,
+                imageUrl: '/melo-support-logo.png',
+                avatarLabel: 'M',
+                userId: '',
+                isChat: false,
+                systemSourceKey: sourceKey,
+                systemKind: 'support',
+              });
+              continue;
+            }
+
+            if (['verification_approved','verification_rejected','verification_needs_info'].includes(sourceKind)) {
+              const copyByKind = {
+                th: {
+                  verification_approved: { title: 'ยืนยันตัวตนสำเร็จ', body: 'Melo Chat อนุมัติเอกสารยืนยันตัวตนของคุณแล้ว' },
+                  verification_rejected: { title: 'เอกสารยืนยันตัวตนไม่ได้รับการอนุมัติ', body: 'กรุณาตรวจสอบสถานะและส่งเอกสารใหม่อีกครั้ง' },
+                  verification_needs_info: { title: 'ต้องการข้อมูลยืนยันตัวตนเพิ่มเติม', body: 'กรุณาตรวจสอบข้อมูลหรือเอกสารที่แอดมินขอเพิ่มเติม' },
+                },
+                en: {
+                  verification_approved: { title: 'Verification approved', body: 'Melo Chat approved your identity verification documents.' },
+                  verification_rejected: { title: 'Verification rejected', body: 'Please review the decision and submit your documents again.' },
+                  verification_needs_info: { title: 'More verification information required', body: 'Please review the additional information or documents requested by admin.' },
+                },
+                de: {
+                  verification_approved: { title: 'Verifizierung genehmigt', body: 'Melo Chat hat deine Verifizierungsdokumente genehmigt.' },
+                  verification_rejected: { title: 'Verifizierung abgelehnt', body: 'Bitte prüfe die Entscheidung und reiche deine Dokumente erneut ein.' },
+                  verification_needs_info: { title: 'Weitere Verifizierungsdaten erforderlich', body: 'Bitte prüfe die zusätzlich angeforderten Informationen oder Dokumente.' },
+                },
+              } as const;
+
+              const language = locale === 'th' || locale === 'de' ? locale : 'en';
+              const kind = sourceKind as keyof typeof copyByKind.en;
+              const verificationCopy = copyByKind[language][kind];
+
+              userSystemItems.push({
+                id: `system-${sourceKey}`,
+                title: verificationCopy.title,
+                body: verificationCopy.body,
+                href: '/verify',
+                createdAt,
+                unread,
+                imageUrl: '/melo-logo.png',
+                avatarLabel: '✓',
+                userId: '',
+                isChat: false,
+                systemSourceKey: sourceKey,
+                systemKind: 'verification',
+              });
+            }
+          }
+        }
+      }
+
+      const backendItemsForDisplay = (userSystemFeedAvailable || directSupportItems.length > 0)
+        ? backendItems.filter((_item, index) => {
+            const kind = notificationKind(rows[index]);
+            const shouldHideSupport = directSupportItems.length > 0 || userSystemFeedAvailable;
+            return (!shouldHideSupport || kind !== 'support_message_user')
+              && (!userSystemFeedAvailable || kind !== 'verification_approved')
+              && (!userSystemFeedAvailable || kind !== 'verification_rejected')
+              && (!userSystemFeedAvailable || kind !== 'verification_needs_info');
+          })
+        : backendItems;
+
+      // Direct support rows are the reliable source for the user Support inbox.
+      // If V6 RPC also returns support rows, prefer the direct rows to avoid duplicates.
+      const userSystemItemsForDisplay = directSupportItems.length > 0
+        ? userSystemItems.filter((item) => item.systemKind !== 'support')
+        : userSystemItems;
+
+      const adminPendingItems: HeaderNotification[] = [];
+      if (adminArea) {
+        const [verificationQueue, reportQueue] = await Promise.all([
+          rpcRequest<HeaderSearchRow[]>('get_admin_verification_queue', { p_status: 'pending', p_limit: 10 }).catch(() => ({ data: null, error: 'unavailable' })),
+          rpcRequest<HeaderSearchRow[]>('admin_center_list_reports', {}).catch(() => ({ data: null, error: 'unavailable' })),
+        ]);
+        if (!active) return;
+        for (const row of searchRows(verificationQueue.data).slice(0, 10)) {
+          const id = searchText(row, 'id');
+          if (!id) continue;
+          const email = searchText(row, 'user_email', 'email');
+          adminPendingItems.push({
+            id: `admin-pending-verify-${id}`,
+            title: locale === 'th' ? 'มีคำขอยืนยันตัวตนรอตรวจสอบ' : locale === 'de' ? 'Verifizierung wartet auf Prüfung' : 'Verification waiting for review',
+            body: email || (locale === 'th' ? 'เปิดรายการอนุมัติเอกสารเพื่อตรวจสอบ' : 'Open verification review to inspect the request.'),
+            href: '/admin?tab=review',
+            createdAt: searchText(row, 'submitted_at', 'created_at'),
+            unread: true,
+            imageUrl: '', avatarLabel: '✓', userId: searchText(row, 'user_id'), isChat: false,
+          });
+        }
+        for (const row of searchRows(reportQueue.data).filter((row) => ['new','pending','open'].includes((searchText(row,'status') || 'new').toLowerCase())).slice(0, 10)) {
+          const id = searchText(row, 'id');
+          if (!id) continue;
+          adminPendingItems.push({
+            id: `admin-pending-report-${id}`,
+            title: locale === 'th' ? 'มีรายงานผู้ใช้รอตรวจสอบ' : locale === 'de' ? 'Nutzermeldung wartet auf Prüfung' : 'User report waiting for review',
+            body: searchText(row, 'reported_name', 'reason') || (locale === 'th' ? 'เปิดรายงานผู้ใช้เพื่อตรวจสอบ' : 'Open user reports to review.'),
+            href: '/admin?tab=reports',
+            createdAt: searchText(row, 'created_at'),
+            unread: true,
+            imageUrl: '', avatarLabel: '!', userId: searchText(row, 'reported_user_id'), isChat: false,
+          });
+        }
+      }
+
       const noticeResult = await restSelect<HeaderSearchRow[]>('admin_user_notices', 'select=id,level,subject,message,created_at,read_at&order=created_at.desc&limit=24');
       if (!active) return;
       const adminNoticeItems: HeaderNotification[] = searchRows(noticeResult.data).map((row,index)=>({
@@ -1797,7 +2066,7 @@ export function Header() {
       }));
       // MELO_HEADER_ACTIVITY_SOUND_V1
       const currentNotificationIds = new Set(
-        [...adminNoticeItems, ...backendItems].map((item) => item.id).filter(Boolean),
+        [...adminPendingItems, ...adminNoticeItems, ...directSupportItems, ...userSystemItemsForDisplay, ...backendItemsForDisplay].map((item) => item.id).filter(Boolean),
       );
 
       if (!notificationSoundReadyRef.current) {
@@ -1805,9 +2074,11 @@ export function Header() {
         notificationKnownIdsRef.current = currentNotificationIds;
         notificationSoundReadyRef.current = true;
       } else {
-        const hasNewActivityNotification = [...adminNoticeItems, ...backendItems].some(
+        const hasNewActivityNotification = [...adminPendingItems, ...adminNoticeItems, ...directSupportItems, ...userSystemItemsForDisplay, ...backendItemsForDisplay].some(
           (item) =>
             item.unread &&
+            (!('systemKind' in item) || item.systemKind !== 'support') &&
+            !backendItemsForDisplay.some((candidate) => candidate.id === item.id && rows.some((row) => (searchText(row,'id') || '').trim() === item.id && isSupportNotification(row))) &&
             Boolean(item.id) &&
             !notificationKnownIdsRef.current.has(item.id),
         );
@@ -1840,7 +2111,7 @@ export function Header() {
       }
       const backendAttendanceHrefs = new Set(rows.filter((row) => notificationKind(row) === 'attendance').map(notificationHref));
       const attendanceItems = attendanceNotificationCacheRef.current.items.filter((item) => !backendAttendanceHrefs.has(item.href));
-      setNotificationItems([...adminNoticeItems, ...attendanceItems, ...backendItems]);
+      setNotificationItems([...adminPendingItems, ...adminNoticeItems, ...directSupportItems, ...userSystemItemsForDisplay, ...attendanceItems, ...backendItemsForDisplay]);
       setNotificationsLoading(false);
     }
 
@@ -1966,7 +2237,7 @@ export function Header() {
       if (loadingUnread) return;
       loadingUnread = true;
       try {
-        const total = await loadChatUnreadTotal();
+        const total = adminArea ? Number((await rpcRequest<number>('support_admin_unread_total')).data || 0) : await loadChatUnreadTotal();
         if (active) setChatUnreadCount(total);
       } finally {
         loadingUnread = false;
@@ -1991,6 +2262,7 @@ export function Header() {
     window.addEventListener("focus", onFocus);
     document.addEventListener("visibilitychange", onVisibility);
     window.addEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
+    window.addEventListener("melo-support-unread-changed", onUnreadChanged as EventListener);
 
     return () => {
       active = false;
@@ -1999,8 +2271,9 @@ export function Header() {
       window.removeEventListener("focus", onFocus);
       document.removeEventListener("visibilitychange", onVisibility);
       window.removeEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
+      window.removeEventListener("melo-support-unread-changed", onUnreadChanged as EventListener);
     };
-  }, [signedIn]);
+  }, [signedIn, adminArea]);
 
   useEffect(() => {
     if (!accountOpen && !memberMenuOpen && !notificationOpen) return;
@@ -2329,11 +2602,25 @@ export function Header() {
                 </form>
 
                 <div className="memberMobileDrawerLinks">
-                  <Link className={mobilePathActive('/account') ? 'isActive' : ''} href="/account" onClick={close}><span>⌂</span>{memberMain.home}</Link>
-                  <Link className={mobilePathActive('/feed') ? 'isActive' : ''} href="/feed" onClick={close}><span>▤</span>{memberMain.feed}</Link>
-                  <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span>♡</span>{memberMain.connect}</Link>
-                  <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span>○</span>{memberMain.profile}</Link>
-                  <button type="button" className={chatDrawerOpen ? 'isActive' : ''} onClick={() => { close(); setChatDrawerOpen(true); }}><span>◌</span>{memberMain.chats}</button>
+                  {adminArea ? (
+                    <>
+                      <Link href="/admin?tab=review" onClick={close}><span>✓</span>{locale === 'th' ? 'อนุมัติเอกสาร' : locale === 'de' ? 'Dokumentenprüfung' : 'Document approval'}</Link>
+                      <Link href="/admin?tab=users" onClick={close}><span>○</span>{locale === 'th' ? 'ผู้ใช้งานทั้งหมด' : locale === 'de' ? 'Benutzer' : 'All users'}</Link>
+                      <Link href="/admin?tab=reports" onClick={close}><span>⚑</span>{locale === 'th' ? 'รายงานผู้ใช้' : locale === 'de' ? 'Nutzermeldungen' : 'User reports'}</Link>
+                      <Link href="/admin?tab=sales" onClick={close}><span>▤</span>{locale === 'th' ? 'รายงานแพ็กเกต' : locale === 'de' ? 'Paketberichte' : 'Package reports'}</Link>
+                      <Link href="/admin?tab=plans" onClick={close}><span>▣</span>{locale === 'th' ? 'แพ็กเกตการใช้งานระบบ' : locale === 'de' ? 'Pakete' : 'System packages'}</Link>
+                      <Link href="/admin?tab=permissions" onClick={close}><span>⚙</span>{locale === 'th' ? 'จัดการสิทธิ์แอดมิน' : locale === 'de' ? 'Admin-Berechtigungen' : 'Admin permissions'}</Link>
+                      <Link href="/admin?tab=audit" onClick={close}><span>◷</span>{locale === 'th' ? 'ประวัติการจัดการ' : locale === 'de' ? 'Audit-Protokoll' : 'Audit log'}</Link>
+                    </>
+                  ) : (
+                    <>
+                      <Link className={mobilePathActive('/account') ? 'isActive' : ''} href="/account" onClick={close}><span>⌂</span>{memberMain.home}</Link>
+                      <Link className={mobilePathActive('/feed') ? 'isActive' : ''} href="/feed" onClick={close}><span>▤</span>{memberMain.feed}</Link>
+                      <Link className={mobilePathActive('/connect') ? 'isActive' : ''} href="/connect" onClick={close}><span>♡</span>{memberMain.connect}</Link>
+                      <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span>○</span>{memberMain.profile}</Link>
+                      <button type="button" className={chatDrawerOpen ? 'isActive' : ''} onClick={() => { close(); setChatDrawerOpen(true); }}><span>◌</span>{memberMain.chats}</button>
+                    </>
+                  )}
                 </div>
 
                 <div className="memberMobileDrawerUtility">
@@ -2534,8 +2821,22 @@ export function Header() {
               ) : null}
             </div>
           )}
+          {signedIn && adminArea ? (
+            <button
+              type="button"
+              className="adminMobileSupportTop"
+              onClick={() => { close(); setChatDrawerOpen(true); }}
+              aria-label={locale === 'th' ? 'แชท Support' : locale === 'de' ? 'Support-Chat' : 'Support chat'}
+              aria-haspopup="dialog"
+              aria-expanded={chatDrawerOpen}
+            >
+              <span aria-hidden="true">💬</span>
+              <strong>{locale === 'th' ? 'แชท Support' : locale === 'de' ? 'Support-Chat' : 'Support chat'}</strong>
+              {chatUnreadCount > 0 ? <b>{chatUnreadCount > 99 ? '99+' : chatUnreadCount}</b> : null}
+            </button>
+          ) : null}
           {signedIn && (
-            <label className="countrySelect" aria-label={t('common.language')} title={t('common.language')}>
+            <label className={`countrySelect ${adminArea ? 'adminTopLanguage' : ''}`} aria-label={t('common.language')} title={t('common.language')}>
               <span>🌐</span>
               <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>
                 {selectableLocales.filter((item) => item === 'th' || item === 'en' || item === 'de').map((item) => (
@@ -2600,6 +2901,23 @@ export function Header() {
                               }
                               return;
                             }
+                            if (item.supportThreadId) {
+                              void rpcRequest('support_mark_my_thread_read', {
+                                p_thread_id: item.supportThreadId,
+                              }).then(() => {
+                                setNotificationRefreshTick((tick) => tick + 1);
+                                window.dispatchEvent(new CustomEvent('melo-support-unread-changed'));
+                              });
+                            }
+                            if (item.systemSourceKey) {
+                              void rpcRequest('mark_my_system_notification_read', {
+                                p_source_key: item.systemSourceKey,
+                              }).then(() => {
+                                setNotificationRefreshTick((tick) => tick + 1);
+                                window.dispatchEvent(new CustomEvent('melo-support-unread-changed'));
+                              });
+                            }
+
                             if (item.isChat) {
                               event.preventDefault();
                               event.stopPropagation();
@@ -2753,6 +3071,14 @@ export function Header() {
         </button>
         <Link className={mobilePathActive('/profile') ? 'isActive' : ''} href="/profile" onClick={close}><span aria-hidden="true">○</span><small>{memberMain.profile}</small></Link>
       </nav>
+    ) : null}
+
+    {adminActivityPopup ? (
+      <button type="button" className={accountStyles.adminActivityPopup} onClick={() => { const href=adminActivityPopup.href; setAdminActivityPopup(null); if(href) router.push(href); }}>
+        <span className={accountStyles.adminActivityPopupIcon}>{adminActivityPopup.avatarLabel || 'M'}</span>
+        <span className={accountStyles.adminActivityPopupText}><small>{locale==='th'?'กิจกรรมใหม่ใน Admin Center':locale==='de'?'Neue Admin-Aktivität':'New Admin Center activity'}</small><strong>{adminActivityPopup.title}</strong><em>{adminActivityPopup.body}</em></span>
+        <span className={accountStyles.adminActivityPopupClose} onClick={(event)=>{event.stopPropagation();setAdminActivityPopup(null)}}>×</span>
+      </button>
     ) : null}
 
     {adminNoticeOpen ? (

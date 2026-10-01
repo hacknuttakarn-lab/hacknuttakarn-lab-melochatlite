@@ -1,4 +1,4 @@
-﻿import {
+import {
   getCurrentUser,
   restDelete,
   restSelect,
@@ -111,6 +111,8 @@ export type DatingProfileWeb = {
   travelExperience: string;
   lifestyleTags: string[];
   socialStyle: string;
+  createdAt: string;
+  profileBoostedAt: string;
 };
 
 export type LoveEntitlements = {
@@ -1555,6 +1557,10 @@ function datingProfile(
       const lifestyle = raw && typeof raw === "object" && !Array.isArray(raw) ? raw as Record<string, unknown> : {};
       return stringArray(lifestyle.social)[0] || "";
     })(),
+
+    createdAt: text(row, 'created_at'),
+
+    profileBoostedAt: text(row, 'profile_boosted_at'),
   };
 }
 
@@ -2150,6 +2156,25 @@ async function loadRecommended(
     rows = rowsOf(fallback.data);
   }
 
+  // Home discovery ranking: recently joined profiles stay near the front, while a
+  // profile boost behaves like a fresh discovery activity and can move an older
+  // profile back to the front. Some legacy dating RPCs do not expose the profile
+  // timestamps, so merge those fields from profiles before ranking.
+  const candidateIds = unique(rows.map((row) => text(row, 'id')).filter(Boolean)).slice(0, 100);
+  if (candidateIds.length) {
+    const meta = await restSelect<Row[]>(
+      'profiles',
+      `select=id,created_at,profile_boosted_at&id=in.(${candidateIds.join(',')})`,
+    );
+    if (!meta.error) {
+      const metaById = new Map(rowsOf(meta.data).map((row) => [text(row, 'id'), row]));
+      rows = rows.map((row) => {
+        const extra = metaById.get(text(row, 'id'));
+        return extra ? { ...row, created_at: extra.created_at ?? row.created_at, profile_boosted_at: extra.profile_boosted_at ?? row.profile_boosted_at } : row;
+      });
+    }
+  }
+
   return rows
     .filter(
       (row) =>
@@ -2181,9 +2206,20 @@ async function loadRecommended(
           filters,
         ),
     )
+    .sort((a, b) => {
+      const aTime = new Date(text(a, 'profile_boosted_at') || text(a, 'created_at') || 0).getTime();
+      const bTime = new Date(text(b, 'profile_boosted_at') || text(b, 'created_at') || 0).getTime();
+      return bTime - aTime;
+    })
     .map(
       datingProfile,
     );
+}
+
+export async function boostMyDatingProfile(): Promise<string> {
+  const result = await rpcRequest<string>('boost_my_profile', {});
+  if (result.error) throw new Error(result.error);
+  return typeof result.data === 'string' ? result.data : new Date().toISOString();
 }
 
 export async function loadDatingProfileById(profileId: string): Promise<DatingProfileWeb | null> {

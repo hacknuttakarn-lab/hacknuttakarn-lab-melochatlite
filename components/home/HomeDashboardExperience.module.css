@@ -173,3 +173,43 @@
   background: #e7edf4;
   color: #172033;
 }
+
+/* V13 — Profile Boost */
+.boostLauncher{
+  display:inline-flex;align-items:center;justify-content:center;gap:9px;flex:none;
+  min-height:46px;padding:0 18px;border:1px solid color-mix(in srgb,#4f9df8 55%,var(--border,#273342));
+  border-radius:14px;background:linear-gradient(135deg,color-mix(in srgb,#4f9df8 18%,var(--surface,#111923)),color-mix(in srgb,#8b63ff 13%,var(--surface,#111923)));
+  color:inherit;font:inherit;font-weight:850;cursor:pointer;box-shadow:0 8px 24px rgba(79,157,248,.12);
+  transition:transform .16s ease,border-color .16s ease,box-shadow .16s ease;
+}
+.boostLauncher span{font-size:18px}.boostLauncher:hover{transform:translateY(-2px);border-color:#6aaaf6;box-shadow:0 12px 26px rgba(79,157,248,.2)}
+.boostBackdrop{position:fixed;inset:0;z-index:1800;display:grid;place-items:center;padding:max(18px,env(safe-area-inset-top)) 18px max(18px,env(safe-area-inset-bottom));background:rgba(2,7,14,.72);backdrop-filter:blur(9px)}
+.boostModal{width:min(430px,100%);max-height:calc(100dvh - max(36px,env(safe-area-inset-top) + env(safe-area-inset-bottom)));overflow:auto;padding:20px;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:24px;background:var(--surface,#111923);box-shadow:0 28px 80px rgba(0,0,0,.4)}
+.boostModalHead{display:flex;align-items:flex-start;justify-content:space-between;gap:16px;margin-bottom:18px}.boostModalHead h2{margin:3px 0 5px;font-size:23px}.boostModalHead p{margin:0;color:var(--text-secondary,#8693a5);font-size:13px;line-height:1.5}.boostEyebrow{color:#5da8ff;font-size:10px;font-weight:950;letter-spacing:.13em}.boostClose{display:grid;place-items:center;width:38px;height:38px;flex:none;border:1px solid var(--border,rgba(255,255,255,.1));border-radius:50%;background:var(--surface-2,#18212d);color:inherit;font-size:25px;cursor:pointer}
+.boostPreviewCard{width:min(100%,320px);margin:0 auto;cursor:default}.boostPreviewCard:hover{transform:none;box-shadow:0 7px 24px rgba(17,24,39,.055)}
+.boostCardAction{margin-top:14px;padding-top:12px;border-top:1px solid var(--border,rgba(255,255,255,.08))}.boostCardAction button{display:flex;align-items:center;justify-content:center;gap:9px;width:100%;min-height:46px;border:1px solid #5ca8ff;border-radius:13px;background:linear-gradient(135deg,#3e88ed,#6f71f4);color:#fff;font:inherit;font-weight:900;cursor:pointer;box-shadow:0 9px 22px rgba(62,136,237,.24);transition:transform .16s ease,filter .16s ease}.boostCardAction button:hover:not(:disabled){transform:translateY(-1px);filter:brightness(1.06)}.boostCardAction button:disabled{opacity:.65;cursor:wait}.boostCardAction button span{font-size:18px}
+.boostNotice{display:flex;flex-direction:column;gap:4px;margin-top:15px;padding:12px 13px;border:1px solid var(--border);border-radius:13px;font-size:12px;line-height:1.45}.boostNotice span{color:var(--text-secondary,#8693a5)}.boostNoticeSuccess{border-color:color-mix(in srgb,#22c55e 38%,var(--border));background:color-mix(in srgb,#22c55e 10%,var(--surface-2,#18212d))}.boostNoticeSuccess strong{color:#35c985}.boostNoticeError{border-color:color-mix(in srgb,#ef4b6f 38%,var(--border));background:color-mix(in srgb,#ef4b6f 10%,var(--surface-2,#18212d))}.boostNoticeError strong{color:#ff708d}.boostEmpty{min-height:220px;display:grid;place-items:center;color:var(--text-secondary,#8693a5)}
+:global(html:not([data-theme="dark"])) .boostLauncher{background:linear-gradient(135deg,#eef6ff,#f5f2ff);color:#24598b;border-color:#b8d6f8}
+:global(html:not([data-theme="dark"])) .boostModal{background:#fff;box-shadow:0 28px 80px rgba(23,50,77,.22)}
+:global(html:not([data-theme="dark"])) .boostClose{background:#f3f6fa;border-color:#d6e0eb;color:#334155}
+@media(max-width:900px){.headingRow .boostLauncher{align-self:flex-start}}
+@media(max-width:640px){.boostLauncher{width:100%;min-height:44px}.boostBackdrop{align-items:end;padding-inline:10px}.boostModal{width:100%;max-height:calc(100dvh - max(18px,env(safe-area-inset-top)));border-radius:22px 22px 16px 16px;padding:16px 14px calc(16px + env(safe-area-inset-bottom))}.boostPreviewCard{width:min(100%,300px)}}
+
+/* V18 — mobile Boost Profile launcher above bottom navigation + centered dialog */
+@media(max-width:640px){
+  .headingRow{padding-bottom:60px}
+  .boostLauncher{
+    position:fixed;z-index:760;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));
+    width:auto;min-height:48px;margin:0;box-shadow:0 10px 30px rgba(0,0,0,.28),0 7px 22px rgba(79,157,248,.22)
+  }
+  .boostBackdrop{place-items:center!important;align-items:center!important;padding:max(14px,env(safe-area-inset-top)) 10px max(92px,calc(14px + env(safe-area-inset-bottom)))!important}
+  .boostModal{width:min(100%,430px);max-height:calc(100dvh - 126px - env(safe-area-inset-bottom));border-radius:22px!important;padding:16px 14px!important}
+}
+
+
+/* V20 — remove obsolete heading reserve after Boost Profile moved to bottom nav area. */
+@media(max-width:640px){
+  .shell{padding-top:4px!important}
+  .headingRow{margin-top:0!important;margin-bottom:0!important;padding-bottom:0!important;gap:6px!important}
+  .lifestyleFilters{margin-top:8px!important;margin-bottom:14px!important}
+}

@@ -7,6 +7,8 @@ import {
   publicStorageUrl,
   restSelect,
   rpcRequest,
+  uploadStorageObject,
+  deleteStorageObject,
 } from "@/lib/supabase/browser";
 import type { CountryScope } from "@/lib/discoveryCountry";
 import { GLOBAL_COUNTRY_SCOPE, matchesCountryScope } from "@/lib/discoveryCountry";
@@ -52,6 +54,7 @@ export type SocialFeedPost = {
   canManage: boolean;
   createdAt: string;
   updatedAt: string;
+  boostedAt: string;
 };
 
 export type SocialPostComment = {
@@ -288,7 +291,7 @@ export async function uploadSocialPostImagesWeb(postId: string, files: File[]) {
     if (file.size > MAX_SOCIAL_POST_IMAGE_BYTES) throw new Error("Each image must be 12 MB or smaller.");
   }
 
-  const { userId, accessToken } = await currentStorageAuth();
+  const { userId } = await currentStorageAuth();
   const uploaded: string[] = [];
 
   try {
@@ -298,22 +301,9 @@ export async function uploadSocialPostImagesWeb(postId: string, files: File[]) {
         ? crypto.randomUUID()
         : `${Date.now()}-${Math.random().toString(36).slice(2)}`;
       const path = `${userId}/posts/${postId}/${Date.now()}-${index}-${nonce}.${extension}`;
-      const response = await fetch(
-        `${supabaseUrl}/storage/v1/object/${encodeURIComponent(SOCIAL_POSTS_BUCKET)}/${encodePath(path)}`,
-        {
-          method: "POST",
-          headers: {
-            apikey: publishableKey,
-            Authorization: `Bearer ${accessToken}`,
-            "Content-Type": file.type || "application/octet-stream",
-            "cache-control": "3600",
-            "x-upsert": "false",
-          },
-          body: file,
-        },
-      );
-      if (!response.ok) throw new Error(await storageError(response));
-      uploaded.push(path);
+      const result = await uploadStorageObject(SOCIAL_POSTS_BUCKET, path, file, file.type || "application/octet-stream");
+      if (result.error || !result.data?.path) throw new Error(result.error || "Image upload failed.");
+      uploaded.push(result.data.path);
     }
     return uploaded;
   } catch (error) {
@@ -323,18 +313,13 @@ export async function uploadSocialPostImagesWeb(postId: string, files: File[]) {
 }
 
 export async function deleteSocialPostImagesWeb(paths: string[]) {
-  const normalized = [...new Set(paths.map(normalizeStoragePath).filter((path) => path && !/^(https?:|data:|blob:)/i.test(path)))];
+  const normalized = [...new Set(paths.map(normalizeStoragePath).filter(Boolean))];
   if (!normalized.length) return;
-  const { accessToken } = await currentStorageAuth();
+  await currentStorageAuth();
   await Promise.all(normalized.map(async (path) => {
-    const response = await fetch(
-      `${supabaseUrl}/storage/v1/object/${encodeURIComponent(SOCIAL_POSTS_BUCKET)}/${encodePath(path)}`,
-      {
-        method: "DELETE",
-        headers: { apikey: publishableKey, Authorization: `Bearer ${accessToken}` },
-      },
-    );
-    if (!response.ok && response.status !== 404) throw new Error(await storageError(response));
+    if (/^https?:\/\//i.test(path) && !/\.public\.blob\.vercel-storage\.com\//i.test(path)) return;
+    const result = await deleteStorageObject(SOCIAL_POSTS_BUCKET, path);
+    if (result.error) throw new Error(result.error);
   }));
 }
 
@@ -442,6 +427,7 @@ function mapPost(
     canManage: bool(first(row, ["can_manage"])),
     createdAt: str(row, ["created_at"], new Date().toISOString()),
     updatedAt: str(row, ["updated_at"], new Date().toISOString()),
+    boostedAt: str(row, ["boosted_at"]),
   } satisfies SocialFeedPost;
 }
 
@@ -453,33 +439,73 @@ export async function loadSocialFeedWeb(parameters?: {
   postId?: string | null;
   countryScope?: CountryScope;
 }): Promise<SocialFeedPost[]> {
-  const result = await rpcRequest<Row[]>("get_social_feed", {
+  const params = {
     p_limit: Math.max(1, Math.min(parameters?.limit ?? 30, 50)),
     p_offset: Math.max(0, parameters?.offset ?? 0),
     p_author_id: parameters?.authorId || null,
     p_saved_only: parameters?.savedOnly ?? false,
     p_post_id: parameters?.postId || null,
-  });
+  };
+  // V11: fetch from a dedicated boost-aware RPC first. This is important because
+  // client-side sorting cannot promote a boosted post that was never included in
+  // the legacy RPC page in the first place. The database now ranks by
+  // coalesce(boosted_at, created_at) before LIMIT/OFFSET is applied.
+  let result = await rpcRequest<Row[]>("get_social_feed_boosted_v11", params);
+  if (result.error) result = await rpcRequest<Row[]>("get_social_feed_boosted", params);
+  if (result.error) result = await rpcRequest<Row[]>("get_social_feed", params);
   if (result.error) throw new Error(result.error);
 
   const rows = Array.isArray(result.data) ? result.data : [];
   const ids = rows.map((row) => str(row, ["id"])).filter(Boolean);
-  const authorIds = rows.map((row) => str(row, ["author_id", "user_id", "profile_id"])).filter(Boolean);
+
+  // V10 compatibility: older feed RPCs can return rows in created_at order and
+  // may not expose boosted_at at all. The boost column already lives on
+  // social_posts, so hydrate that metadata directly and do the final ranking in
+  // the browser. This keeps Feed boost behavior correct while older RPC/schema
+  // caches are still present.
+  let boostByPostId = new Map<string, string>();
+  if (ids.length) {
+    const idFilter = ids.map((id) => encodeURIComponent(id)).join(",");
+    const boostMeta = await restSelect<Row[]>(
+      "social_posts",
+      `select=id,boosted_at&id=in.(${idFilter})`,
+    );
+    if (!boostMeta.error && Array.isArray(boostMeta.data)) {
+      boostByPostId = new Map(
+        boostMeta.data
+          .map((row) => [str(row, ["id"]), str(row, ["boosted_at"])] as const)
+          .filter(([id, boostedAt]) => Boolean(id && boostedAt)),
+      );
+    }
+  }
+
+  const hydratedRows = rows.map((row) => {
+    const id = str(row, ["id"]);
+    const boostedAt = str(row, ["boosted_at"]) || boostByPostId.get(id) || "";
+    return boostedAt ? { ...row, boosted_at: boostedAt } : row;
+  });
+  const authorIds = hydratedRows.map((row) => str(row, ["author_id", "user_id", "profile_id"])).filter(Boolean);
   const allImageValues = rows.flatMap((row) => arr(row.image_paths).slice(0, MAX_SOCIAL_POST_IMAGES));
   const [titles, profiles, signedImages] = await Promise.all([
     titleMap(ids),
     profileMap(authorIds),
     signSocialImages(allImageValues),
   ]);
-  const posts = rows.map((row) => mapPost(row, profiles, titles, signedImages));
+  const posts = hydratedRows.map((row) => mapPost(row, profiles, titles, signedImages));
   const scope = parameters?.countryScope ?? GLOBAL_COUNTRY_SCOPE;
 
-  return posts.filter(
-    (post) =>
-      scope === GLOBAL_COUNTRY_SCOPE ||
-      !post.authorCountry ||
-      matchesCountryScope(post.authorCountry, scope),
-  );
+  return posts
+    .filter(
+      (post) =>
+        scope === GLOBAL_COUNTRY_SCOPE ||
+        !post.authorCountry ||
+        matchesCountryScope(post.authorCountry, scope),
+    )
+    .sort((a,b)=>{
+      const aTime=new Date(a.boostedAt||a.createdAt).getTime();
+      const bTime=new Date(b.boostedAt||b.createdAt).getTime();
+      return bTime-aTime;
+    });
 }
 
 export async function loadFeedViewer(): Promise<FeedViewer | null> {
@@ -557,6 +583,12 @@ export async function createSocialPostCommentWeb(postId: string, body: string) {
 export async function deleteSocialPostWeb(postId: string) {
   const result = await rpcRequest("delete_social_post", { p_post_id: postId });
   if (result.error) throw new Error(result.error);
+}
+
+export async function boostSocialPostWeb(postId: string) {
+  const result = await rpcRequest("boost_social_post", { p_post_id: postId });
+  if (result.error) throw new Error(result.error);
+  return true;
 }
 
 export async function reportSocialPostWeb(postId: string, reason = "inappropriate") {

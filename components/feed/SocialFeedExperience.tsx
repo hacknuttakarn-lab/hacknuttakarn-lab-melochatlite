@@ -550,6 +550,12 @@ export default function SocialFeedExperience() {
     void refresh(mode);
   }, [countryScope, mode]);
 
+  useEffect(() => {
+    const handleFeedUpdated = () => { void refresh(mode); };
+    window.addEventListener("melo-feed-updated", handleFeedUpdated);
+    return () => window.removeEventListener("melo-feed-updated", handleFeedUpdated);
+  }, [countryScope, mode]);
+
   function flash(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);

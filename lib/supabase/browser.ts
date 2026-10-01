@@ -1,3 +1,5 @@
+import { deletePublicImageBlob, uploadPublicImageBlob, useVercelBlobImages } from '@/lib/blob/client';
+
 type MeloUser = {
   id: string;
   email?: string;
@@ -143,12 +145,23 @@ async function performRefresh(session: MeloSession): Promise<MeloSession | null>
     });
 
     if (!response.ok) {
-      // A rejected refresh token cannot recover the existing access token.
-      // Clear the stale browser session so authenticated data loaders stop
-      // retrying the expired JWT and the UI can return to signed-out state.
-      if (response.status === 400 || response.status === 401 || response.status === 403) {
-        saveSession(null);
+      // Do not auto-sign users out simply because a refresh request failed.
+      // Melo Chat intentionally has no idle/inactivity logout. The browser
+      // keeps the refresh token in localStorage and retries on the next
+      // authenticated request. We only remove the session when Supabase
+      // explicitly confirms that the refresh token itself is invalid/revoked.
+      let detail = "";
+      try {
+        const payload = await response.clone().json();
+        detail = String(payload?.error_description || payload?.msg || payload?.message || payload?.error || "").toLowerCase();
+      } catch {
+        detail = "";
       }
+      const refreshTokenRejected =
+        response.status === 400 &&
+        (detail.includes("refresh token") || detail.includes("invalid_grant") || detail.includes("refresh_token")) &&
+        (detail.includes("invalid") || detail.includes("expired") || detail.includes("revoked") || detail.includes("not found"));
+      if (refreshTokenRejected) saveSession(null);
       return null;
     }
 
@@ -204,10 +217,9 @@ async function authFetch(input: string, init: RequestInit = {}, retry401 = true)
       }
     }
 
-    // The server rejected the authenticated request and refreshing could not
-    // recover it. Remove the stale local session instead of allowing every
-    // page loader to keep throwing "JWT expired".
-    if (getStoredSession()) saveSession(null);
+    // A single 401 is not treated as an inactivity logout. performRefresh()
+    // is responsible for clearing the local session only when Supabase
+    // explicitly rejects the refresh token itself.
   }
 
   return response;
@@ -224,10 +236,10 @@ export async function signInWithPassword(email: string, password: string): Promi
   return { data: session, error: null };
 }
 
-export async function signUpWithPassword(email: string, password: string, redirectTo: string): Promise<AuthResult<{ user: MeloUser | null; session: MeloSession | null }>> {
+export async function signUpWithPassword(email: string, password: string, redirectTo: string, userData?: Record<string, unknown>): Promise<AuthResult<{ user: MeloUser | null; session: MeloSession | null }>> {
   if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
   const response = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ email, password }),
+    method: "POST", headers: headers(), body: JSON.stringify({ email, password, ...(userData ? { data: userData } : {}) }),
   });
   if (!response.ok) return { data: null, error: await readError(response) };
   const payload = await response.json();
@@ -307,6 +319,50 @@ export async function updatePassword(password: string): Promise<AuthResult<true>
   const response = await authFetch(`${url}/auth/v1/user`, { method: "PUT", body: JSON.stringify({ password }) });
   if (!response.ok) return { data: null, error: await readError(response) };
   return { data: true, error: null };
+}
+
+
+export type GoogleAuthStartErrorCode =
+  | "provider_disabled"
+  | "settings_unavailable"
+  | "start_failed";
+
+export async function signInWithGoogle(
+  redirectTo?: string,
+): Promise<{ error: string | null; code?: GoogleAuthStartErrorCode }> {
+  if (!isSupabaseConfigured()) return { error: "Supabase is not configured.", code: "start_failed" };
+  if (typeof window === "undefined") {
+    return { error: "Google sign-in is only available in the browser.", code: "start_failed" };
+  }
+
+  try {
+    // Check the public Auth settings before redirecting. Without this preflight
+    // Supabase navigates the whole page to a raw JSON 400 response when Google
+    // has not been enabled in Authentication > Providers.
+    const settingsResponse = await fetch(`${url}/auth/v1/settings`, {
+      method: "GET",
+      headers: headers(),
+      cache: "no-store",
+    });
+    if (!settingsResponse.ok) {
+      return { error: "Unable to check Google sign-in availability.", code: "settings_unavailable" };
+    }
+    const settings = (await settingsResponse.json()) as { external?: Record<string, boolean> };
+    if (settings?.external?.google !== true) {
+      return { error: "Google provider is not enabled in Supabase Auth.", code: "provider_disabled" };
+    }
+
+    const authorizeUrl = new URL(`${url}/auth/v1/authorize`);
+    authorizeUrl.searchParams.set("provider", "google");
+    authorizeUrl.searchParams.set("redirect_to", redirectTo || `${window.location.origin}/onboarding`);
+    window.location.assign(authorizeUrl.toString());
+    return { error: null };
+  } catch (error) {
+    return {
+      error: error instanceof Error ? error.message : "Unable to start Google sign-in.",
+      code: "start_failed",
+    };
+  }
 }
 
 export async function signOut() {
@@ -396,6 +452,7 @@ export async function createSignedStorageUrl(bucket: string, path: string, expir
   const cleanBucket = String(bucket || "").trim();
   const cleanPath = String(path || "").replace(/^\/+/, "");
   if (!cleanBucket || !cleanPath) return { data: null, error: "Storage bucket and path are required." };
+  if (/^https?:\/\//i.test(cleanPath)) return { data: cleanPath, error: null };
   const encodedPath = cleanPath.split("/").map((segment) => encodeURIComponent(segment)).join("/");
   const response = await authFetch(`${url}/storage/v1/object/sign/${encodeURIComponent(cleanBucket)}/${encodedPath}`, {
     method: "POST",
@@ -414,6 +471,26 @@ export async function uploadStorageObject(bucket: string, path: string, file: Bl
   const cleanBucket = String(bucket || "").trim();
   const cleanPath = String(path || "").replace(/^\/+/, "");
   if (!cleanBucket || !cleanPath) return { data: null, error: "Storage bucket and path are required." };
+
+  // Sensitive verification documents intentionally remain in the existing
+  // private Supabase bucket. Member-visible image media can be routed to
+  // Vercel Blob without changing the database schema because callers store
+  // the absolute Blob URL returned here.
+  if (useVercelBlobImages() && (cleanBucket === "profile-photos" || cleanBucket === "social-posts")) {
+    const session = (await refreshStoredSession().catch(() => null)) ?? getStoredSession();
+    if (!session?.access_token) return { data: null, error: "AUTH_REQUIRED" };
+    try {
+      const blob = await uploadPublicImageBlob({
+        bucket: cleanBucket, path: cleanPath, file,
+        contentType: contentType || file.type || "application/octet-stream",
+        accessToken: session.access_token,
+      });
+      return { data: { path: blob.url }, error: null };
+    } catch (cause) {
+      return { data: null, error: cause instanceof Error ? cause.message : String(cause) };
+    }
+  }
+
   const encodedPath = cleanPath.split("/").map((segment) => encodeURIComponent(segment)).join("/");
   const response = await authFetch(`${url}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${encodedPath}`, {
     method: "POST",
@@ -425,4 +502,44 @@ export async function uploadStorageObject(bucket: string, path: string, file: Bl
   });
   if (!response.ok) return { data: null, error: await readError(response) };
   return { data: { path: cleanPath }, error: null };
+}
+
+export async function restUpdate(tableName: string, query: string, payload: Record<string, unknown>): Promise<SupabaseRestResult<true>> {
+  if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
+  const normalizedQuery = query.startsWith("?") ? query : `?${query}`;
+  const response = await authFetch(`${url}/rest/v1/${encodeURIComponent(tableName)}${normalizedQuery}`, {
+    method: "PATCH",
+    headers: { Prefer: "return=minimal" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) return { data: null, error: await readError(response) };
+  return { data: true, error: null };
+}
+
+export async function deleteStorageObject(bucket: string, path: string): Promise<SupabaseRestResult<true>> {
+  if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
+  const cleanBucket = String(bucket || "").trim();
+  const cleanPath = String(path || "").replace(/^\/+/, "");
+  if (!cleanBucket || !cleanPath) return { data: null, error: "Storage bucket and path are required." };
+  if (/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//i.test(cleanPath)) {
+    const session = (await refreshStoredSession().catch(() => null)) ?? getStoredSession();
+    if (!session?.access_token) return { data: null, error: "AUTH_REQUIRED" };
+    try { await deletePublicImageBlob({ url: cleanPath, accessToken: session.access_token }); return { data: true, error: null }; }
+    catch (cause) { return { data: null, error: cause instanceof Error ? cause.message : String(cause) }; }
+  }
+  const encodedPath = cleanPath.split("/").map((segment) => encodeURIComponent(segment)).join("/");
+  const response = await authFetch(`${url}/storage/v1/object/${encodeURIComponent(cleanBucket)}/${encodedPath}`, { method: "DELETE" });
+  if (!response.ok) return { data: null, error: await readError(response) };
+  return { data: true, error: null };
+}
+
+export async function restInsertReturning<T = Record<string, unknown>>(tableName: string, payload: Record<string, unknown>): Promise<SupabaseRestResult<T[]>> {
+  if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
+  const response = await authFetch(`${url}/rest/v1/${encodeURIComponent(tableName)}`, {
+    method: "POST",
+    headers: { Prefer: "return=representation" },
+    body: JSON.stringify(payload),
+  });
+  if (!response.ok) return { data: null, error: await readError(response) };
+  return { data: (await response.json()) as T[], error: null };
 }

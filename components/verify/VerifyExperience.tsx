@@ -196,7 +196,7 @@ export default function VerifyExperience() {
               return <label key={kind} className={styles.uploadCard}>
                 <div className={styles.uploadIcon}>{kind === 'identity' ? '▣' : '◉'}</div>
                 <div><strong>{kind === 'identity' ? t.document : t.selfie}</strong><p>{kind === 'identity' ? t.docHint : t.selfieHint}</p></div>
-                {previewUrls[kind] ? (selected?.type === 'application/pdf' || (!selected && /\.pdf(?:\?|$)/i.test(previewUrls[kind])) ? <iframe className={styles.filePreview} src={previewUrls[kind]} title={kind === 'identity' ? t.document : t.selfie}/> : <img className={styles.filePreview} src={previewUrls[kind]} alt={kind === 'identity' ? t.document : t.selfie}/>) : null}
+                {previewUrls[kind] ? (selected?.type === 'application/pdf' || (!selected && /\.pdf(?:\?|$)/i.test(previewUrls[kind])) ? <iframe className={styles.filePreview} src={previewUrls[kind]} title={kind === 'identity' ? t.document : t.selfie}/> : kind === 'identity' ? <div className={styles.watermarkedPreview}><img className={styles.filePreview} src={previewUrls[kind]} alt={t.document}/><span className={styles.documentWatermark}>เอกสารใช้เพื่อยืนยันตัวตนในระบบ Melo Chat เท่านั้น</span></div> : <img className={styles.filePreview} src={previewUrls[kind]} alt={t.selfie}/>) : null}
                 <span className={styles.fileName}>{selected?.name || (existing ? '✓ ' + statusText : '')}</span>
                 {!locked ? <><span className={styles.chooseButton}>{selected || existing ? t.replace : t.choose}</span><input className={styles.fileInput} type="file" accept="image/jpeg,image/png,image/webp,application/pdf" onChange={(e)=>selectFile(kind,e)}/></> : null}
               </label>;
