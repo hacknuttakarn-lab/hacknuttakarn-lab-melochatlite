@@ -1,11 +1,26 @@
-Melo Chat Lite V39 — Registration Profile Onboarding
+Melo Chat Lite V39 — User Support Light Theme + Mobile Drawer Safe Scroll
 
-1) Apply this overlay to the current project.
-2) Run the SQL in Supabase SQL Editor:
-   supabase/migrations/20260928164500_profile_onboarding.sql
-3) Restart dev server if it is running: npm run dev
+Changed files only:
+- app/globals.css
+- components/support/SupportChatExperience.module.css
 
-Flow:
-Register -> email confirmation -> /onboarding -> Step 1 Personal -> Step 2 Looking for -> Step 3 Lifestyle -> /account (Home)
-Login also resumes incomplete onboarding.
-Responsive mobile layout includes top/bottom safe areas. UI supports dark/light system theme and TH/EN/DE via the existing app locale.
+Changes:
+1) User Melo Chat Support light mode
+   - White/light chat canvas, header and composer
+   - Support messages no longer use a dark bubble in Light mode
+   - Member messages use a Melo light-blue bubble
+   - Translation toggle, borders, timestamps and textarea follow Light theme
+
+2) Mobile hamburger menu (User + Admin Center)
+   - Drawer becomes an independent iOS-friendly vertical scroller
+   - Uses fixed top/bottom bounds instead of fixed calculated height
+   - Adds safe-area/bottom breathing room after Log out
+   - Prevents the last menu item from being cut off by the bottom viewport area
+
+No SQL migration.
+
+After overlay:
+cd D:\project\melochat-web-lite
+npx tsc --noEmit
+npm run build
+npm run dev

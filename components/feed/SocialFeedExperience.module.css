@@ -608,3 +608,35 @@
   .commentComposer button{min-width:64px;padding:0 10px}
   .replyComment{margin-left:34px}
 }
+
+
+/* V39 — iOS keyboard: keep Comments header fixed to the visible viewport */
+@media(max-width:760px){
+  .drawer{
+    top:var(--melo-comment-vv-top,0px)!important;
+    right:0!important;
+    bottom:auto!important;
+    left:0!important;
+    height:var(--melo-comment-vv-height,100dvh)!important;
+    max-height:var(--melo-comment-vv-height,100dvh)!important;
+    grid-template-rows:auto minmax(0,1fr) auto;
+  }
+  .drawerHead{
+    position:sticky;
+    top:0;
+    z-index:6;
+    flex:0 0 auto;
+    background:var(--surface,#fff);
+  }
+  .commentList{
+    min-height:0;
+    overflow-y:auto;
+    -webkit-overflow-scrolling:touch;
+  }
+  .commentComposerWrap{
+    position:sticky;
+    bottom:0;
+    z-index:6;
+    background:var(--surface,#fff);
+  }
+}

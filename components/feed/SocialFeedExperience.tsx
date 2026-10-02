@@ -946,12 +946,32 @@ export function CommentsDrawer({
   const [replyTo, setReplyTo] = useState<SocialPostComment | null>(null);
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
   const commentListRef = useRef<HTMLDivElement | null>(null);
+  const commentDrawerRef = useRef<HTMLElement | null>(null);
 
   const replyCopy = locale === "th"
     ? { reply: "ตอบกลับ", replying: "กำลังตอบกลับ", cancel: "ยกเลิกการตอบกลับ" }
     : locale === "de"
       ? { reply: "Antworten", replying: "Antwort an", cancel: "Antwort abbrechen" }
       : { reply: "Reply", replying: "Replying to", cancel: "Cancel reply" };
+
+  useEffect(() => {
+    const drawer = commentDrawerRef.current;
+    const viewport = window.visualViewport;
+    if (!drawer || !viewport) return;
+
+    const syncViewport = () => {
+      drawer.style.setProperty("--melo-comment-vv-top", `${Math.max(0, viewport.offsetTop)}px`);
+      drawer.style.setProperty("--melo-comment-vv-height", `${Math.max(260, viewport.height)}px`);
+    };
+
+    syncViewport();
+    viewport.addEventListener("resize", syncViewport);
+    viewport.addEventListener("scroll", syncViewport);
+    return () => {
+      viewport.removeEventListener("resize", syncViewport);
+      viewport.removeEventListener("scroll", syncViewport);
+    };
+  }, []);
 
   useEffect(() => {
     const textarea = commentTextareaRef.current;
@@ -1026,7 +1046,7 @@ export function CommentsDrawer({
 
   return (
     <div className={styles.drawerBackdrop} onMouseDown={onClose}>
-      <aside className={styles.drawer} onMouseDown={(event) => event.stopPropagation()}>
+      <aside ref={commentDrawerRef} className={styles.drawer} onMouseDown={(event) => event.stopPropagation()}>
         <header className={styles.drawerHead}>
           <div><h3>{copy.comments}</h3><small>{post.authorName}</small></div>
           <button onClick={onClose}>×</button>

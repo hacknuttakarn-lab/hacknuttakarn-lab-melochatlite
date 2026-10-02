@@ -3064,7 +3064,7 @@ export function Header() {
     ) : null}
 
     {signedIn && menuOpen ? (
-      <button type="button" className="memberMobileMenuBackdrop" onClick={close} aria-label="Close menu" />
+      <button type="button" className={`memberMobileMenuBackdrop ${adminArea ? 'adminMobileMenuBackdrop' : ''}`} onClick={close} aria-label="Close menu" />
     ) : null}
 
     {signedIn && !adminArea ? (
