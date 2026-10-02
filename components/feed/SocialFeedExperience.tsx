@@ -550,12 +550,6 @@ export default function SocialFeedExperience() {
     void refresh(mode);
   }, [countryScope, mode]);
 
-  useEffect(() => {
-    const handleFeedUpdated = () => { void refresh(mode); };
-    window.addEventListener("melo-feed-updated", handleFeedUpdated);
-    return () => window.removeEventListener("melo-feed-updated", handleFeedUpdated);
-  }, [countryScope, mode]);
-
   function flash(message: string) {
     setToast(message);
     window.setTimeout(() => setToast(""), 2200);
@@ -949,7 +943,15 @@ export function CommentsDrawer({
   const [loading, setLoading] = useState(true);
   const [body, setBody] = useState("");
   const [sending, setSending] = useState(false);
+  const [replyTo, setReplyTo] = useState<SocialPostComment | null>(null);
   const commentTextareaRef = useRef<HTMLTextAreaElement | null>(null);
+  const commentListRef = useRef<HTMLDivElement | null>(null);
+
+  const replyCopy = locale === "th"
+    ? { reply: "ตอบกลับ", replying: "กำลังตอบกลับ", cancel: "ยกเลิกการตอบกลับ" }
+    : locale === "de"
+      ? { reply: "Antworten", replying: "Antwort an", cancel: "Antwort abbrechen" }
+      : { reply: "Reply", replying: "Replying to", cancel: "Cancel reply" };
 
   useEffect(() => {
     const textarea = commentTextareaRef.current;
@@ -978,17 +980,49 @@ export function CommentsDrawer({
 
   useEffect(() => { void load(); }, [post.id]);
 
+  function keepLatestCommentsVisible() {
+    window.setTimeout(() => {
+      const list = commentListRef.current;
+      if (list) list.scrollTo({ top: list.scrollHeight, behavior: "smooth" });
+    }, 120);
+  }
+
   async function send() {
     if (!body.trim() || sending) return;
     setSending(true);
     try {
-      await createSocialPostCommentWeb(post.id, body);
+      await createSocialPostCommentWeb(post.id, body, replyTo?.id || null);
       setBody("");
+      setReplyTo(null);
       await load();
+      keepLatestCommentsVisible();
     } finally {
       setSending(false);
     }
   }
+
+  const roots = comments.filter((comment) => !comment.parentCommentId);
+  const repliesByParent = new Map<string, SocialPostComment[]>();
+  for (const comment of comments) {
+    if (!comment.parentCommentId) continue;
+    const group = repliesByParent.get(comment.parentCommentId) || [];
+    group.push(comment);
+    repliesByParent.set(comment.parentCommentId, group);
+  }
+
+  const renderComment = (comment: SocialPostComment, nested = false) => (
+    <article className={`${styles.comment} ${nested ? styles.replyComment : ""}`} key={comment.id}>
+      <Link href={`/users/${comment.authorId}`}><Avatar src={comment.authorPhotoUrl} name={comment.authorName} userId={comment.authorId} /></Link>
+      <div>
+        <strong><Link href={`/users/${comment.authorId}`}>{comment.authorName}</Link></strong>
+        <p>{comment.body}</p>
+        <div className={styles.commentMeta}>
+          <small>{timeText(comment.createdAt, locale)}</small>
+          {!nested ? <button type="button" className={styles.replyButton} onClick={() => { setReplyTo(comment); requestAnimationFrame(() => commentTextareaRef.current?.focus()); }}>{replyCopy.reply}</button> : null}
+        </div>
+      </div>
+    </article>
+  );
 
   return (
     <div className={styles.drawerBackdrop} onMouseDown={onClose}>
@@ -997,21 +1031,20 @@ export function CommentsDrawer({
           <div><h3>{copy.comments}</h3><small>{post.authorName}</small></div>
           <button onClick={onClose}>×</button>
         </header>
-        <div className={styles.commentList}>
-          {loading ? <div className={styles.commentState}>…</div> : comments.length ? comments.map((comment) => (
-            <article className={styles.comment} key={comment.id}>
-              <Link href={`/users/${comment.authorId}`}><Avatar src={comment.authorPhotoUrl} name={comment.authorName} userId={comment.authorId} /></Link>
-              <div>
-                <strong><Link href={`/users/${comment.authorId}`}>{comment.authorName}</Link></strong>
-                <p>{comment.body}</p>
-                <small>{timeText(comment.createdAt, locale)}</small>
-              </div>
-            </article>
+        <div ref={commentListRef} className={styles.commentList}>
+          {loading ? <div className={styles.commentState}>…</div> : comments.length ? roots.map((comment) => (
+            <div className={styles.commentThread} key={comment.id}>
+              {renderComment(comment)}
+              {(repliesByParent.get(comment.id) || []).map((reply) => renderComment(reply, true))}
+            </div>
           )) : <div className={styles.commentState}>{copy.noComments}</div>}
         </div>
-        <div className={styles.commentComposer}>
-          <textarea ref={commentTextareaRef} rows={1} value={body} onChange={(event) => setBody(event.target.value)} placeholder={copy.commentPlaceholder} />
-          <button onClick={send} disabled={!body.trim() || sending}>{copy.send}</button>
+        <div className={styles.commentComposerWrap}>
+          {replyTo ? <div className={styles.replyContext}><span>{replyCopy.replying} <strong>{replyTo.authorName}</strong></span><button type="button" onClick={() => setReplyTo(null)} aria-label={replyCopy.cancel}>×</button></div> : null}
+          <div className={styles.commentComposer}>
+            <textarea ref={commentTextareaRef} rows={1} value={body} onFocus={keepLatestCommentsVisible} onChange={(event) => setBody(event.target.value)} placeholder={replyTo ? `${replyCopy.reply}: ${replyTo.authorName}` : copy.commentPlaceholder} />
+            <button onClick={send} disabled={!body.trim() || sending}>{copy.send}</button>
+          </div>
         </div>
       </aside>
     </div>

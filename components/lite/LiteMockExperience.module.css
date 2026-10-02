@@ -719,3 +719,44 @@
   .composerBackdrop{display:flex!important;align-items:center!important;justify-content:center!important;place-items:unset!important;padding:max(76px,calc(12px + env(safe-area-inset-top))) 12px max(76px,calc(12px + env(safe-area-inset-bottom)))!important}
   .composerModal{width:100%!important;max-height:calc(100dvh - 164px)!important;margin:auto!important;border-radius:22px!important}
 }
+
+
+/* V26 — mobile composer breathing room + anchor post actions to the ⋯ button */
+@media(max-width:560px){
+  .composerBackdrop{
+    display:flex!important;
+    align-items:center!important;
+    justify-content:center!important;
+    padding:max(56px,calc(12px + env(safe-area-inset-top))) 12px max(118px,calc(28px + env(safe-area-inset-bottom)))!important;
+  }
+  .composerModal{
+    width:100%!important;
+    max-height:calc(100dvh - 190px)!important;
+    margin:0 auto!important;
+    transform:translateY(-24px);
+    border-radius:22px!important;
+  }
+  .postActionsDropdown{
+    position:absolute!important;
+    top:42px!important;
+    right:0!important;
+    bottom:auto!important;
+    left:auto!important;
+    width:158px!important;
+    z-index:95!important;
+  }
+}
+
+/* V27 — lift Create/Edit Post farther from the mobile bottom safe area. */
+@media(max-width:560px){
+  .composerBackdrop{
+    padding:max(42px,calc(10px + env(safe-area-inset-top))) 12px max(150px,calc(42px + env(safe-area-inset-bottom)))!important;
+  }
+  .composerModal{
+    max-height:calc(100dvh - 220px)!important;
+    transform:translateY(-52px)!important;
+  }
+  .composerModalFooter{
+    padding-bottom:max(22px,calc(14px + env(safe-area-inset-bottom)))!important;
+  }
+}

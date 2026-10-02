@@ -105,17 +105,67 @@
 .deleteVerification small{justify-self:end;color:var(--text-secondary);font-size:11px;font-weight:600}
 .confirmDanger:disabled{opacity:.45;cursor:not-allowed;filter:saturate(.55)}
 
-/* Admin Center V12: pending badges + user document viewer */
-.sidebar nav button{display:flex;align-items:center;justify-content:space-between;gap:10px}.menuBadge{min-width:24px;height:22px;padding:0 7px;border-radius:999px;display:inline-grid;place-items:center;background:var(--primary);color:#fff;font-size:10px;font-weight:950;line-height:1}.documentButton{border-color:color-mix(in srgb,var(--primary) 42%,var(--border))!important;color:var(--primary)!important;background:var(--primary-soft)!important}.documentModal{width:min(920px,100%)}.documentGrid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:16px}.documentPreview{display:grid;gap:8px;min-width:0}.documentPreview>strong{font-size:12px}.documentPreview img,.documentPreview iframe,.documentMissing{width:100%;height:360px;border:1px solid var(--border);border-radius:14px;background:var(--surface-2);object-fit:contain}.documentPreview iframe{background:#fff}.documentMissing{display:grid;place-items:center;color:var(--text-secondary)}.documentNote{margin-top:16px;padding:13px 14px;border:1px solid var(--border);border-radius:13px;background:var(--surface-2)}.documentNote b{font-size:12px}.documentNote p{margin:6px 0 0;color:var(--text-secondary);line-height:1.55;font-size:13px}@media(max-width:700px){.documentGrid{grid-template-columns:1fr}.documentPreview img,.documentPreview iframe,.documentMissing{height:300px}.documentModal{max-height:calc(100dvh - env(safe-area-inset-top) - env(safe-area-inset-bottom) - 24px);overflow:auto}}
-
-/* Identity document watermark */
-.documentWatermarkWrap{position:relative;overflow:hidden;border-radius:14px;background:var(--surface-2)}.documentWatermarkWrap img{border-radius:14px}.documentWatermarkWrap span{position:absolute;left:50%;top:50%;width:145%;transform:translate(-50%,-50%) rotate(-24deg);pointer-events:none;user-select:none;text-align:center;color:rgba(255,255,255,.74);text-shadow:0 1px 4px rgba(0,0,0,.85);font-size:clamp(12px,1.2vw,17px);font-weight:900;line-height:1.35;background:rgba(0,0,0,.25);padding:8px 12px}
-
-/* V18 — mobile Admin Center uses the hamburger admin menu only */
-@media(max-width:900px){
-  .shell{grid-template-columns:minmax(0,1fr)!important;gap:0!important}
-  .sidebar{display:none!important}
+/* V28 — themed admin selects */
+.formGrid select,.permissionRole select,.auditFilters select,.warningForm select{
+  width:100%;box-sizing:border-box;border:1px solid var(--border);border-radius:11px;
+  background:var(--surface-2);color:var(--text);padding:12px 42px 12px 13px;
+  font:inherit;font-size:15px;font-weight:800;line-height:1.2;cursor:pointer;outline:none;
+  color-scheme:dark;appearance:none;-webkit-appearance:none;
+  background-image:linear-gradient(45deg,transparent 50%,var(--text-secondary) 50%),linear-gradient(135deg,var(--text-secondary) 50%,transparent 50%);
+  background-position:calc(100% - 18px) 50%,calc(100% - 12px) 50%;
+  background-size:6px 6px,6px 6px;background-repeat:no-repeat;
 }
-@media(max-width:600px){
-  .shell{padding-top:10px!important}
+.formGrid select:focus,.permissionRole select:focus,.auditFilters select:focus,.warningForm select:focus{
+  border-color:var(--primary);box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 12%,transparent);
+}
+.formGrid select option,.permissionRole select option,.auditFilters select option,.warningForm select option{background:var(--surface);color:var(--text);font-size:15px}
+:global(html[data-theme="light"]) .formGrid select,:global(html[data-theme="light"]) .permissionRole select,:global(html[data-theme="light"]) .auditFilters select,:global(html[data-theme="light"]) .warningForm select{color-scheme:light}
+
+/* V29 — split package/translation views + visible 1/3/6-month pricing */
+.planSectionTabs{display:flex;gap:8px;margin:0 0 16px;padding-bottom:14px;border-bottom:1px solid var(--border)}
+.planSectionTabs button,.periodTabs button{border:1px solid var(--border);border-radius:999px;background:var(--surface-2);color:var(--text-secondary);padding:9px 15px;font:inherit;font-size:13px;font-weight:850;cursor:pointer}
+.planSectionTabs button[data-active=true],.periodTabs button[data-active=true]{background:var(--primary);border-color:var(--primary);color:#fff}
+.planToolbar{display:flex;align-items:center;justify-content:space-between;gap:14px;margin:0 0 10px}.periodTabs{display:flex;gap:8px;flex-wrap:wrap}.periodNote{margin:0 0 16px;color:var(--text-secondary);font-size:12px;line-height:1.5}.allPeriodPrices{display:flex;flex-wrap:wrap;gap:7px}.allPeriodPrices span{border:1px solid var(--border);border-radius:8px;background:var(--surface-2);padding:5px 7px;color:var(--text-secondary);font-size:10px;font-weight:800}.sectionEyebrow{font-size:10px;font-weight:900;letter-spacing:.12em;color:var(--primary)}.subsectionTitle{margin:4px 0 4px;font-size:25px}
+@media(max-width:700px){.planToolbar{align-items:stretch;flex-direction:column}.planToolbar>.primary{width:100%}.planSectionTabs button{flex:1}.periodTabs{display:grid;grid-template-columns:repeat(3,1fr)}.periodTabs button{padding-inline:8px}}
+
+/* V35: restore pending-count badge layout in Admin Center sidebar */
+.sidebar nav button{
+  display:flex;
+  align-items:center;
+  justify-content:space-between;
+  gap:10px;
+  width:100%;
+}
+.sidebar nav button > span{
+  min-width:0;
+  overflow:hidden;
+  text-overflow:ellipsis;
+  white-space:nowrap;
+}
+.menuBadge{
+  flex:0 0 auto;
+  min-width:22px;
+  height:22px;
+  padding:0 7px;
+  border-radius:999px;
+  display:inline-flex;
+  align-items:center;
+  justify-content:center;
+  background:var(--primary);
+  color:#fff;
+  font-size:11px;
+  font-weight:900;
+  line-height:1;
+  box-shadow:0 0 0 1px color-mix(in srgb,var(--primary) 45%,transparent), 0 4px 12px color-mix(in srgb,var(--primary) 30%,transparent);
+}
+.sidebar nav button[data-active=true] .menuBadge{
+  background:var(--primary);
+  color:#fff;
+}
+
+@media(max-width:900px){
+  .sidebar nav button{
+    width:auto;
+    min-width:max-content;
+  }
 }

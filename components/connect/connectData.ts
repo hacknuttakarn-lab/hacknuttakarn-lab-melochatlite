@@ -2175,6 +2175,21 @@ async function loadRecommended(
     }
   }
 
+  const rankScores = new Map<string, number>();
+  if (candidateIds.length) {
+    const ranked = await rpcRequest<Array<{profile_id?: string; ranking_score?: number}>>(
+      'melo_profile_discovery_scores_v25',
+      { p_profile_ids: candidateIds },
+    );
+    if (!ranked.error && Array.isArray(ranked.data)) {
+      for (const item of ranked.data) {
+        const id = String(item?.profile_id || '');
+        const score = Number(item?.ranking_score || 0);
+        if (id) rankScores.set(id, score);
+      }
+    }
+  }
+
   return rows
     .filter(
       (row) =>
@@ -2207,9 +2222,13 @@ async function loadRecommended(
         ),
     )
     .sort((a, b) => {
+      const aId = text(a, 'id');
+      const bId = text(b, 'id');
       const aTime = new Date(text(a, 'profile_boosted_at') || text(a, 'created_at') || 0).getTime();
       const bTime = new Date(text(b, 'profile_boosted_at') || text(b, 'created_at') || 0).getTime();
-      return bTime - aTime;
+      const aScore = rankScores.get(aId) ?? Math.floor(aTime / 1000);
+      const bScore = rankScores.get(bId) ?? Math.floor(bTime / 1000);
+      return bScore - aScore;
     })
     .map(
       datingProfile,

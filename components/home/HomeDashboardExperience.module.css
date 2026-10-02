@@ -199,7 +199,7 @@
 @media(max-width:640px){
   .headingRow{padding-bottom:60px}
   .boostLauncher{
-    position:fixed;z-index:760;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));
+    position:fixed;z-index:69;left:12px;right:12px;bottom:calc(78px + env(safe-area-inset-bottom));
     width:auto;min-height:48px;margin:0;box-shadow:0 10px 30px rgba(0,0,0,.28),0 7px 22px rgba(79,157,248,.22)
   }
   .boostBackdrop{place-items:center!important;align-items:center!important;padding:max(14px,env(safe-area-inset-top)) 10px max(92px,calc(14px + env(safe-area-inset-bottom)))!important}

@@ -50,7 +50,13 @@ export async function POST(request:NextRequest){
     return NextResponse.json({error:'Image path does not belong to the signed-in user.'},{status:403});
   }
   try{
-    const blob=await put(`${bucket}/${path}`,file,{access:'public',contentType:file.type,addRandomSuffix:true,cacheControlMaxAge:31536000});
+    const token=(process.env.BLOB_READ_WRITE_TOKEN||'').trim();
+    const oidcToken=(process.env.VERCEL_OIDC_TOKEN||'').trim();
+    const storeId=(process.env.BLOB_STORE_ID||'').trim();
+    const credentials:Record<string,string>={};
+    if(token && token !== '[SENSITIVE]') credentials.token=token;
+    else if(oidcToken && storeId){credentials.oidcToken=oidcToken;credentials.storeId=storeId;}
+    const blob=await put(`${bucket}/${path}`,file,{access:'public',contentType:file.type,addRandomSuffix:true,cacheControlMaxAge:31536000,...credentials} as any);
     return NextResponse.json({url:blob.url,pathname:blob.pathname,contentType:blob.contentType});
   }catch(cause){
     return NextResponse.json({error:cause instanceof Error?cause.message:'Blob upload failed.'},{status:500});
@@ -63,6 +69,13 @@ export async function DELETE(request:NextRequest){
   const payload=await request.json().catch(()=>({}));
   const url=String(payload?.url||'').trim();
   if(!/^https:\/\/[^/]+\.public\.blob\.vercel-storage\.com\//i.test(url))return NextResponse.json({error:'Invalid Blob URL.'},{status:400});
-  try{await del(url);return NextResponse.json({ok:true});}
+  try{
+    const token=(process.env.BLOB_READ_WRITE_TOKEN||'').trim();
+    const oidcToken=(process.env.VERCEL_OIDC_TOKEN||'').trim();
+    const storeId=(process.env.BLOB_STORE_ID||'').trim();
+    const credentials:Record<string,string>={};
+    if(token && token !== '[SENSITIVE]') credentials.token=token;
+    else if(oidcToken && storeId){credentials.oidcToken=oidcToken;credentials.storeId=storeId;}
+    await del(url,credentials as any);return NextResponse.json({ok:true});}
   catch(cause){return NextResponse.json({error:cause instanceof Error?cause.message:'Blob delete failed.'},{status:500});}
 }

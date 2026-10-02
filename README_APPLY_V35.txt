@@ -1,18 +1,17 @@
-Melo Chat Lite - Settings Route V35 Overlay
+Melo Chat Lite V35 - Admin Center pending badge restore
+
+Changed:
+- components/admin/AdminCenter.module.css
 
 Fix:
-- /settings now renders the real SettingsExperience instead of LiteMockExperience kind="settings".
-- Includes Personal Profile settings + Dating settings implementation from V34.
-- Thai / English / German, Light / Dark, responsive behavior retained.
-- Includes Supabase migration for personal profile settings and 6 gallery photos.
+- Restores menu pending counters as separate badges aligned to the right.
+- Prevents labels such as "รายงานผู้ใช้2".
+- Keeps active/inactive menu styling and responsive behavior.
 
-Apply:
-1. Extract/copy this overlay into the Melo Chat Lite project root and overwrite matching files.
-2. Run the SQL migration in Supabase SQL Editor:
-   supabase/migrations/20260928160000_profile_personal_settings.sql
-3. Restart dev server:
-   npm run dev
+No SQL migration required.
 
-Verification performed:
-- TypeScript: ./node_modules/.bin/tsc --noEmit -> PASS
-- next build could not complete in the isolated environment because Next attempted to download @next/swc from registry.npmjs.org and network access is unavailable.
+Run:
+cd D:\project\melochat-web-lite
+npx tsc --noEmit
+npm run build
+npm run dev

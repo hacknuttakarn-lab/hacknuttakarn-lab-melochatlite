@@ -1139,7 +1139,17 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
   .meloLiteHero h1 { font-size: clamp(42px, 13vw, 58px); }
   .meloLiteHero .heroActions { display: grid; grid-template-columns: 1fr 1fr; width: 100%; }
   .meloLiteHero .heroActions .button { width: 100%; justify-content: center; }
-  .meloLiteStage { transform: scale(.72); margin-left: -15%; margin-right: -15%; margin-bottom: -115px; }
+  /* V26: keep the phone preview visually centered on narrow screens. */
+  .meloLiteStage {
+    width: 620px;
+    max-width: none;
+    left: 50%;
+    transform: translateX(-50%) scale(.72);
+    transform-origin: top center;
+    margin-left: 0;
+    margin-right: 0;
+    margin-bottom: -115px;
+  }
 }
 
 /* Member header brand must follow the active theme. */
@@ -1184,3 +1194,119 @@ html[data-theme='dark'] .memberSiteHeader .brand span {
   .memberSiteHeader .adminMobileSupportTop>strong{font-size:11px;font-weight:850;overflow:hidden;text-overflow:ellipsis}
   .memberSiteHeader .adminMobileSupportTop>b{display:grid;place-items:center;min-width:19px;height:19px;padding:0 5px;border-radius:999px;background:#ef5a65;color:#fff;font-size:9px;font-weight:950}
 }
+
+/* V27 — mobile landing fit + desktop login single language selector */
+@media (min-width: 901px) {
+  /* Login/Register already have the language selector in the top Header.
+     Hide the legacy floating selector below the Header on desktop. */
+  .desktopLoginOnly > .meloPublicLanguageSwitcher,
+  .desktopRegisterOnly > .meloPublicLanguageSwitcher {
+    display: none !important;
+  }
+}
+
+@media (max-width: 480px) {
+  /* Keep the public landing page inside the physical viewport. */
+  .meloLiteHero {
+    width: min(100% - 24px, 1200px) !important;
+    padding-top: 34px !important;
+    padding-bottom: 30px !important;
+    gap: 18px !important;
+    overflow: hidden;
+  }
+
+  .meloLiteHero .heroV2Copy {
+    width: 100%;
+    min-width: 0;
+    overflow: hidden;
+  }
+
+  .meloLiteHero .eyebrow {
+    max-width: 100%;
+    white-space: normal;
+    line-height: 1.35;
+    justify-content: center;
+    text-align: center;
+    padding: 8px 10px;
+    font-size: 8px;
+  }
+
+  .meloLiteHero h1 {
+    max-width: 100%;
+    margin: 18px 0 16px;
+    font-size: clamp(38px, 11.5vw, 48px) !important;
+    line-height: 1.02;
+    letter-spacing: -.045em;
+    overflow-wrap: anywhere;
+  }
+
+  .meloLiteHero .heroLead {
+    width: 100%;
+    max-width: 100%;
+    font-size: 14px;
+    line-height: 1.62;
+  }
+
+  .meloLiteHero .heroActions {
+    grid-template-columns: 1fr 1fr !important;
+    gap: 10px;
+    margin-top: 24px;
+  }
+
+  .meloLiteHero .heroActions .button {
+    min-width: 0;
+    padding-inline: 10px;
+    font-size: 12px;
+  }
+
+  .meloLiteHero .heroTrust {
+    width: 100%;
+    justify-content: center;
+    gap: 8px 12px;
+    font-size: 10px;
+  }
+
+  /* V26 used a 620px layout box and only visually scaled it. That still
+     widened the mobile page. Keep the stage itself within the viewport. */
+  .meloLiteStage {
+    position: relative;
+    left: auto !important;
+    width: min(100%, 430px) !important;
+    max-width: 430px !important;
+    min-height: 455px !important;
+    margin: 0 auto -74px !important;
+    transform: scale(.82) !important;
+    transform-origin: top center !important;
+  }
+
+  .meloLiteStage .phoneV2Front { right: 0 !important; }
+  .meloLiteStage .phoneV2Back { left: 0 !important; }
+  .meloLiteStage .floatTrip { left: -8px !important; }
+  .meloLiteStage .floatCommunity { right: -8px !important; }
+}
+
+@media (max-width: 380px) {
+  .meloLiteHero h1 { font-size: 36px !important; }
+  .meloLiteHero .heroActions { grid-template-columns: 1fr !important; }
+  .meloLiteStage { transform: scale(.74) !important; margin-bottom: -105px !important; }
+}
+
+/* V28 — native language selectors follow Melo theme across member/admin areas. */
+.languageSelect select,.countrySelect select,.memberMobileNavContent select,.publicMobileLanguageControl select{
+  color-scheme:dark;accent-color:var(--primary);
+}
+.languageSelect option,.countrySelect option,.memberMobileNavContent option,.publicMobileLanguageControl option{
+  background:var(--surface)!important;color:var(--text)!important;font-size:14px;font-weight:700;
+}
+html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"]) .countrySelect select,html:not([data-theme="dark"]) .memberMobileNavContent select,html:not([data-theme="dark"]) .publicMobileLanguageControl select{color-scheme:light}
+@media(max-width:760px){
+  .languageSelect select,.countrySelect select,.memberMobileNavContent select,.publicMobileLanguageControl select{font-size:16px!important}
+}
+
+/* V29 — custom signed-in language menu; avoids unthemeable native OS dropdown. */
+.meloLanguageMenu{position:relative;flex:none;color:var(--text)}
+.meloLanguageMenu>summary{list-style:none;min-width:118px;height:44px;box-sizing:border-box;display:flex;align-items:center;gap:8px;padding:0 12px;border:1px solid var(--border);border-radius:13px;background:var(--surface);color:var(--text);cursor:pointer;font-size:13px;font-weight:850;user-select:none}
+.meloLanguageMenu>summary::-webkit-details-marker{display:none}.meloLanguageMenu>summary::marker{display:none;content:""}.meloLanguageMenu>summary:hover{background:var(--surface-2)}.meloLanguageMenu[open]>summary{border-color:color-mix(in srgb,var(--primary) 48%,var(--border));box-shadow:0 0 0 3px color-mix(in srgb,var(--primary) 10%,transparent)}
+.meloLanguageChevron{margin-left:auto;color:var(--text-secondary);font-size:15px;line-height:1}.meloLanguageMenuList{position:absolute;right:0;top:calc(100% + 7px);z-index:4500;width:170px;padding:7px;border:1px solid var(--border);border-radius:13px;background:var(--surface);box-shadow:0 18px 45px rgba(0,0,0,.28)}
+.meloLanguageMenuList button{width:100%;display:flex;align-items:center;justify-content:space-between;gap:10px;border:0;border-radius:9px;background:transparent;color:var(--text);padding:10px 11px;text-align:left;font:inherit;font-size:13px;font-weight:800;cursor:pointer}.meloLanguageMenuList button:hover,.meloLanguageMenuList button[data-active=true]{background:var(--primary-soft);color:var(--primary)}.meloLanguageMenuList b{font-size:13px;color:var(--primary)}
+@media(max-width:760px){.meloLanguageMenu>summary{min-width:108px;height:40px;padding-inline:10px}.meloLanguageMenuList{position:fixed;right:12px;top:68px;width:min(220px,calc(100vw - 24px))}.adminTopLanguage{display:none!important}}

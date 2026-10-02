@@ -570,11 +570,11 @@ export async function loadSocialPostCommentsWeb(postId: string): Promise<SocialP
     .filter((item) => Boolean(item.id));
 }
 
-export async function createSocialPostCommentWeb(postId: string, body: string) {
+export async function createSocialPostCommentWeb(postId: string, body: string, parentCommentId: string | null = null) {
   const result = await rpcRequest<string>("create_social_post_comment", {
     p_post_id: postId,
     p_body: body.trim(),
-    p_parent_comment_id: null,
+    p_parent_comment_id: parentCommentId,
   });
   if (result.error) throw new Error(result.error);
   return String(result.data || "");

@@ -1,10 +1,2 @@
-import { Suspense } from 'react';
-import LiteMockExperience from '@/components/lite/LiteMockExperience';
-
-export default function Page() {
-  return (
-    <Suspense fallback={null}>
-      <LiteMockExperience kind="premium" />
-    </Suspense>
-  );
-}
+import PremiumPlanExperience from '@/components/premium/PremiumPlanExperience';
+export default function Page(){return <PremiumPlanExperience/>}

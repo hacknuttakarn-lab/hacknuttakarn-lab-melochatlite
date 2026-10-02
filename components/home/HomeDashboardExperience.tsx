@@ -7,6 +7,7 @@ import { Header } from "@/components/Header";
 import { useLocale } from "@/components/SiteProviders";
 import { boostMyDatingProfile, loadDatingProfileById, loadLoveSnapshot, setLoveLike, loadFollowedProfileIds, setProfileFollow, setProfilePass, type DatingProfileWeb } from "@/components/connect/connectData";
 import { getCurrentUser, isSupabaseConfigured } from "@/lib/supabase/browser";
+import { loadMyPlanUsage, type PlanUsage } from "@/lib/plan/planWeb";
 import { countryFlagEmoji } from "@/lib/countryFlag";
 import styles from "./HomeDashboardExperience.module.css";
 
@@ -42,6 +43,8 @@ export default function HomeDashboardExperience() {
   const [boostOpen, setBoostOpen] = useState(false);
   const [boostBusy, setBoostBusy] = useState(false);
   const [boostNotice, setBoostNotice] = useState<"success" | "error" | "">("");
+  const [planAccess,setPlanAccess]=useState<PlanUsage|null>(null);
+  const [upgradeOpen,setUpgradeOpen]=useState(false);
 
   useEffect(() => {
     let active = true;
@@ -63,12 +66,14 @@ export default function HomeDashboardExperience() {
           return;
         }
         setCurrentUserId(user.id);
-        const [snapshot, ownProfile] = await Promise.all([
+        const [snapshot, ownProfile, access] = await Promise.all([
           loadLoveSnapshot(user.id),
           loadDatingProfileById(user.id),
+          loadMyPlanUsage().catch(()=>null),
         ]);
         if (!active) return;
         setSelfProfile(ownProfile);
+        setPlanAccess(access);
         setProfiles(snapshot.recommended);
         setInterestedIds(snapshot.likedIds || []);
         setFollowedIds(await loadFollowedProfileIds());
@@ -102,6 +107,7 @@ export default function HomeDashboardExperience() {
   };
 
   const handleFollow = async (profileId: string) => {
+    if(planAccess?.can_follow===false){setUpgradeOpen(true);return;}
     const nextFollowed = !followedIds.includes(profileId);
     setFollowedIds((current) => nextFollowed ? Array.from(new Set([...current, profileId])) : current.filter((id) => id !== profileId));
     try {
@@ -114,6 +120,7 @@ export default function HomeDashboardExperience() {
   };
 
   const handleInterested = async (profileId: string) => {
+    if(planAccess?.can_interested===false){setUpgradeOpen(true);return;}
     const nextLiked = !interestedIds.includes(profileId);
     // Optimistic UI so the button responds immediately.
     setInterestedIds((current) => nextLiked ? Array.from(new Set([...current, profileId])) : current.filter((id) => id !== profileId));
@@ -128,6 +135,7 @@ export default function HomeDashboardExperience() {
   };
 
   const handleBoostProfile = async () => {
+    if(Number(planAccess?.profile_boost_limit||0)<=0){setBoostOpen(false);setUpgradeOpen(true);return;}
     if (boostBusy) return;
     setBoostBusy(true);
     setBoostNotice("");
@@ -177,7 +185,7 @@ export default function HomeDashboardExperience() {
             <h1>{t.title}</h1>
             <p>{t.subtitle}</p>
           </div>
-          <button type="button" className={styles.boostLauncher} onClick={() => { setBoostNotice(""); setBoostOpen(true); }}>
+          <button type="button" className={styles.boostLauncher} onClick={() => { if(Number(planAccess?.profile_boost_limit||0)<=0){setUpgradeOpen(true);return;} setBoostNotice(""); setBoostOpen(true); }}>
             <span>⚡</span>{t.boost}
           </button>
         </div>
@@ -205,7 +213,7 @@ export default function HomeDashboardExperience() {
               const nationality = nationalityLabel(profile);
               const flag = countryFlagEmoji(nationality);
               return (
-                <article className={styles.profileCard} key={profile.id} role="link" tabIndex={0} onClick={() => router.push(`/users/${profile.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); router.push(`/users/${profile.id}`); } }}>
+                <article className={styles.profileCard} key={profile.id} role="link" tabIndex={0} onClick={() => planAccess?.can_view_profiles===false?setUpgradeOpen(true):router.push(`/users/${profile.id}`)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); planAccess?.can_view_profiles===false?setUpgradeOpen(true):router.push(`/users/${profile.id}`); } }}>
                   <div className={styles.photoWrap}>
                     {photo ? <img src={photo} alt={profile.name} className={styles.photo} /> : <div className={styles.photoFallback}>{profile.name?.slice(0, 1).toUpperCase() || "M"}</div>}
                     {profile.isOnline ? <span className={styles.onlineDot} title="Online" /> : null}
@@ -232,6 +240,8 @@ export default function HomeDashboardExperience() {
           </div>
         ) : null}
         {!loading && !error && profileLimit < visibleProfiles.length ? <div ref={loadMoreRef} aria-hidden="true" style={{ height: 1 }} /> : null}
+
+        {upgradeOpen ? <div className={styles.boostBackdrop} role="presentation" onMouseDown={()=>setUpgradeOpen(false)}><section className={styles.boostModal} role="dialog" aria-modal="true" onMouseDown={event=>event.stopPropagation()}><div className={styles.boostModalHead}><div><span className={styles.boostEyebrow}>MELO PREMIUM</span><h2>{locale==="th"?"ปลดล็อกฟีเจอร์ Premium":locale==="de"?"Premium-Funktionen freischalten":"Unlock Premium Features"}</h2><p>{locale==="th"?"อัปเกรด Premium เพื่อเปิดโปรไฟล์เต็ม สนใจ ติดตาม แมตช์ แชท และใช้ Boost":locale==="de"?"Upgrade für vollständige Profile, Likes, Folgen, Matches, Chat und Boosts.":"Upgrade to Premium to view full profiles, connect, follow, match, chat and use boosts."}</p></div><button type="button" className={styles.boostClose} onClick={()=>setUpgradeOpen(false)}>×</button></div><div className={styles.boostCardAction}><button type="button" onClick={()=>{window.location.href="/premium"}}>View Premium Plans</button></div></section></div>:null}
 
         {boostOpen ? (
           <div className={styles.boostBackdrop} role="presentation" onMouseDown={() => setBoostOpen(false)}>

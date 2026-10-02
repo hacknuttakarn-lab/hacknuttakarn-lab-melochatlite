@@ -1578,7 +1578,7 @@ export function Header() {
     th: 'ยืนยันตัวตน', en: 'Verify', de: 'Verifizieren', zh: 'Verify', ja: 'Verify', ko: 'Verify',
   } as Record<string, string>)[locale] ?? 'Verify';
   const premiumLabel = ({
-    th: 'Premium', en: 'Premium', de: 'Premium', zh: 'Premium', ja: 'Premium', ko: 'Premium',
+    th: 'แพ็กเกต', en: 'Packages', de: 'Pakete', zh: 'Packages', ja: 'Packages', ko: 'Packages',
   } as Record<string, string>)[locale] ?? 'Premium';
   const adminReviewLabel = ({
     th: 'Admin Center', en: 'Admin Center', de: 'Admin Center', zh: 'Admin Center', ja: 'Admin Center', ko: 'Admin Center',
@@ -2630,7 +2630,7 @@ export function Header() {
                     </>
                   ) : (
                     <>
-                      <Link href="/premium" onClick={close}><span>✦</span>Premium</Link>
+                      <Link href="/premium" onClick={close}><span>✦</span>{premiumLabel}</Link>
                       <Link href="/settings" onClick={close}><span>⚙</span>{settingsLabel}</Link>
                       <Link href="/verify" onClick={close}><span>✓</span>{verifyLabel}</Link>
                       {adminReviewAllowed ? <Link href="/admin" onClick={close}><span>▣</span>{adminReviewLabel}</Link> : null}
@@ -2662,7 +2662,7 @@ export function Header() {
                   </button>
                 </div>
               ) : (
-                <Link className="navDownload" href="/#download" onClick={close}>{t('nav.download')}</Link>
+                <PublicLanguageSwitcher placement="header" />
               )}
             </>
           )}
@@ -2836,14 +2836,20 @@ export function Header() {
             </button>
           ) : null}
           {signedIn && (
-            <label className={`countrySelect ${adminArea ? 'adminTopLanguage' : ''}`} aria-label={t('common.language')} title={t('common.language')}>
-              <span>🌐</span>
-              <select value={locale} onChange={(event) => setLocale(event.target.value as typeof locale)}>
+            <details className={`meloLanguageMenu ${adminArea ? 'adminTopLanguage' : ''}`}>
+              <summary aria-label={t('common.language')} title={t('common.language')}>
+                <span aria-hidden="true">🌐</span>
+                <strong>{localeLabels[locale]}</strong>
+                <span className="meloLanguageChevron" aria-hidden="true">⌄</span>
+              </summary>
+              <div className="meloLanguageMenuList" role="menu">
                 {selectableLocales.filter((item) => item === 'th' || item === 'en' || item === 'de').map((item) => (
-                  <option value={item} key={item}>{localeLabels[item]}</option>
+                  <button type="button" role="menuitemradio" aria-checked={locale===item} data-active={locale===item} key={item} onClick={(event)=>{setLocale(item as typeof locale);(event.currentTarget.closest('details') as HTMLDetailsElement|null)?.removeAttribute('open')}}>
+                    <span>{localeLabels[item]}</span>{locale===item?<b>✓</b>:null}
+                  </button>
                 ))}
-              </select>
-            </label>
+              </div>
+            </details>
           )}
 
           {!signedIn && authChecked && <Link className="headerLogin" href="/login">{auth.login}</Link>}

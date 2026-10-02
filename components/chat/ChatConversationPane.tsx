@@ -6,6 +6,7 @@ import { useLocale } from "@/components/SiteProviders";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import {
   getCurrentUser,
+  getStoredSession,
   invokeEdgeFunction,
   isSupabaseConfigured,
   publicStorageUrl,
@@ -218,6 +219,7 @@ type RenderMessage = {
   isMine: boolean | null;
   senderSide: "" | "user" | "business";
   originalBody: string;
+  sourceLanguage: string;
   translations: Record<string, string>;
   createdAt: string;
   messageType: "text" | "image" | "location" | "sticker";
@@ -790,6 +792,9 @@ function directToRender(
     originalBody:
       message.body,
 
+    sourceLanguage:
+      message.sourceLanguage,
+
     translations:
       message.translations,
 
@@ -838,6 +843,9 @@ function activityToRender(
 
     originalBody:
       message.body,
+
+    sourceLanguage:
+      message.sourceLanguage,
 
     translations:
       message.translations,
@@ -1540,6 +1548,13 @@ export function ChatConversationPane({
       return message;
     }
 
+    if (
+      normalizeChatLanguage(message.sourceLanguage) ===
+      normalizeChatLanguage(targetLanguage)
+    ) {
+      return message;
+    }
+
     const alreadyTranslated =
       message.translations?.[
         targetLanguage
@@ -1582,8 +1597,8 @@ export function ChatConversationPane({
               "POST",
 
             headers: {
-              "Content-Type":
-                "application/json",
+              "Content-Type": "application/json",
+              ...(getStoredSession()?.access_token ? { Authorization: `Bearer ${getStoredSession()!.access_token}` } : {}),
             },
 
             body:
@@ -3230,6 +3245,9 @@ renderedMessages.map(
                     .value,
                 )
               }
+              onFocus={() => {
+                window.setTimeout(() => endRef.current?.scrollIntoView({ block: "end" }), 120);
+              }}
               placeholder={
                 t.placeholder
               }

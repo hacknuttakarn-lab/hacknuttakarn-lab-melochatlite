@@ -4218,6 +4218,14 @@ export async function sendDirectMessage(
   locale:
     string,
 ) {
+  const entitlement = await rpcRequest<boolean>(
+    "melo_has_entitlement_v25",
+    { p_key: "can_chat" },
+  );
+  if (!entitlement.error && entitlement.data === false) {
+    throw new Error("PLAN_UPGRADE_REQUIRED:chat");
+  }
+
   const body =
     messageBodyForPayload(
       payload,
