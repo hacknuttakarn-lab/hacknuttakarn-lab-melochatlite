@@ -1,17 +1,19 @@
-Melo Chat Lite Settings V36
+Melo Chat Lite — V36 Mobile Admin Center layout fix
 
-Changes only to Settings:
-- Removed Appearance card.
-- Removed Language and translation card.
-- Removed Weight, Occupation, Lives in, Languages spoken from Personal profile.
-- Education is now a dropdown.
-- Looking for is a separate multi-select chip section.
-- Sexual orientation is a separate multi-select chip section.
-- Lifestyle is a structured section: Pets, Drinking, Smoking, Exercise, Social style, Interests.
-- Responsive mobile/tablet + light/dark + TH/EN/DE retained.
+Changed only:
+- components/admin/AdminCenter.module.css
 
-Apply overlay to project root.
-Run Supabase SQL migration:
-  supabase/migrations/20260928173000_profile_matching_preferences.sql
-Then run:
-  npm run dev
+Mobile only (<=700px):
+- Hide the embedded Admin Center sidebar.
+- Keep the hamburger/AppShell menu as the only admin navigation on mobile.
+- Force Admin Center content to a single full-width mobile column.
+- Keep wide admin tables scrollable inside their own container instead of widening the page.
+- Preserve mobile bottom safe area.
+
+No SQL migration.
+
+After overlay:
+cd D:\project\melochat-web-lite
+npx tsc --noEmit
+npm run build
+npm run dev

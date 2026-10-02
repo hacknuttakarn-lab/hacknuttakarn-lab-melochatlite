@@ -2753,19 +2753,6 @@ export default function SettingsExperience() {
                 />
               ) : null}
 
-              {account.canQuestRewardAdmin ? (
-                <SettingsLink
-                  icon="✓"
-                  title={
-                    t.diagnostics
-                  }
-                  value={
-                    t.manage
-                  }
-                  href="/production-diagnostics"
-                />
-              ) : null}
-
 
               <SettingsLink
                 icon="?"

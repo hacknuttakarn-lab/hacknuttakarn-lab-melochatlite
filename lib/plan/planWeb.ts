@@ -53,6 +53,7 @@ export type PublicPlan = Record<string, unknown> & {
   high_post_limit?: boolean;
   priority_support?: boolean;
   is_active?: boolean;
+  show_on_user_packages?: boolean;
 };
 
 export type TranslationAddon = {
@@ -72,7 +73,7 @@ export async function loadMyPlanUsage(): Promise<PlanUsage> {
 }
 
 export async function loadPublicPlans(): Promise<PublicPlan[]> {
-  const result = await restSelect<PublicPlan[]>('subscription_plans', 'select=*&is_active=eq.true&order=sort_order.asc');
+  const result = await restSelect<PublicPlan[]>('subscription_plans', 'select=*&is_active=eq.true&show_on_user_packages=eq.true&order=sort_order.asc');
   if (result.error) throw new Error(result.error);
   return Array.isArray(result.data) ? result.data : [];
 }

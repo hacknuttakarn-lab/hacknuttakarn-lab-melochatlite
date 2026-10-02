@@ -20,7 +20,7 @@ type AuthResult<T> = { data: T | null; error: string | null };
 const STORAGE_KEY = "melo-web-auth-session";
 const url = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, "") ?? "";
 const key = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY ?? "";
-const REFRESH_EARLY_SECONDS = 120;
+const REFRESH_EARLY_SECONDS = 600;
 
 let refreshInFlight: Promise<MeloSession | null> | null = null;
 let currentUserInFlight: Promise<MeloUser | null> | null = null;
@@ -263,8 +263,16 @@ export async function getCurrentUser(): Promise<MeloUser | null> {
   if (!session) return null;
   if (shouldRefresh(session)) {
     const refreshed = await refreshStoredSession();
-    if (!refreshed) return null;
-    session = refreshed;
+    if (refreshed) {
+      session = refreshed;
+    } else {
+      // A transient refresh/network failure must not behave like an idle logout.
+      // performRefresh removes storage only when Supabase explicitly rejects the
+      // refresh token; otherwise keep the persisted member identity and retry.
+      const stored = getStoredSession();
+      if (!stored) return null;
+      session = stored;
+    }
   }
 
   const cachedUser = session.user?.id ? session.user : null;

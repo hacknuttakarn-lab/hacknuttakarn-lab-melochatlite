@@ -760,3 +760,26 @@
     padding-bottom:max(22px,calc(14px + env(safe-area-inset-bottom)))!important;
   }
 }
+
+/* V37 — Connect upgrade card follows the active Light/Dark theme. */
+:global(html[data-theme="light"]) .panel{
+  background:var(--surface,#fff);
+  border-color:var(--border,#d7dee8);
+  color:var(--text,#111827);
+  box-shadow:0 8px 24px rgba(31,45,61,.07);
+}
+:global(html[data-theme="light"]) .panel h3{color:var(--text,#111827)}
+:global(html[data-theme="light"]) .panel p{color:var(--text-secondary,#667085);border-top-color:var(--border,#d7dee8)}
+.panel>button{
+  border:1px solid color-mix(in srgb,var(--primary,#347ff3) 45%,var(--border,#263241));
+  border-radius:12px;
+  background:var(--primary,#347ff3);
+  color:#fff;
+  padding:10px 14px;
+  font:inherit;
+  font-weight:850;
+  cursor:pointer;
+  box-shadow:0 8px 18px color-mix(in srgb,var(--primary,#347ff3) 18%,transparent);
+}
+.panel>button:hover{filter:brightness(1.04)}
+:global(html[data-theme="light"]) .panel>button{background:var(--primary,#347ff3);color:#fff}

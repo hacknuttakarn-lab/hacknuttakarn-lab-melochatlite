@@ -169,3 +169,94 @@
     min-width:max-content;
   }
 }
+
+/* V36 — Mobile Admin Center: use hamburger drawer only; remove embedded sidebar */
+@media (max-width:700px){
+  .page{
+    width:100%;
+    max-width:100%;
+    overflow-x:hidden;
+    padding:0 0 calc(78px + env(safe-area-inset-bottom));
+  }
+
+  .shell{
+    display:block !important;
+    width:100% !important;
+    max-width:100% !important;
+    margin:0 !important;
+    padding:12px 12px calc(78px + env(safe-area-inset-bottom)) !important;
+    box-sizing:border-box;
+  }
+
+  .sidebar{
+    display:none !important;
+  }
+
+  .content,
+  .reviewWorkspace{
+    width:100% !important;
+    max-width:100% !important;
+    min-width:0 !important;
+    margin:0 !important;
+  }
+
+  .heading{
+    width:100%;
+    max-width:100%;
+    margin:2px 0 14px;
+    gap:10px;
+    box-sizing:border-box;
+  }
+
+  .heading h2{
+    font-size:28px;
+    line-height:1.15;
+  }
+
+  .heading input{
+    width:100% !important;
+    max-width:100% !important;
+    box-sizing:border-box;
+  }
+
+  .tableWrap{
+    width:100%;
+    max-width:100%;
+    overflow-x:auto;
+    overflow-y:hidden;
+    -webkit-overflow-scrolling:touch;
+    box-sizing:border-box;
+  }
+
+  .tableWrap table{
+    width:max-content;
+    min-width:760px;
+  }
+
+  .cards,
+  .planGrid,
+  .stats,
+  .formGrid{
+    width:100%;
+    max-width:100%;
+    grid-template-columns:1fr;
+  }
+}
+
+/* V37 — package visibility is independent from Admin Center availability */
+.visibilityRow{display:flex;align-items:center;justify-content:space-between;gap:12px;padding:10px 0 2px;border-top:1px solid var(--border)}
+.visibilityState{font-size:12px;font-weight:800;color:var(--text-secondary)}
+.visibilityState[data-visible=true]{color:var(--success)}
+.visibilityToggle{position:relative;width:46px;height:26px;border:1px solid var(--border);border-radius:999px;background:var(--surface-3);padding:0;cursor:pointer;transition:.2s ease}
+.visibilityToggle span{position:absolute;left:3px;top:3px;width:18px;height:18px;border-radius:50%;background:var(--text-secondary);transition:.2s ease}
+.visibilityToggle[data-on=true]{background:color-mix(in srgb,var(--primary) 24%,var(--surface-2));border-color:var(--primary)}
+.visibilityToggle[data-on=true] span{left:23px;background:var(--primary)}
+.visibilityToggle:disabled{opacity:.55;cursor:wait}
+.packageVisibilityHint{margin:16px 0;padding:12px 14px;border:1px solid color-mix(in srgb,var(--primary) 22%,var(--border));border-radius:12px;background:color-mix(in srgb,var(--primary) 6%,var(--surface));color:var(--text-secondary);font-size:12px;line-height:1.55}
+@media(max-width:600px){.visibilityRow{align-items:flex-start}.visibilityState{max-width:75%;line-height:1.4}}
+
+/* V38 — package archive confirmation */
+.archiveNotice{margin:16px 0 20px;border:1px solid color-mix(in srgb,#e24b5b 28%,var(--border));border-radius:14px;background:color-mix(in srgb,#e24b5b 7%,var(--surface-2));padding:14px 15px}
+.archiveNotice b{display:block;color:var(--text);font-size:13px}
+.archiveNotice p{margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.55}
+.cardActions{display:flex;flex-wrap:wrap;gap:7px}

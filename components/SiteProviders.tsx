@@ -3,6 +3,7 @@
 import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { dictionaries, localeLabels, supportedLocales, type Locale, type TranslationKey } from '@/i18n/dictionaries';
 import { GLOBAL_COUNTRY_SCOPE, isCountryScope, type CountryScope } from '@/lib/discoveryCountry';
+import { getStoredSession, refreshStoredSession } from '@/lib/supabase/browser';
 
 type ThemeMode = 'light' | 'dark';
 export type ThemePreference = 'system' | ThemeMode;
@@ -97,6 +98,30 @@ export function SiteProviders({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
     window.localStorage.setItem('melo-web-locale', locale);
   }, [locale]);
+
+  // Keep a valid Supabase session alive while the member remains signed in.
+  // There is no idle/inactivity logout: sign-out stays user initiated unless
+  // Supabase itself invalidates/revokes the refresh token.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const keepSessionAlive = () => {
+      if (!getStoredSession()) return;
+      void refreshStoredSession().catch(() => undefined);
+    };
+    keepSessionAlive();
+    const timer = window.setInterval(keepSessionAlive, 60_000);
+    const onFocus = () => keepSessionAlive();
+    const onVisibility = () => {
+      if (document.visibilityState === 'visible') keepSessionAlive();
+    };
+    window.addEventListener('focus', onFocus);
+    document.addEventListener('visibilitychange', onVisibility);
+    return () => {
+      window.clearInterval(timer);
+      window.removeEventListener('focus', onFocus);
+      document.removeEventListener('visibilitychange', onVisibility);
+    };
+  }, []);
 
   const value = useMemo<SiteContextValue>(() => ({
     locale,

@@ -96,3 +96,45 @@
     font-size: 10px;
   }
 }
+
+/* V38 — explicit Light mode. Do not depend on the device color-scheme. */
+:global(html[data-theme="light"]) .page,
+:global(html:not([data-theme="dark"])) .page{
+  background:radial-gradient(circle at 86% 3%,rgba(52,127,243,.08),transparent 30rem),#eef4fb;
+  color:#142033;
+}
+:global(html[data-theme="light"]) .accountCard,
+:global(html:not([data-theme="dark"])) .accountCard{
+  border-color:#cbd8e8;
+  background:linear-gradient(145deg,#f9fcff,#eaf4ff);
+  color:#142033;
+  box-shadow:0 14px 34px rgba(35,67,110,.10);
+}
+:global(html[data-theme="light"]) .accountCopy span,
+:global(html:not([data-theme="dark"])) .accountCopy span{color:#65758c}
+:global(html[data-theme="light"]) .planBadge,
+:global(html:not([data-theme="dark"])) .planBadge{
+  border-color:#b7d7ff;background:#e4f1ff;color:#256dcc;
+}
+:global(html[data-theme="light"]) .sectionCard,
+:global(html:not([data-theme="dark"])) .sectionCard{
+  background:#fff;border-color:#d3deeb;box-shadow:0 10px 28px rgba(35,52,77,.06);
+}
+:global(html[data-theme="light"]) .choiceGrid button,
+:global(html[data-theme="light"]) .inlineLanguages button,
+:global(html[data-theme="light"]) .connectMiniCard,
+:global(html[data-theme="light"]) .formCard,
+:global(html[data-theme="light"]) .optionBlock,
+:global(html[data-theme="light"]) .nationalityPicker,
+:global(html[data-theme="light"]) .connectTabs,
+:global(html[data-theme="light"]) .connectState,
+:global(html:not([data-theme="dark"])) .choiceGrid button,
+:global(html:not([data-theme="dark"])) .inlineLanguages button,
+:global(html:not([data-theme="dark"])) .connectMiniCard,
+:global(html:not([data-theme="dark"])) .formCard,
+:global(html:not([data-theme="dark"])) .optionBlock,
+:global(html:not([data-theme="dark"])) .nationalityPicker,
+:global(html:not([data-theme="dark"])) .connectTabs,
+:global(html:not([data-theme="dark"])) .connectState{
+  background:#f6f9fd;border-color:#d7e1ed;color:#142033;
+}
