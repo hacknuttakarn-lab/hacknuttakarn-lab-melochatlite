@@ -1284,3 +1284,58 @@
   .composer,.composerMain,.composerInputWrap{min-width:0;max-width:100%;box-sizing:border-box}
   .composer textarea{font-size:16px!important;width:100%;min-width:0;max-width:100%;box-sizing:border-box;touch-action:manipulation}
 }
+
+/* V42 — drawer conversation header remains in its own fixed grid row while
+   mobile Safari resizes/pans the visual viewport for the keyboard. */
+@media(max-width:760px){
+  .conversationDrawer{height:100%;max-height:100%;min-height:0}
+  .conversationDrawer .conversationTop{position:relative;z-index:8;background:var(--surface)}
+  .conversationDrawer .conversationHeader{background:var(--surface)}
+}
+
+/* V43 — Free members can receive only a generic new-message alert; the chat
+   workspace itself stays unavailable until a chat-enabled plan is active. */
+.planLocked {
+  min-height: min(640px, calc(100dvh - 150px));
+  display: grid;
+  align-content: center;
+  justify-items: center;
+  gap: 12px;
+  border: 1px solid var(--border);
+  border-radius: 24px;
+  background: var(--surface);
+  color: var(--text);
+  padding: 32px 22px;
+  text-align: center;
+  box-shadow: 0 18px 48px color-mix(in srgb, var(--shadow) 68%, transparent);
+}
+.planLocked > div {
+  display: grid;
+  width: 68px;
+  height: 68px;
+  place-items: center;
+  border-radius: 20px;
+  background: var(--primary-soft);
+  color: var(--primary);
+  font-size: 30px;
+}
+.planLocked > strong { font-size: 20px; }
+.planLocked > p {
+  max-width: 480px;
+  margin: 0;
+  color: var(--text-secondary);
+  font-size: 14px;
+  line-height: 1.7;
+}
+.planLocked > a {
+  margin-top: 4px;
+  border-radius: 13px;
+  background: var(--primary);
+  color: #fff;
+  padding: 11px 18px;
+  font-size: 13px;
+  font-weight: 900;
+}
+@media(max-width:760px){
+  .planLocked{min-height:calc(100dvh - 156px);border-radius:20px;padding-inline:20px}
+}

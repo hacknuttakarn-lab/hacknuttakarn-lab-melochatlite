@@ -9,7 +9,7 @@ import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { isSupabaseConfigured, signInWithGoogle, signInWithPassword } from '@/lib/supabase/browser';
+import { getCurrentUser, isSupabaseConfigured, signInWithGoogle, signInWithPassword } from '@/lib/supabase/browser';
 import { loadOwnProfile } from '@/components/profile/profileWebData';
 
 function createNumericCaptcha() {
@@ -40,6 +40,7 @@ export default function LoginPage() {
   const [busy, setBusy] = useState(false);
   const [error, setError] = useState('');
   const [googleBusy, setGoogleBusy] = useState(false);
+  const [sessionChecking, setSessionChecking] = useState(true);
 
   const captchaDigits = useMemo(
     () => (captchaCode || '000000').split('').map((_, index) => captchaDigitStyle(captchaCode, index)),
@@ -56,6 +57,45 @@ export default function LoginPage() {
   useEffect(() => {
     refreshCaptcha();
   }, []);
+
+  useEffect(() => {
+    let active = true;
+
+    const continueExistingSession = async () => {
+      try {
+        const currentUser = await getCurrentUser();
+        if (!active || !currentUser?.id) return;
+
+        const profile = await loadOwnProfile();
+        if (!active) return;
+
+        router.replace(profile.data?.profile?.onboarding_completed === false ? '/onboarding' : '/account');
+        router.refresh();
+      } finally {
+        if (active) setSessionChecking(false);
+      }
+    };
+
+    void continueExistingSession();
+
+    // localStorage is shared by tabs on the same origin. If another Melo Chat
+    // tab signs in / refreshes its session while this tab is sitting on /login,
+    // immediately continue that same account instead of asking for credentials.
+    const onStorage = (event: StorageEvent) => {
+      if (event.key && event.key !== 'melo-web-auth-session') return;
+      void continueExistingSession();
+    };
+    const onAuthChanged = () => void continueExistingSession();
+
+    window.addEventListener('storage', onStorage);
+    window.addEventListener('melo-auth-changed', onAuthChanged);
+
+    return () => {
+      active = false;
+      window.removeEventListener('storage', onStorage);
+      window.removeEventListener('melo-auth-changed', onAuthChanged);
+    };
+  }, [router]);
 
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -261,6 +301,23 @@ export default function LoginPage() {
           <Link href="/register">{copy.createAccount}</Link>
         </p>
       </>
+    );
+  }
+
+  if (sessionChecking) {
+    const checkingLabel = locale === 'th'
+      ? 'กำลังตรวจสอบการเข้าสู่ระบบ…'
+      : locale === 'de'
+        ? 'Anmeldung wird geprüft…'
+        : 'Checking your sign-in…';
+
+    return (
+      <main style={{ minHeight: '100dvh', background: 'var(--background)' }}>
+        <Header />
+        <div style={{ minHeight: 'calc(100dvh - 74px)', display: 'grid', placeItems: 'center', padding: 24, color: 'var(--text-secondary)', fontWeight: 800 }}>
+          {checkingLabel}
+        </div>
+      </main>
     );
   }
 

@@ -1686,7 +1686,19 @@ export function Header() {
   }
 
   const visibleNotificationItems = useMemo(() => {
-    if (!adminArea) return notificationItems.filter((item) => !item.href?.startsWith('/admin'));
+    if (!adminArea) {
+      return notificationItems
+        .filter((item) => !item.href?.startsWith('/admin'))
+        .map((item, index) => ({ item, index }))
+        .sort((a, b) => {
+          const aTime = Date.parse(a.item.createdAt || '');
+          const bTime = Date.parse(b.item.createdAt || '');
+          const aValue = Number.isFinite(aTime) ? aTime : 0;
+          const bValue = Number.isFinite(bTime) ? bTime : 0;
+          return bValue - aValue || a.index - b.index;
+        })
+        .map(({ item }) => item);
+    }
     return notificationItems.filter((item) => item.href?.startsWith('/admin') || item.adminNotice);
   }, [adminArea, notificationItems]);
   const notificationUnreadCount = useMemo(() => visibleNotificationItems.filter((item) => item.unread).length, [visibleNotificationItems]);
@@ -2527,7 +2539,7 @@ export function Header() {
 
   return (
     <>
-    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''} ${isPublicAuthPage ? 'publicAuthSiteHeader' : ''}`}>
+    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''} ${adminArea ? 'adminCenterSiteHeader' : ''} ${isPublicAuthPage ? 'publicAuthSiteHeader' : ''}`}>
       <div
         className={`headerInner shell ${signedIn ? accountStyles.memberHeaderInner : ""}`}
         style={

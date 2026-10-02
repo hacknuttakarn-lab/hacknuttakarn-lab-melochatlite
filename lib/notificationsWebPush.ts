@@ -55,9 +55,14 @@ export function prepareMeloWebPush(){
   void navigator.serviceWorker.register(SW_PATH,{scope:'/'}).catch(()=>undefined);
 
   const sync=()=>{ if(Notification.permission==='granted')void registerSubscription(); };
+  const forceSync=()=>{ if(Notification.permission==='granted')void registerSubscription(true); };
   sync();
   window.addEventListener('focus',sync);
   window.addEventListener('online',sync);
+  window.addEventListener('melo-auth-changed',forceSync);
+  window.addEventListener('storage',(event)=>{
+    if(!event.key||event.key==='melo-web-auth-session')forceSync();
+  });
   document.addEventListener('visibilitychange',()=>{if(document.visibilityState==='visible')sync()});
 
   if(Notification.permission!=='default')return;

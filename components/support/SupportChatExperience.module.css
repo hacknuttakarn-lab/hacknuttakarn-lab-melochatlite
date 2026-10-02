@@ -111,3 +111,19 @@
     background:#ffffff;
   }
 }
+
+/* V42 — iOS visual-viewport keyboard fix. The support conversation header stays
+   visible while only the message list shrinks; the bottom app nav reserve is
+   removed while the keyboard is open. */
+@media(max-width:760px){
+  .shell{
+    top:calc(var(--melo-support-vv-top,0px) + 66px);
+    right:0;
+    bottom:auto;
+    left:0;
+    height:calc(var(--melo-support-vv-height,100dvh) - 66px - var(--melo-support-bottom-reserve,calc(74px + env(safe-area-inset-bottom))));
+    max-height:calc(var(--melo-support-vv-height,100dvh) - 66px - var(--melo-support-bottom-reserve,calc(74px + env(safe-area-inset-bottom))));
+  }
+  .chat>header{position:relative;z-index:8;flex:0 0 auto;background:var(--surface)}
+  .messages{min-height:0}
+}

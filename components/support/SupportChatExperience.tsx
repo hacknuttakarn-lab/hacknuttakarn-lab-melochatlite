@@ -4,6 +4,7 @@ import { useSearchParams } from 'next/navigation';
 import { Header } from '@/components/Header';
 import { useLocale } from '@/components/SiteProviders';
 import { getCurrentUser, getStoredSession, restInsert, restSelect, rpcRequest } from '@/lib/supabase/browser';
+import { bindMobileVisualViewport } from '@/lib/mobileVisualViewport';
 import styles from './SupportChatExperience.module.css';
 type Message={id:string;thread_id:string;sender_id:string;sender_role:'member'|'admin';body:string;created_at:string};
 type ChatLanguage='th'|'en'|'de';
@@ -18,6 +19,7 @@ export default function SupportChatExperience(){
  const[threadId,setThreadId]=useState('');const[messages,setMessages]=useState<Message[]>([]);const[draft,setDraft]=useState('');const[loading,setLoading]=useState(true);const[sending,setSending]=useState(false);
  const[translationEnabled,setTranslationEnabled]=useState(false);const[targetLanguage,setTargetLanguage]=useState<ChatLanguage>(lang(locale,locale));const[translations,setTranslations]=useState<Record<string,string>>({});
  const bottom=useRef<HTMLDivElement|null>(null);const composer=useRef<HTMLTextAreaElement|null>(null);const attempted=useRef(new Set<string>());
+ useEffect(()=>bindMobileVisualViewport('melo-support','calc(74px + env(safe-area-inset-bottom))'),[]);
  async function ensureThread(){const r=await rpcRequest<string>('support_ensure_my_thread',{p_subject:plan?`Plan: ${plan}`:null});if(r.error)throw new Error(r.error);const id=String(r.data||'').replaceAll('"','');setThreadId(id);return id}
  async function load(id:string){const r=await restSelect<Message[]>('support_messages',`select=id,thread_id,sender_id,sender_role,body,created_at&thread_id=eq.${encodeURIComponent(id)}&order=created_at.asc&limit=200`);if(r.error)throw new Error(r.error);setMessages(r.data||[])}
  useEffect(()=>{let live=true;const initialise=async()=>{try{const user=await getCurrentUser();if(!user?.id)return;const pref=await restSelect<Record<string,unknown>[]>('profiles',`select=primary_language&id=eq.${encodeURIComponent(user.id)}&limit=1`);if(live&&Array.isArray(pref.data)&&pref.data[0])setTargetLanguage(lang(pref.data[0].primary_language,locale));const id=await ensureThread();if(!live)return;await load(id);if(plan){const key=`melo-support-plan:${user.id}:${plan}`;if(!sessionStorage.getItem(key)){const sent=await restInsert('support_messages',{thread_id:id,sender_id:user.id,sender_role:'member',body:`${t.plan}: ${plan}`,message_type:'plan_interest',metadata:{plan}});if(!sent.error){sessionStorage.setItem(key,'1');await load(id)}}}}catch(e){console.error(e)}finally{if(live)setLoading(false)}};void initialise();return()=>{live=false}},[plan,locale]);

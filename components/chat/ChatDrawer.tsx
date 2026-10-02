@@ -4,12 +4,13 @@ import Link from "next/link";
 import { useEffect, useMemo, useState } from "react";
 import { useLocale } from "@/components/SiteProviders";
 import { ChatConversationPane } from "./ChatConversationPane";
-import { ensureBusinessChatRoom, ensureDirectChatRoom, loadChatSnapshot, loadPartnerBusinessChatRooms, loadPinnedConversationIds, setConversationPinned, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
+import { canCurrentUserUseChat, ensureBusinessChatRoom, ensureDirectChatRoom, loadChatSnapshot, loadPartnerBusinessChatRooms, loadPinnedConversationIds, setConversationPinned, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatDrawer.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import AdminSupportChat from "@/components/support/AdminSupportChat";
 import { loadLoveSnapshot, type DatingProfileWeb } from "@/components/connect/connectData";
 import { getCurrentUser } from "@/lib/supabase/browser";
+import { bindMobileVisualViewport } from "@/lib/mobileVisualViewport";
 import {
   loadSettingsAccountSnapshot,
   saveAutoTranslationEnabled,
@@ -53,6 +54,9 @@ const COPY = {
     searchCustomers: "ค้นหาชื่อลูกค้าที่เคยแชท",
     matches: "คนที่แมตช์",
     noMatches: "ยังไม่มีคนที่แมตช์",
+    lockedTitle: "แชทสำหรับสมาชิก Premium",
+    lockedBody: "แพ็กเกจ Free รับการแจ้งเตือนได้เมื่อมีข้อความใหม่ แต่ไม่สามารถเปิดอ่านข้อความหรือใช้งานแชทได้",
+    upgrade: "ดูแพ็กเกจ Premium",
   },
   en: {
     title: "Chats",
@@ -74,6 +78,9 @@ const COPY = {
     searchCustomers: "Search customer chats",
     matches: "Matches",
     noMatches: "No matches yet",
+    lockedTitle: "Chat is a Premium feature",
+    lockedBody: "Free members can receive a new-message alert, but cannot open message content or use chat.",
+    upgrade: "View Premium plans",
   },
   de: {
     title: "Chats",
@@ -95,6 +102,9 @@ const COPY = {
     searchCustomers: "Kundenchats durchsuchen",
     matches: "Matches",
     noMatches: "Noch keine Matches",
+    lockedTitle: "Chat ist eine Premium-Funktion",
+    lockedBody: "Free-Mitglieder erhalten Hinweise auf neue Nachrichten, können den Inhalt aber nicht öffnen oder den Chat nutzen.",
+    upgrade: "Premium-Pakete ansehen",
   },
   zh: {
     title: "聊天",
@@ -116,6 +126,9 @@ const COPY = {
     searchCustomers: "搜索客户聊天",
     matches: "匹配",
     noMatches: "暂无匹配",
+    lockedTitle: "聊天为 Premium 功能",
+    lockedBody: "Free 用户可收到新消息提醒，但无法查看消息内容或使用聊天。",
+    upgrade: "查看 Premium 套餐",
   },
   ja: {
     title: "チャット",
@@ -137,6 +150,9 @@ const COPY = {
     searchCustomers: "顧客チャットを検索",
     matches: "マッチ",
     noMatches: "まだマッチがありません",
+    lockedTitle: "チャットは Premium 機能です",
+    lockedBody: "Free 会員は新着メッセージ通知を受け取れますが、内容の閲覧やチャット利用はできません。",
+    upgrade: "Premium プランを見る",
   },
   ko: {
     title: "채팅",
@@ -158,6 +174,9 @@ const COPY = {
     searchCustomers: "고객 채팅 검색",
     matches: "매치",
     noMatches: "아직 매치가 없습니다",
+    lockedTitle: "채팅은 Premium 기능입니다",
+    lockedBody: "Free 회원은 새 메시지 알림은 받을 수 있지만 내용 확인이나 채팅 사용은 할 수 없습니다.",
+    upgrade: "Premium 플랜 보기",
   },
 } as const;
 
@@ -193,6 +212,7 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
   const [matchesLoading, setMatchesLoading] = useState(false);
   const [pinnedConversationIds, setPinnedConversationIds] = useState<string[]>([]);
   const [pinningProfileId, setPinningProfileId] = useState("");
+  const [chatAllowed, setChatAllowed] = useState<boolean | null>(partnerMode ? true : null);
 
   /* MELO_CHAT_ROOM_PAGINATION_V2 */
   const CHAT_ROOM_PAGE_SIZE = 15;
@@ -480,6 +500,27 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
   }, []);
 
   useEffect(() => {
+    if (!open) return;
+    return bindMobileVisualViewport("melo-chat");
+  }, [open]);
+
+  useEffect(() => {
+    let active = true;
+    if (!open) return () => { active = false; };
+    if (partnerMode) {
+      setChatAllowed(true);
+      return () => { active = false; };
+    }
+
+    setChatAllowed(null);
+    void canCurrentUserUseChat(true).then((allowed) => {
+      if (active) setChatAllowed(allowed);
+    });
+
+    return () => { active = false; };
+  }, [open, partnerMode]);
+
+  useEffect(() => {
     setPartnerRooms([]);
     setPartnerSearch("");
     setSelectedRoomId("");
@@ -552,13 +593,13 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
     }
 
     if (partnerMode) void loadPartner();
-    else { void load(); void loadMatches(); }
+    else if (chatAllowed) { void load(); void loadMatches(); }
     const previousOverflow = document.body.style.overflow;
     document.body.style.overflow = "hidden";
 
     const poll = window.setInterval(() => {
       if (partnerMode) void loadPartner();
-      else void load();
+      else if (chatAllowed) void load();
     }, 15000);
     const onKeyDown = (event: KeyboardEvent) => {
       if (event.key === "Escape") onClose();
@@ -570,7 +611,7 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
       if (typeof detail?.total !== "number") {
         window.setTimeout(() => {
           if (partnerMode) void loadPartner();
-          else void load();
+          else if (chatAllowed) void load();
         }, 120);
       }
     };
@@ -584,10 +625,10 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
     };
-  }, [open, partnerMode, partnerBusinessId]);
+  }, [open, partnerMode, partnerBusinessId, chatAllowed]);
 
   useEffect(() => {
-    if (partnerMode || !open || !pendingDirectChat) return;
+    if (partnerMode || !open || chatAllowed !== true || !pendingDirectChat) return;
     let active = true;
     void (async () => {
       const target = pendingDirectChat;
@@ -606,10 +647,10 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
       setPendingDirectChat(null);
     })();
     return () => { active = false; };
-  }, [open, pendingDirectChat, partnerMode]);
+  }, [open, pendingDirectChat, partnerMode, chatAllowed]);
 
   useEffect(() => {
-    if (partnerMode || !open || !pendingBusinessId) return;
+    if (partnerMode || !open || chatAllowed !== true || !pendingBusinessId) return;
     let active = true;
     void (async () => {
       const ensured = await ensureBusinessChatRoom(pendingBusinessId);
@@ -625,10 +666,10 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
       setPendingBusinessId("");
     })();
     return () => { active = false; };
-  }, [open, pendingBusinessId, partnerMode]);
+  }, [open, pendingBusinessId, partnerMode, chatAllowed]);
 
   useEffect(() => {
-    if (partnerMode || !open || !pendingActivityChat) return;
+    if (partnerMode || !open || chatAllowed !== true || !pendingActivityChat) return;
     let active = true;
     void (async () => {
       const next = await load();
@@ -651,7 +692,7 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
       setPendingActivityChat(null);
     })();
     return () => { active = false; };
-  }, [open, pendingActivityChat, partnerMode]);
+  }, [open, pendingActivityChat, partnerMode, chatAllowed]);
 
   function toggleTranslation() {
     const next =
@@ -709,7 +750,24 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
     <div className={`${styles.layer} ${open ? styles.layerOpen : ""}`} aria-hidden={!open}>
       <button className={styles.backdrop} type="button" onClick={onClose} aria-label={t.close} tabIndex={open ? 0 : -1} />
       <aside className={`${styles.drawer} ${selectedRoom ? styles.drawerConversation : ""}`} role="dialog" aria-modal="true" aria-label={t.title}>
-        {!selectedRoom ? (
+        {!partnerMode && chatAllowed !== true ? (
+          <>
+            <header className={styles.drawerHeader}>
+              <div><span>MELO</span><strong>{t.title}</strong></div>
+              <button type="button" className={styles.closeButton} onClick={onClose} aria-label={t.close}>×</button>
+            </header>
+            {chatAllowed === null ? (
+              <div className={styles.roomState}>{t.loading}</div>
+            ) : (
+              <div className={styles.chatLocked}>
+                <span aria-hidden="true">✉</span>
+                <strong>{t.lockedTitle}</strong>
+                <p>{t.lockedBody}</p>
+                <Link href="/premium" onClick={onClose}>{t.upgrade}</Link>
+              </div>
+            )}
+          </>
+        ) : !selectedRoom ? (
           <>
             <header className={styles.drawerHeader}>
               <div>

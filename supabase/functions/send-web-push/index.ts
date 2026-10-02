@@ -11,6 +11,61 @@ const WEBHOOK_SECRET=Deno.env.get('MELO_PUSH_WEBHOOK_SECRET')||'';
 webpush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC,VAPID_PRIVATE);
 const supabase=createClient(SUPABASE_URL,SERVICE_ROLE,{auth:{persistSession:false}});
 
+function recordText(record:any,metadata:any){
+  return [
+    record?.type,record?.notification_type,record?.kind,record?.event_type,
+    metadata?.type,metadata?.notification_type,metadata?.kind,metadata?.activity_type,metadata?.entity_type,
+    record?.href,metadata?.href,
+  ].filter(Boolean).join(' ').toLowerCase();
+}
+
+function isDirectChatNotification(record:any,metadata:any){
+  const raw=recordText(record,metadata);
+  const href=String(metadata?.href||record?.href||'').toLowerCase();
+  if(raw.includes('support_message')||href.startsWith('/support')||href.includes('support_thread='))return false;
+  return raw.includes('direct_message')||raw.includes('private_message')||raw.includes('chat_message')||href.startsWith('/chat');
+}
+
+async function recipientCanUseChat(userId:string){
+  try{
+    const {data:admin}=await supabase.from('admin_users').select('user_id,is_active').eq('user_id',userId).eq('is_active',true).limit(1);
+    if(admin?.length)return true;
+  }catch{}
+
+  try{
+    const now=new Date().toISOString();
+    const {data:subs}=await supabase.from('user_subscriptions')
+      .select('plan_id,starts_at,expires_at,status')
+      .eq('user_id',userId)
+      .eq('status','active')
+      .or(`expires_at.is.null,expires_at.gt.${now}`)
+      .order('starts_at',{ascending:false})
+      .limit(1);
+    const planId=subs?.[0]?.plan_id;
+    if(planId){
+      const {data:plans}=await supabase.from('subscription_plans').select('can_chat').eq('id',planId).limit(1);
+      if(plans?.length)return plans[0]?.can_chat===true;
+    }
+  }catch{}
+
+  // No active paid plan means the member uses the Free behavior.
+  return false;
+}
+
+async function recipientLanguage(userId:string){
+  try{
+    const {data}=await supabase.from('profiles').select('primary_language').eq('id',userId).limit(1);
+    const raw=String(data?.[0]?.primary_language||'en').toLowerCase().replace('_','-').split('-')[0];
+    return raw==='th'||raw==='de'?raw:'en';
+  }catch{return 'en'}
+}
+
+function genericMessageBody(locale:string){
+  if(locale==='th')return 'คุณมีข้อความใหม่ เปิด Melo Chat เพื่อดูรายละเอียด';
+  if(locale==='de')return 'Du hast eine neue Nachricht. Öffne Melo Chat für weitere Details.';
+  return 'You have a new message. Open Melo Chat to view the details.';
+}
+
 Deno.serve(async(req)=>{
   if(req.method!=='POST')return new Response('Method not allowed',{status:405});
   if(!WEBHOOK_SECRET||req.headers.get('x-melo-webhook-secret')!==WEBHOOK_SECRET)return new Response('Unauthorized',{status:401});
@@ -20,8 +75,20 @@ Deno.serve(async(req)=>{
   if(!userId)return Response.json({ok:true,skipped:'no recipient'});
   const metadata=typeof record.metadata==='object'&&record.metadata?record.metadata:{};
   const href=metadata.href||record.href||'/';
-  const body=record.body||record.message||'';
-  const title=record.title||'Melo Chat';
+  let body=record.body||record.message||'';
+  let title=record.title||'Melo Chat';
+
+  // Free members may be told that somebody contacted them, but the push itself
+  // must never reveal the direct-message content. Support chat remains available
+  // because members need it for help and package purchases.
+  if(isDirectChatNotification(record,metadata)){
+    const canChat=await recipientCanUseChat(String(userId));
+    if(!canChat){
+      body=genericMessageBody(await recipientLanguage(String(userId)));
+      if(!String(title||'').trim())title='Melo Chat';
+    }
+  }
+
   const {data:subs,error}=await supabase.from('web_push_subscriptions').select('endpoint,p256dh,auth_key').eq('user_id',userId);
   if(error) return new Response(error.message,{status:500});
   let sent=0;

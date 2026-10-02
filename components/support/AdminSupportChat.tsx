@@ -8,6 +8,7 @@ import {
 } from '@/lib/supabase/browser';
 import { subscribeSupportMessages } from '@/lib/supabase/realtime';
 import { saveAutoTranslationEnabled } from '@/components/settings/settingsWebData';
+import { bindMobileVisualViewport } from '@/lib/mobileVisualViewport';
 import styles from './AdminSupportChat.module.css';
 
 type Thread={id:string;user_id:string;subject:string|null;status:string;updated_at:string;member_email:string|null;member_name:string|null;avatar_url:string|null;plan_name:string|null;unread_count:number;last_message:string|null;last_message_at:string|null};
@@ -39,6 +40,7 @@ export default function AdminSupportChat({onClose}:{onClose:()=>void}){
   const[translationEnabled,setTranslationEnabled]=useState(true),[translationUserId,setTranslationUserId]=useState(''),[primaryChatLanguage,setPrimaryChatLanguage]=useState<ChatLanguage>(normalizeChatLanguage(locale,locale)),[translations,setTranslations]=useState<Record<string,string>>({});
   const bottom=useRef<HTMLDivElement|null>(null),composer=useRef<HTMLTextAreaElement|null>(null),knownIds=useRef(new Set<string>()),translationAttempted=useRef(new Set<string>()),mobileRef=useRef(false);
   const current=useMemo(()=>threads.find(x=>x.id===selected)||null,[threads,selected]);
+  useEffect(()=>bindMobileVisualViewport('melo-admin-support'),[]);
   const avatar=(raw:string|null)=>{const x=String(raw||'').trim();return !x?'':/^https?:\/\//i.test(x)?x:publicStorageUrl('profile-photos',x)};
 
   async function loadThreads(){

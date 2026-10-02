@@ -2929,6 +2929,37 @@ export async function loadChatUnreadTotal(): Promise<number> {
 
   return 0;
 }
+let chatEntitlementCache: { userId: string; allowed: boolean; checkedAt: number } | null = null;
+const CHAT_ENTITLEMENT_CACHE_MS = 15_000;
+
+export async function canCurrentUserUseChat(force = false): Promise<boolean> {
+  const user = await getCurrentUser();
+  if (!user?.id) return false;
+
+  if (
+    !force &&
+    chatEntitlementCache?.userId === user.id &&
+    Date.now() - chatEntitlementCache.checkedAt < CHAT_ENTITLEMENT_CACHE_MS
+  ) {
+    return chatEntitlementCache.allowed;
+  }
+
+  const result = await rpcRequest<boolean>(
+    "melo_has_entitlement_v25",
+    { p_key: "can_chat" },
+  );
+
+  // If an older database has not received the package migration yet, preserve
+  // the previous chat behavior rather than blocking every member. Any other
+  // entitlement error fails closed so Free accounts cannot read chat content.
+  const allowed = result.error
+    ? missingFunction(result.error)
+    : result.data !== false;
+
+  chatEntitlementCache = { userId: user.id, allowed, checkedAt: Date.now() };
+  return allowed;
+}
+
 export async function loadChatSnapshot(): Promise<ChatSnapshot> {
   ensureMeloWebPopupWatcherStarted();
 
@@ -2982,12 +3013,16 @@ export async function loadChatSnapshot(): Promise<ChatSnapshot> {
       notifications,
     );
 
+  const chatAllowed = await canCurrentUserUseChat();
+
   const roomLists:
     Record<
       ChatCategory,
       ChatRoom[]
     > = {
-      direct,
+      direct: chatAllowed
+        ? direct
+        : direct.map((room) => ({ ...room, lastMessage: "" })),
       trip,
       event,
       community,
@@ -3650,6 +3685,8 @@ export async function loadDirectMessagesPage(
   conversationId: string,
   options: { before?: string; limit?: number } = {},
 ) {
+  if (!(await canCurrentUserUseChat())) return [];
+
   const limit = Math.max(1, Math.min(50, options.limit ?? 15));
   const beforeFilter = options.before
     ? `&created_at=lt.${encodeURIComponent(options.before)}`
@@ -5093,6 +5130,10 @@ export async function uploadChatImage(
   file:
     File,
 ) {
+  if (!(await canCurrentUserUseChat())) {
+    throw new Error("PLAN_UPGRADE_REQUIRED:chat");
+  }
+
   if (
     !file.type.startsWith(
       "image/",
@@ -7978,6 +8019,9 @@ function startMeloWebPopupWatcher() {
           return;
         }
 
+        const chatAllowed =
+          await canCurrentUserUseChat();
+
         const [
           chatResult,
           notificationResult,
@@ -8068,14 +8112,16 @@ function startMeloWebPopupWatcher() {
             );
 
           const directRows =
-            await meloRecentDirectChatRows(
-              directRooms.map(
-                (
-                  room,
-                ) =>
-                  room.id,
-              ),
-            );
+            chatAllowed
+              ? await meloRecentDirectChatRows(
+                  directRooms.map(
+                    (
+                      room,
+                    ) =>
+                      room.id,
+                  ),
+                )
+              : [];
 
           const currentMessageKeys =
             new Set(
@@ -8271,10 +8317,20 @@ function startMeloWebPopupWatcher() {
             ).filter(
               (
                 row,
-              ) =>
-                categoryFromNotification(
-                  row,
-                ) === null,
+              ) => {
+                const category =
+                  categoryFromNotification(
+                    row,
+                  );
+
+                // Paid members keep the dedicated chat watcher with message
+                // previews. Free members receive only the generic notification
+                // row created by the server and never read chat message bodies.
+                return (
+                  category === null ||
+                  (!chatAllowed && category === "direct")
+                );
+              },
             );
 
           const currentNotificationKeys =

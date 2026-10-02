@@ -6,7 +6,7 @@ import { useSearchParams } from "next/navigation";
 import { Header } from "@/components/Header";
 import { useLocale } from "@/components/SiteProviders";
 import { ChatConversationPane } from "./ChatConversationPane";
-import { loadChatSnapshot, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
+import { canCurrentUserUseChat, loadChatSnapshot, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatCenter.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 
@@ -40,6 +40,9 @@ const COPY = {
     translation: "แปลข้อความ",
     translationOn: "เปิด",
     translationOff: "ปิด",
+    lockedTitle: "แชทสำหรับสมาชิก Premium",
+    lockedBody: "แพ็กเกจ Free รับได้เฉพาะการแจ้งเตือนว่ามีข้อความใหม่ แต่ไม่สามารถเปิดอ่านข้อความหรือใช้งานแชทได้",
+    upgrade: "ดูแพ็กเกจ Premium",
   },
   en: {
     title: "Chats",
@@ -55,6 +58,9 @@ const COPY = {
     translation: "Translation",
     translationOn: "On",
     translationOff: "Off",
+    lockedTitle: "Chat is a Premium feature",
+    lockedBody: "Free members only receive a generic new-message alert and cannot open message content or use chat.",
+    upgrade: "View Premium plans",
   },
   de: {
     title: "Chats",
@@ -70,6 +76,9 @@ const COPY = {
     translation: "Übersetzung",
     translationOn: "Ein",
     translationOff: "Aus",
+    lockedTitle: "Chat ist eine Premium-Funktion",
+    lockedBody: "Free-Mitglieder erhalten nur einen allgemeinen Hinweis auf neue Nachrichten und können weder Inhalte öffnen noch den Chat nutzen.",
+    upgrade: "Premium-Pakete ansehen",
   },
   zh: {
     title: "聊天",
@@ -85,6 +94,9 @@ const COPY = {
     translation: "翻译",
     translationOn: "开启",
     translationOff: "关闭",
+    lockedTitle: "聊天为 Premium 功能",
+    lockedBody: "Free 用户只能收到新消息提醒，无法查看消息内容或使用聊天。",
+    upgrade: "查看 Premium 套餐",
   },
   ja: {
     title: "チャット",
@@ -100,6 +112,9 @@ const COPY = {
     translation: "翻訳",
     translationOn: "オン",
     translationOff: "オフ",
+    lockedTitle: "チャットは Premium 機能です",
+    lockedBody: "Free 会員は新着通知のみ受け取れ、メッセージ内容の閲覧やチャット利用はできません。",
+    upgrade: "Premium プランを見る",
   },
   ko: {
     title: "채팅",
@@ -115,6 +130,9 @@ const COPY = {
     translation: "번역",
     translationOn: "켜짐",
     translationOff: "꺼짐",
+    lockedTitle: "채팅은 Premium 기능입니다",
+    lockedBody: "Free 회원은 새 메시지 알림만 받을 수 있으며 메시지 내용 확인이나 채팅 이용은 할 수 없습니다.",
+    upgrade: "Premium 플랜 보기",
   },
 } as const;
 
@@ -149,6 +167,7 @@ export default function ChatCenter() {
   const [snapshot, setSnapshot] = useState<ChatSnapshot>(EMPTY);
   const [loading, setLoading] = useState(true);
   const [translationEnabled, setTranslationEnabled] = useState(true);
+  const [chatAllowed, setChatAllowed] = useState<boolean | null>(null);
 
   async function load() {
     setLoading(true);
@@ -162,7 +181,14 @@ export default function ChatCenter() {
   }
 
   useEffect(() => {
-    void load();
+    let active = true;
+    void canCurrentUserUseChat(true).then((allowed) => {
+      if (!active) return;
+      setChatAllowed(allowed);
+      if (allowed) void load();
+      else setLoading(false);
+    });
+    return () => { active = false; };
   }, []);
 
   useEffect(() => {
@@ -209,6 +235,20 @@ export default function ChatCenter() {
     <main className={styles.page}>
       <Header />
       <section className={styles.shell}>
+        {chatAllowed !== true ? (
+          <div className={styles.planLocked}>
+            {chatAllowed === null ? (
+              <span>{t.loading}</span>
+            ) : (
+              <>
+                <div aria-hidden="true">✉</div>
+                <strong>{t.lockedTitle}</strong>
+                <p>{t.lockedBody}</p>
+                <Link href="/premium">{t.upgrade}</Link>
+              </>
+            )}
+          </div>
+        ) : (
         <div className={styles.workspace}>
           <aside className={styles.categoryRail} aria-label={t.title}>
             <div className={styles.railTitle}>
@@ -291,6 +331,7 @@ export default function ChatCenter() {
 
           <ChatConversationPane room={selectedRoom} translationEnabled={translationEnabled} />
         </div>
+        )}
       </section>
     </main>
   );
