@@ -77,3 +77,34 @@ export function prepareMeloWebPush(){
   window.addEventListener('pointerdown',ask,{once:true});
   window.addEventListener('keydown',ask,{once:true});
 }
+
+
+type MeloBadgeNavigator = Navigator & {
+  setAppBadge?: (contents?: number) => Promise<void>;
+  clearAppBadge?: () => Promise<void>;
+};
+
+export async function updateMeloAppBadge(rawCount:number){
+  if(typeof window==='undefined'||typeof navigator==='undefined')return;
+  const count=Math.max(0,Math.floor(Number(rawCount)||0));
+  const badgeNavigator=navigator as MeloBadgeNavigator;
+
+  try{
+    if(count>0&&badgeNavigator.setAppBadge){
+      await badgeNavigator.setAppBadge(count);
+    }else if(count===0&&badgeNavigator.clearAppBadge){
+      await badgeNavigator.clearAppBadge();
+    }else if(count===0&&badgeNavigator.setAppBadge){
+      await badgeNavigator.setAppBadge(0);
+    }
+  }catch{}
+
+  if(!('serviceWorker' in navigator))return;
+  try{
+    const registration=await navigator.serviceWorker.ready;
+    (registration.active||registration.waiting||registration.installing)?.postMessage({
+      type:'MELO_BADGE_SET',
+      count,
+    });
+  }catch{}
+}

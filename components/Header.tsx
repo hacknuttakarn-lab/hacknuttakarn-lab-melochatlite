@@ -21,7 +21,7 @@ import { loadEventsWeb } from '@/components/events/eventWebData';
 import { loadSettingsAccountSnapshot } from '@/components/settings/settingsWebData';
 import { loadSocialFeedWeb } from "@/components/feed/socialFeedWebData";
 import { subscribeSupportMessages } from '@/lib/supabase/realtime';
-import { prepareMeloWebPush } from '@/lib/notificationsWebPush';
+import { prepareMeloWebPush, updateMeloAppBadge } from '@/lib/notificationsWebPush';
 
 type HeaderUser = {
   id?: string;
@@ -1702,6 +1702,13 @@ export function Header() {
     return notificationItems.filter((item) => item.href?.startsWith('/admin') || item.adminNotice);
   }, [adminArea, notificationItems]);
   const notificationUnreadCount = useMemo(() => visibleNotificationItems.filter((item) => item.unread).length, [visibleNotificationItems]);
+
+  // Keep the installed PWA/app icon badge synced to unread Chats + Notifications.
+  // The service worker also increments the badge while the app is closed; when
+  // the app is active this effect reconciles it back to the real unread total.
+  useEffect(() => {
+    void updateMeloAppBadge(signedIn ? chatUnreadCount + notificationUnreadCount : 0);
+  }, [signedIn, chatUnreadCount, notificationUnreadCount]);
 
   useEffect(() => {
     if (!signedIn || adminArea) {

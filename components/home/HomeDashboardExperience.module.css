@@ -213,3 +213,35 @@
   .headingRow{margin-top:0!important;margin-bottom:0!important;padding-bottom:0!important;gap:6px!important}
   .lifestyleFilters{margin-top:8px!important;margin-bottom:14px!important}
 }
+
+
+/* =========================================================
+   V51 — Mobile Home: compact Boost action beside "For you".
+   Keep desktop/tablet launcher unchanged.
+   ========================================================= */
+@media (max-width:640px){
+  .headingRow{
+    display:grid!important;
+    grid-template-columns:minmax(0,1fr) auto!important;
+    align-items:start!important;
+    gap:10px!important;
+  }
+  .headingRow>div{min-width:0}
+  .boostLauncher{
+    position:static!important;
+    left:auto!important;
+    right:auto!important;
+    bottom:auto!important;
+    width:42px!important;
+    min-width:42px!important;
+    height:42px!important;
+    min-height:42px!important;
+    padding:0!important;
+    margin:0!important;
+    border-radius:13px!important;
+    align-self:start!important;
+    box-shadow:0 6px 18px rgba(79,157,248,.18)!important;
+  }
+  .boostLauncher>span:first-child{font-size:20px!important;line-height:1}
+  .boostLauncherLabel{display:none!important}
+}

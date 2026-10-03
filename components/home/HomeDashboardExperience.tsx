@@ -185,8 +185,8 @@ export default function HomeDashboardExperience() {
             <h1>{t.title}</h1>
             <p>{t.subtitle}</p>
           </div>
-          <button type="button" className={styles.boostLauncher} onClick={() => { if(Number(planAccess?.profile_boost_limit||0)<=0){setUpgradeOpen(true);return;} setBoostNotice(""); setBoostOpen(true); }}>
-            <span>⚡</span>{t.boost}
+          <button type="button" className={styles.boostLauncher} aria-label={t.boost} title={t.boost} onClick={() => { if(Number(planAccess?.profile_boost_limit||0)<=0){setUpgradeOpen(true);return;} setBoostNotice(""); setBoostOpen(true); }}>
+            <span aria-hidden="true">⚡</span><span className={styles.boostLauncherLabel}>{t.boost}</span>
           </button>
         </div>
         <div className={styles.lifestyleFilters} aria-label="Lifestyle filters">

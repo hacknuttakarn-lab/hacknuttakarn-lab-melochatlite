@@ -1,4 +1,49 @@
 /* Melo Chat Web Push service worker */
+const MELO_BADGE_CACHE='melo-app-badge-v1';
+const MELO_BADGE_STATE_URL='/__melo_app_badge_state__';
+
+async function readBadgeCount(){
+  try{
+    const cache=await caches.open(MELO_BADGE_CACHE);
+    const response=await cache.match(MELO_BADGE_STATE_URL);
+    if(!response)return 0;
+    const value=Number(await response.text());
+    return Number.isFinite(value)&&value>0?Math.floor(value):0;
+  }catch{return 0}
+}
+
+async function writeBadgeCount(rawCount){
+  const count=Math.max(0,Math.floor(Number(rawCount)||0));
+  try{
+    const cache=await caches.open(MELO_BADGE_CACHE);
+    await cache.put(MELO_BADGE_STATE_URL,new Response(String(count),{
+      headers:{'content-type':'text/plain','cache-control':'no-store'},
+    }));
+  }catch{}
+  return count;
+}
+
+async function applyBadge(rawCount){
+  const count=await writeBadgeCount(rawCount);
+  const badgeNavigator=self.navigator;
+  try{
+    if(count>0&&badgeNavigator&&typeof badgeNavigator.setAppBadge==='function'){
+      await badgeNavigator.setAppBadge(count);
+    }else if(count===0&&badgeNavigator&&typeof badgeNavigator.clearAppBadge==='function'){
+      await badgeNavigator.clearAppBadge();
+    }else if(count===0&&badgeNavigator&&typeof badgeNavigator.setAppBadge==='function'){
+      await badgeNavigator.setAppBadge(0);
+    }
+  }catch{}
+  return count;
+}
+
+self.addEventListener('message',(event)=>{
+  const data=event.data||{};
+  if(data.type!=='MELO_BADGE_SET')return;
+  event.waitUntil(applyBadge(data.count));
+});
+
 self.addEventListener('push',(event)=>{
   let payload={};
   try{payload=event.data?event.data.json():{}}catch{payload={body:event.data?event.data.text():''}}
@@ -12,7 +57,14 @@ self.addEventListener('push',(event)=>{
     requireInteraction:false,
     data:{href:payload.href||'/',...(payload.data||{})},
   };
-  event.waitUntil(self.registration.showNotification(title,options));
+  event.waitUntil((async()=>{
+    const supplied=Number(payload.unreadCount??payload.badgeCount);
+    const nextCount=Number.isFinite(supplied)&&supplied>=0
+      ? Math.floor(supplied)
+      : (await readBadgeCount())+1;
+    await applyBadge(nextCount);
+    await self.registration.showNotification(title,options);
+  })());
 });
 
 self.addEventListener('notificationclick',(event)=>{
