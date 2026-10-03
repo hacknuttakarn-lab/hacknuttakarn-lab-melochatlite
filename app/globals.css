@@ -1599,3 +1599,33 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     touch-action: none !important;
   }
 }
+
+
+/* =========================================================
+   V50 — ADMIN MOBILE DRAWER VISUAL VIEWPORT HEIGHT
+   Production iOS Safari / installed web apps can expose a layout viewport that
+   is taller than the visible area. Header.tsx writes the real VisualViewport
+   height/offset while the Admin menu is open. Use those values for the drawer
+   and backdrop so the Log out button stays reachable above browser/home UI.
+   ========================================================= */
+@media (max-width: 760px) {
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .desktopNav {
+    top: calc(var(--melo-admin-vv-offset-top, 0px) + 66px) !important;
+    bottom: auto !important;
+    height: max(0px, calc(var(--melo-admin-vv-height, 100dvh) - 66px)) !important;
+    max-height: max(0px, calc(var(--melo-admin-vv-height, 100dvh) - 66px)) !important;
+    box-sizing: border-box !important;
+    padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+    scroll-padding-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout {
+    margin-bottom: calc(16px + env(safe-area-inset-bottom)) !important;
+    scroll-margin-bottom: calc(28px + env(safe-area-inset-bottom)) !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    inset: calc(var(--melo-admin-vv-offset-top, 0px) + 66px) 0 auto 0 !important;
+    height: max(0px, calc(var(--melo-admin-vv-height, 100dvh) - 66px)) !important;
+  }
+}

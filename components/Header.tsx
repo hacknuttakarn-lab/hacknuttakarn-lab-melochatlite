@@ -1738,6 +1738,43 @@ export function Header() {
     };
   }, [signedIn, adminArea, menuOpen]);
 
+
+  // V50: iOS Safari/standalone can report a layout viewport that is taller than
+  // the actually visible viewport after deployment. Keep the Admin drawer tied
+  // to VisualViewport so its bottom (including Log out) never sits under browser
+  // chrome/home-indicator space. This is active only while the Admin menu is open.
+  useEffect(() => {
+    const active = Boolean(signedIn && adminArea && menuOpen);
+    if (!active) {
+      document.documentElement.style.removeProperty('--melo-admin-vv-height');
+      document.documentElement.style.removeProperty('--melo-admin-vv-offset-top');
+      return;
+    }
+
+    const viewport = window.visualViewport;
+    const syncAdminViewport = () => {
+      const height = viewport?.height ?? window.innerHeight;
+      const offsetTop = viewport?.offsetTop ?? 0;
+      document.documentElement.style.setProperty('--melo-admin-vv-height', `${Math.round(height)}px`);
+      document.documentElement.style.setProperty('--melo-admin-vv-offset-top', `${Math.round(offsetTop)}px`);
+    };
+
+    syncAdminViewport();
+    viewport?.addEventListener('resize', syncAdminViewport);
+    viewport?.addEventListener('scroll', syncAdminViewport);
+    window.addEventListener('resize', syncAdminViewport);
+    window.addEventListener('orientationchange', syncAdminViewport);
+
+    return () => {
+      viewport?.removeEventListener('resize', syncAdminViewport);
+      viewport?.removeEventListener('scroll', syncAdminViewport);
+      window.removeEventListener('resize', syncAdminViewport);
+      window.removeEventListener('orientationchange', syncAdminViewport);
+      document.documentElement.style.removeProperty('--melo-admin-vv-height');
+      document.documentElement.style.removeProperty('--melo-admin-vv-offset-top');
+    };
+  }, [signedIn, adminArea, menuOpen]);
+
   useEffect(() => {
     if (!signedIn) return;
     prepareMeloWebPush();

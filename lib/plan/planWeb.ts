@@ -56,6 +56,19 @@ export type PublicPlan = Record<string, unknown> & {
   show_on_user_packages?: boolean;
 };
 
+export type PlanOffer = {
+  id: string;
+  plan_id: string;
+  duration_months: number;
+  regular_price: number;
+  promotion_enabled: boolean;
+  promotion_price?: number | null;
+  promotion_label?: string | null;
+  promotion_start?: string | null;
+  promotion_end?: string | null;
+  is_active: boolean;
+};
+
 export type TranslationAddon = {
   id: string;
   code: string;
@@ -74,6 +87,12 @@ export async function loadMyPlanUsage(): Promise<PlanUsage> {
 
 export async function loadPublicPlans(): Promise<PublicPlan[]> {
   const result = await restSelect<PublicPlan[]>('subscription_plans', 'select=*&is_active=eq.true&show_on_user_packages=eq.true&order=sort_order.asc');
+  if (result.error) throw new Error(result.error);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function loadPublicPlanOffers(): Promise<PlanOffer[]> {
+  const result = await restSelect<PlanOffer[]>('subscription_plan_offers', 'select=id,plan_id,duration_months,regular_price,promotion_enabled,promotion_price,promotion_label,promotion_start,promotion_end,is_active&is_active=eq.true&order=sort_order.asc,duration_months.asc');
   if (result.error) throw new Error(result.error);
   return Array.isArray(result.data) ? result.data : [];
 }
