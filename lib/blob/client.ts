@@ -1,5 +1,7 @@
 'use client';
 
+import { upload } from '@vercel/blob/client';
+
 export function useVercelBlobImages() {
   return String(process.env.NEXT_PUBLIC_MELO_IMAGE_STORAGE || '').trim().toLowerCase() === 'vercel_blob';
 }
@@ -11,22 +13,24 @@ export async function uploadPublicImageBlob(input: {
   contentType?: string;
   accessToken: string;
 }): Promise<{ url: string; pathname: string }> {
-  const form = new FormData();
-  form.set('bucket', input.bucket);
-  form.set('path', input.path);
-  form.set('file', input.file, input.path.split('/').pop() || 'image');
-  if (input.contentType) form.set('contentType', input.contentType);
-  const response = await fetch('/api/blob/image', {
-    method: 'POST',
-    headers: { Authorization: `Bearer ${input.accessToken}` },
-    body: form,
+  const bucket = String(input.bucket || '').trim();
+  const path = String(input.path || '').replace(/^\/+/, '');
+  const pathname = `${bucket}/${path}`;
+
+  const blob = await upload(pathname, input.file, {
+    access: 'public',
+    handleUploadUrl: '/api/blob/image',
+    contentType: input.contentType || input.file.type || 'application/octet-stream',
+    clientPayload: JSON.stringify({
+      bucket,
+      path,
+      accessToken: input.accessToken,
+    }),
+    multipart: true,
   });
-  const payload = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(String(payload?.error || `Blob upload failed (${response.status})`));
-  const url = String(payload?.url || '');
-  const pathname = String(payload?.pathname || '');
-  if (!url) throw new Error('Blob upload URL was not returned.');
-  return { url, pathname };
+
+  if (!blob?.url) throw new Error('Blob upload URL was not returned.');
+  return { url: blob.url, pathname: blob.pathname };
 }
 
 export async function deletePublicImageBlob(input: { url: string; accessToken: string }) {
