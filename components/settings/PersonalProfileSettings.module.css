@@ -47,3 +47,34 @@
 @media(max-width:600px){
   .formGrid input,.formGrid select{font-size:16px}
 }
+
+/* V49 — mobile personal settings layout fixes. */
+@media(max-width:600px){
+  .formGrid,
+  .formGrid label{
+    min-width:0;
+    max-width:100%;
+  }
+
+  .formGrid input[type="date"]{
+    display:block;
+    width:100%;
+    min-width:0;
+    max-width:100%;
+    inline-size:100%;
+    min-inline-size:0;
+    max-inline-size:100%;
+    box-sizing:border-box;
+    overflow:hidden;
+  }
+
+  .saveBar{
+    position:static!important;
+    bottom:auto!important;
+    z-index:auto!important;
+    margin-top:36px;
+    padding-top:24px;
+    padding-bottom:18px;
+    background:transparent;
+  }
+}

@@ -1704,7 +1704,7 @@ export function Header() {
   const notificationUnreadCount = useMemo(() => visibleNotificationItems.filter((item) => item.unread).length, [visibleNotificationItems]);
 
   useEffect(() => {
-    if (!signedIn) {
+    if (!signedIn || adminArea) {
       document.body.classList.remove('meloMemberBottomNavVisible');
       return;
     }
@@ -1713,7 +1713,23 @@ export function Header() {
     return () => {
       document.body.classList.remove('meloMemberBottomNavVisible');
     };
-  }, [signedIn]);
+  }, [signedIn, adminArea]);
+
+  // V49: The Admin mobile drawer is a true foreground layer. Lock the page
+  // behind it so touch scrolling is consumed by the drawer instead of the
+  // Admin Center content, then restore normal page scrolling when it closes.
+  useEffect(() => {
+    const className = 'meloAdminMobileMenuOpen';
+    const active = Boolean(signedIn && adminArea && menuOpen);
+
+    document.documentElement.classList.toggle(className, active);
+    document.body.classList.toggle(className, active);
+
+    return () => {
+      document.documentElement.classList.remove(className);
+      document.body.classList.remove(className);
+    };
+  }, [signedIn, adminArea, menuOpen]);
 
   useEffect(() => {
     if (!signedIn) return;

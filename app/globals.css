@@ -1522,3 +1522,80 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     font-size: 16px !important;
   }
 }
+
+/* =========================================================
+   V49 — ADMIN MOBILE DRAWER FINAL LAYER / SCROLL FIX
+   The Admin menu owns the mobile viewport while open. The page behind it is
+   locked, the backdrop is only a backdrop, and the drawer itself is the only
+   vertically scrollable surface. This also removes the legacy painted-left
+   backdrop that could look like the page was scrolling over the menu.
+   ========================================================= */
+@media (max-width: 760px) {
+  html.meloAdminMobileMenuOpen,
+  body.meloAdminMobileMenuOpen {
+    overflow: hidden !important;
+    overscroll-behavior: none !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader {
+    z-index: 10000 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .desktopNav {
+    position: fixed !important;
+    left: 0 !important;
+    right: auto !important;
+    top: 66px !important;
+    bottom: 0 !important;
+    width: min(88vw, 342px) !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    padding: 14px 12px calc(44px + env(safe-area-inset-bottom)) !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior: contain !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y !important;
+    border: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    border-radius: 0 22px 0 0 !important;
+    background: var(--surface) !important;
+    box-shadow: 18px 0 52px color-mix(in srgb, var(--shadow) 88%, transparent) !important;
+    z-index: 10002 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileNavContent {
+    display: flex !important;
+    min-height: 0 !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    padding-bottom: 0 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout {
+    position: relative !important;
+    flex: 0 0 auto !important;
+    min-height: 52px !important;
+    margin-top: 18px !important;
+    margin-bottom: calc(24px + env(safe-area-inset-bottom)) !important;
+    z-index: 1 !important;
+  }
+
+  .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    position: fixed !important;
+    inset: 66px 0 0 !important;
+    z-index: 9990 !important;
+    background: rgba(5, 12, 20, .42) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+    touch-action: none !important;
+  }
+}
