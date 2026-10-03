@@ -485,17 +485,41 @@ export async function uploadStorageObject(bucket: string, path: string, file: Bl
   // Vercel Blob without changing the database schema because callers store
   // the absolute Blob URL returned here.
   if (useVercelBlobImages() && (cleanBucket === "profile-photos" || cleanBucket === "social-posts")) {
-    const session = (await refreshStoredSession().catch(() => null)) ?? getStoredSession();
+    let session = (await refreshStoredSession().catch(() => null)) ?? getStoredSession();
     if (!session?.access_token) return { data: null, error: "AUTH_REQUIRED" };
+
+    const uploadWithSession = (accessToken: string) => uploadPublicImageBlob({
+      bucket: cleanBucket,
+      path: cleanPath,
+      file,
+      contentType: contentType || file.type || "application/octet-stream",
+      accessToken,
+    });
+
     try {
-      const blob = await uploadPublicImageBlob({
-        bucket: cleanBucket, path: cleanPath, file,
-        contentType: contentType || file.type || "application/octet-stream",
-        accessToken: session.access_token,
-      });
+      const blob = await uploadWithSession(session.access_token);
       return { data: { path: blob.url }, error: null };
     } catch (cause) {
-      return { data: null, error: cause instanceof Error ? cause.message : String(cause) };
+      const message = cause instanceof Error ? cause.message : String(cause);
+      // The image uploader validates the Melo Supabase JWT server-side before
+      // Vercel Blob can issue a client token. A browser can still hold a JWT
+      // that looks unexpired locally but has already been rotated/rejected by
+      // Supabase. If the upload endpoint reports Unauthorized, force one auth
+      // refresh and retry with the new access token instead of surfacing a
+      // broken Profile/Gallery/Post upload to the member.
+      if (/unauthorized|auth_required|401/i.test(message) && session.refresh_token) {
+        const refreshed = await refreshStoredSession(true).catch(() => null);
+        if (refreshed?.access_token) {
+          session = refreshed;
+          try {
+            const blob = await uploadWithSession(refreshed.access_token);
+            return { data: { path: blob.url }, error: null };
+          } catch (retryCause) {
+            return { data: null, error: retryCause instanceof Error ? retryCause.message : String(retryCause) };
+          }
+        }
+      }
+      return { data: null, error: message };
     }
   }
 

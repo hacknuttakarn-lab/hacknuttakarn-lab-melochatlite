@@ -1779,3 +1779,92 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     pointer-events: auto !important;
   }
 }
+
+/* =========================================================
+   V54 — ADMIN MOBILE DRAWER: MATCH USER AREA SCROLL MODEL
+   User Area already behaves correctly on iOS. Neutralize the accumulated
+   Admin-only viewport/body-lock overrides and use the same drawer geometry,
+   overflow and bottom spacing as the normal member drawer.
+   ========================================================= */
+@media (max-width: 760px) {
+  html.meloAdminMobileMenuOpen,
+  body.meloAdminMobileMenuOpen {
+    overflow: auto !important;
+    overscroll-behavior: auto !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen {
+    z-index: 80 !important;
+    transform: none !important;
+    filter: none !important;
+    perspective: none !important;
+    contain: none !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .desktopNav,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .desktopNav,
+  .memberSiteHeader.adminCenterSiteHeader .desktopNav {
+    position: absolute !important;
+    left: calc((100% - 100vw) / 2) !important;
+    right: auto !important;
+    top: 100% !important;
+    bottom: auto !important;
+    width: min(88vw, 342px) !important;
+    height: calc(100dvh - 66px) !important;
+    max-height: calc(100dvh - 66px) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 14px 12px calc(34px + env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: auto !important;
+    -webkit-overflow-scrolling: touch !important;
+    touch-action: pan-y !important;
+    border: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    border-radius: 0 22px 22px 0 !important;
+    background: color-mix(in srgb, var(--surface) 97%, transparent) !important;
+    box-shadow: 18px 0 52px color-mix(in srgb, var(--shadow) 88%, transparent) !important;
+    backdrop-filter: blur(22px) saturate(140%) !important;
+    -webkit-backdrop-filter: blur(22px) saturate(140%) !important;
+    scroll-padding-bottom: calc(34px + env(safe-area-inset-bottom)) !important;
+    z-index: 95 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileNavContent,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileNavContent,
+  .memberSiteHeader.adminCenterSiteHeader .memberMobileNavContent {
+    display: flex !important;
+    min-height: 100% !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding-bottom: 10px !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileDrawerLogout,
+  .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout {
+    position: static !important;
+    flex: 0 0 auto !important;
+    min-height: 46px !important;
+    margin-top: auto !important;
+    margin-bottom: 12px !important;
+    box-shadow: none !important;
+    z-index: auto !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberMobileMenuBackdrop.adminMobileMenuBackdrop,
+  .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    position: fixed !important;
+    inset: 66px 0 0 !important;
+    z-index: 70 !important;
+    touch-action: none !important;
+  }
+}
