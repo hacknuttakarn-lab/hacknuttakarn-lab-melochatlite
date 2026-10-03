@@ -2539,7 +2539,7 @@ export function Header() {
 
   return (
     <>
-    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''} ${adminArea ? 'adminCenterSiteHeader' : ''} ${isPublicAuthPage ? 'publicAuthSiteHeader' : ''}`}>
+    <header className={`siteHeader ${signedIn ? 'memberSiteHeader' : ''} ${adminArea ? 'adminCenterSiteHeader' : ''} ${adminArea && menuOpen ? 'adminCenterMenuOpen' : ''} ${isPublicAuthPage ? 'publicAuthSiteHeader' : ''}`}>
       <div
         className={`headerInner shell ${signedIn ? accountStyles.memberHeaderInner : ""}`}
         style={

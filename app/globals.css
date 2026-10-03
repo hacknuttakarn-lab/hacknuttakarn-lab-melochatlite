@@ -1460,3 +1460,53 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     margin-bottom: calc(8px + env(safe-area-inset-bottom)) !important;
   }
 }
+
+/* =========================================================
+   V47 — ADMIN MOBILE DRAWER: TRUE VIEWPORT OVERLAY + SCROLL
+   Keep the Admin Center left menu above page/dialog content, and let the menu
+   itself scroll so the Log out action can always be reached on short screens.
+   ========================================================= */
+@media (max-width: 760px) {
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen {
+    z-index: 2200 !important;
+    backdrop-filter: none !important;
+    -webkit-backdrop-filter: none !important;
+  }
+
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .desktopNav {
+    position: fixed !important;
+    left: 0 !important;
+    right: auto !important;
+    top: 66px !important;
+    bottom: 0 !important;
+    width: min(88vw, 342px) !important;
+    height: auto !important;
+    max-height: none !important;
+    margin: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y;
+    padding: 14px 12px calc(18px + env(safe-area-inset-bottom)) !important;
+    background: var(--surface) !important;
+    border-radius: 0 22px 0 0 !important;
+    z-index: 2202 !important;
+  }
+
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileNavContent {
+    min-height: max-content !important;
+    height: auto !important;
+    padding-bottom: calc(18px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileDrawerLogout {
+    flex: 0 0 auto !important;
+    margin-top: 12px !important;
+    margin-bottom: calc(6px + env(safe-area-inset-bottom)) !important;
+  }
+
+  .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    z-index: 2190 !important;
+  }
+}

@@ -21,10 +21,17 @@ export function bindMobileVisualViewport(
 
   const update = () => {
     const height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight));
-    const top = Math.max(0, Math.round(viewport?.offsetTop ?? 0));
     const keyboardOpen = Boolean(
       viewport && window.innerHeight - viewport.height > 120,
     );
+    // iOS standalone/PWA can report a non-zero visualViewport.offsetTop even
+    // while the keyboard is closed. Applying that value all the time double
+    // counts the top safe-area/header and leaves a large blank band above chat.
+    // We only need the visual viewport offset while the keyboard is actually
+    // open and iOS is panning the viewport.
+    const top = keyboardOpen
+      ? Math.max(0, Math.round(viewport?.offsetTop ?? 0))
+      : 0;
 
     root.style.setProperty(heightVar, `${height}px`);
     root.style.setProperty(topVar, `${top}px`);
