@@ -7,7 +7,7 @@ import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
 import styles from './AuthFrame.module.css';
 
-export function AuthFrame({ title, body, children, mobileCardOnly = false }: { title: string; body: string; children: ReactNode; mobileCardOnly?: boolean }) {
+export function AuthFrame({ title, body, children, mobileCardOnly = false, centered = false, hideKicker = false }: { title: string; body: string; children: ReactNode; mobileCardOnly?: boolean; centered?: boolean; hideKicker?: boolean }) {
   const { locale } = useLocale();
   const copy = authCopy[locale];
   const liteCopy = locale === 'th'
@@ -19,13 +19,13 @@ export function AuthFrame({ title, body, children, mobileCardOnly = false }: { t
   return (
     <main className={styles.authMain}>
       <Header />
-      <div className={`${styles.authShell} ${mobileCardOnly ? styles.mobileCardOnly : ''}`}>
+      <div className={`${styles.authShell} ${mobileCardOnly ? styles.mobileCardOnly : ''} ${centered ? styles.centeredAuthShell : ''}`}>
         <section className={styles.authIntro}>
           <div className={styles.logoLine}>
             <Image src="/melo-logo.png" alt="Melo Chat" width={52} height={52} priority />
             <strong>Melo Chat</strong>
           </div>
-          <span className={styles.kicker}>{liteCopy.kicker}</span>
+          {!hideKicker ? <span className={styles.kicker}>{liteCopy.kicker}</span> : null}
           <h1>{liteCopy.title}</h1>
           <p>{liteCopy.body}</p>
           <div className={styles.introBullets}>

@@ -1,5 +1,6 @@
 'use client';
 
+import { usePathname } from 'next/navigation';
 import { useLocale } from '@/components/SiteProviders';
 import { selectableLocales } from '@/i18n/dictionaries';
 
@@ -10,6 +11,9 @@ type PublicLanguageSwitcherProps = {
 export default function PublicLanguageSwitcher({
   placement = 'floating',
 }: PublicLanguageSwitcherProps) {
+  const pathname = usePathname();
+  const hideHeaderOnMobileAuth = placement === 'header' && ['/login', '/register', '/forgot-password', '/reset-password'].includes(pathname);
+
   const {
     locale,
     setLocale,
@@ -26,7 +30,7 @@ export default function PublicLanguageSwitcher({
     <div
       className={`meloPublicLanguageSwitcher ${
         placement === 'header' ? 'meloPublicLanguageSwitcherHeader' : ''
-      }`}
+      } ${hideHeaderOnMobileAuth ? 'meloPublicLanguageSwitcherMobileAuthDuplicate' : ''}`}
     >
       <span
         className="meloPublicLanguageIcon"
@@ -155,6 +159,10 @@ export default function PublicLanguageSwitcher({
         }
 
         @media (max-width: 900px) {
+          .meloPublicLanguageSwitcherMobileAuthDuplicate {
+            display: none;
+          }
+
           .meloPublicLanguageSwitcher:not(.meloPublicLanguageSwitcherHeader) {
             display: none;
           }

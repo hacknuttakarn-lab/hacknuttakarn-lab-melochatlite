@@ -160,6 +160,8 @@ export default function HomeDashboardExperience() {
 
   const pagedProfiles = useMemo(() => visibleProfiles.slice(0, profileLimit), [visibleProfiles, profileLimit]);
 
+  const isFreePlan = (planAccess?.plan_code || "").trim().toLowerCase() === "free";
+
   useEffect(() => {
     setProfileLimit(15);
   }, [lifestyle]);
@@ -229,9 +231,9 @@ export default function HomeDashboardExperience() {
                     </div>
                     <div className={styles.cardTags}>{((profile as DatingProfileWeb & { lifestyleTags?: string[] }).lifestyleTags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div>
                     <div className={styles.cardActions}>
-                      <button type="button" className={styles.passAction} aria-label="Not interested" title="Not interested" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleDismiss(profile.id); }}>×</button>
+                      {!isFreePlan ? <button type="button" className={styles.passAction} aria-label="Not interested" title="Not interested" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleDismiss(profile.id); }}>×</button> : null}
                       <button type="button" className={`${styles.followAction} ${followedIds.includes(profile.id) ? styles.followActionActive : ""}`} aria-label={followedIds.includes(profile.id) ? "Following" : "Follow"} title={followedIds.includes(profile.id) ? "Following" : "Follow"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleFollow(profile.id); }}>{followedIds.includes(profile.id) ? "✓" : "+"}</button>
-                      <button type="button" className={`${styles.connectAction} ${interestedIds.includes(profile.id) ? styles.connectActionActive : ""}`} aria-label="Connect" title="Connect" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleInterested(profile.id); }}>♥</button>
+                      {!isFreePlan ? <button type="button" className={`${styles.connectAction} ${interestedIds.includes(profile.id) ? styles.connectActionActive : ""}`} aria-label="Connect" title="Connect" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleInterested(profile.id); }}>♥</button> : null}
                     </div>
                   </div>
                 </article>

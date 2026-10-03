@@ -27,7 +27,7 @@ export default function ForgotPasswordPage() {
   }
 
   return (
-    <AuthFrame title={copy.forgotTitle} body={copy.forgotBody}>
+    <AuthFrame title={copy.forgotTitle} body={copy.forgotBody} mobileCardOnly centered hideKicker>
       <form className={styles.form} onSubmit={submit}>
         {!supabaseReady && <div className={styles.notice}>{copy.envMissing}</div>}
         {error && <div className={styles.error}>{error}</div>}

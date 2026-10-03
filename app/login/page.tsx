@@ -325,7 +325,7 @@ export default function LoginPage() {
     <>
       <div className="desktopLoginOnly">
         <PublicLanguageSwitcher />
-        <AuthFrame title={copy.login} body={copy.webAccess}>
+        <AuthFrame title={copy.login} body={copy.webAccess} hideKicker>
           {renderLoginContent('desktop')}
         </AuthFrame>
       </div>
