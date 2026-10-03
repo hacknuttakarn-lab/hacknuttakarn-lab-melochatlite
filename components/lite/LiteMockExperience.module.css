@@ -783,3 +783,9 @@
 }
 .panel>button:hover{filter:brightness(1.04)}
 :global(html[data-theme="light"]) .panel>button{background:var(--primary,#347ff3);color:#fff}
+
+
+/* V48 — prevent iOS focus zoom in inline About me editor. */
+@media(max-width:760px){
+  .inlineBioEditor textarea{font-size:16px}
+}

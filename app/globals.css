@@ -1510,3 +1510,15 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     z-index: 2190 !important;
   }
 }
+
+
+/* =========================================================
+   V48 — MOBILE USER FORM INPUT ZOOM GUARD
+   iOS Safari auto-zooms focused form controls below 16px.
+   Keep the member drawer search at 16px without changing desktop.
+   ========================================================= */
+@media (max-width: 760px) {
+  .memberMobileDrawerSearch input {
+    font-size: 16px !important;
+  }
+}

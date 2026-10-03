@@ -5,6 +5,7 @@ import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/components/SiteProviders";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
 import {
+  createSignedStorageUrl,
   getCurrentUser,
   getStoredSession,
   invokeEdgeFunction,
@@ -229,6 +230,54 @@ type RenderMessage = {
   locationLabel: string;
   stickerCode: string;
 };
+
+function ChatMediaImage({
+  path,
+  className,
+}: {
+  path: string;
+  className: string;
+}) {
+  const [src, setSrc] = useState(
+    /^https?:\/\//i.test(path) ? path : "",
+  );
+
+  useEffect(() => {
+    let active = true;
+    const clean = String(path || "").trim();
+
+    if (!clean) {
+      setSrc("");
+      return () => {
+        active = false;
+      };
+    }
+
+    if (/^https?:\/\//i.test(clean)) {
+      setSrc(clean);
+      return () => {
+        active = false;
+      };
+    }
+
+    setSrc("");
+    void createSignedStorageUrl("chat-media", clean, 3600).then((result) => {
+      if (active) {
+        setSrc(result.data || "");
+      }
+    });
+
+    return () => {
+      active = false;
+    };
+  }, [path]);
+
+  if (!src) {
+    return null;
+  }
+
+  return <img className={className} src={src} alt="" />;
+}
 
 type ActivitySenderProfile = {
   id: string;
@@ -2878,14 +2927,6 @@ renderedMessages.map(
                   mine,
                 );
 
-              const mediaUrl =
-                message.mediaPath
-                  ? publicStorageUrl(
-                      "chat-media",
-                      message.mediaPath,
-                    )
-                  : "";
-
               const validLocation =
                 Number.isFinite(
                   message.latitude,
@@ -2985,15 +3026,14 @@ renderedMessages.map(
                 >
                   {message.messageType ===
                     "image" &&
-                  mediaUrl ? (
-                    <img
+                  message.mediaPath ? (
+                    <ChatMediaImage
                       className={
                         styles.chatImage
                       }
-                      src={
-                        mediaUrl
+                      path={
+                        message.mediaPath
                       }
-                      alt=""
                     />
                   ) : null}
 

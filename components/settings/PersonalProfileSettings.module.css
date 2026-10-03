@@ -41,3 +41,9 @@
 :global(html:not([data-theme="dark"])) .chips button{border-color:#ccd7e5;color:#26364c}
 :global(html[data-theme="light"]) .chips button[data-active=true],
 :global(html:not([data-theme="dark"])) .chips button[data-active=true]{background:#e9f3ff;color:#2d76d2;border-color:#66a9ff}
+
+
+/* V48 — prevent iOS focus zoom in personal settings. */
+@media(max-width:600px){
+  .formGrid input,.formGrid select{font-size:16px}
+}

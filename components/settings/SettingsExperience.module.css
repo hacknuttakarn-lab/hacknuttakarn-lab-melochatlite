@@ -138,3 +138,9 @@
 :global(html:not([data-theme="dark"])) .connectState{
   background:#f6f9fd;border-color:#d7e1ed;color:#142033;
 }
+
+
+/* V48 — prevent iOS focus zoom in Settings controls. */
+@media(max-width:760px){
+  .modalSearch input,.formCard textarea,.nationalityPicker select{font-size:16px}
+}
