@@ -260,3 +260,26 @@
 .archiveNotice b{display:block;color:var(--text);font-size:13px}
 .archiveNotice p{margin:7px 0 0;color:var(--text-secondary);font-size:12px;line-height:1.55}
 .cardActions{display:flex;flex-wrap:wrap;gap:7px}
+
+
+/* =========================================================
+   V50 — iOS mobile: prevent Admin Center form focus auto-zoom.
+   Safari/iOS zooms the page when a focused text control is below 16px.
+   Scope only to Admin Center mobile inputs requested in this task.
+   ========================================================= */
+@media (max-width: 760px) {
+  .heading input,
+  .auditFilters input,
+  .auditFilters select,
+  .formGrid input,
+  .formGrid textarea,
+  .formGrid select,
+  .permissionRole select,
+  .warningForm textarea,
+  .warningForm select,
+  .adminNote textarea,
+  .deleteVerification input,
+  .deleteVerification textarea {
+    font-size: 16px !important;
+  }
+}

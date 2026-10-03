@@ -18,3 +18,11 @@
 
 /* Identity document watermark */
 .watermarkedDocument{position:relative;overflow:hidden;background:#0a0d12}.watermarkedDocument img{margin:0}.watermarkedDocument span{position:absolute;left:50%;top:50%;width:145%;transform:translate(-50%,-50%) rotate(-24deg);pointer-events:none;user-select:none;text-align:center;color:rgba(255,255,255,.74);text-shadow:0 1px 4px rgba(0,0,0,.85);font-size:clamp(12px,1.2vw,17px);font-weight:900;line-height:1.35;background:rgba(0,0,0,.25);padding:8px 12px}
+
+
+/* V50 — iOS mobile: keep document-approval search at 16px to prevent focus zoom. */
+@media (max-width: 760px) {
+  .search input {
+    font-size: 16px !important;
+  }
+}
