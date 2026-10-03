@@ -1667,6 +1667,17 @@ export async function ensureDirectChatRoom(
     return currentRoom;
   }
 
+  // Do not let an expired/free member start a brand-new direct chat with an
+  // unrelated person. They may only create/re-open a room for someone already
+  // present in profile_matches. Active Premium/Premium+ keeps the normal flow.
+  const directChatPermission = await rpcRequest<boolean>(
+    "melo_can_chat_with_user_v41",
+    { p_target_user_id: cleanUserId },
+  );
+  if (!directChatPermission.error && directChatPermission.data === false) {
+    throw new Error("PLAN_UPGRADE_REQUIRED:chat");
+  }
+
   const functionNames = [
     "get_or_create_direct_chat_v2",
     "get_or_create_direct_chat_v1",
@@ -2944,17 +2955,28 @@ export async function canCurrentUserUseChat(force = false): Promise<boolean> {
     return chatEntitlementCache.allowed;
   }
 
+  // V41: an expired Free account may continue chatting with people it had
+  // already matched with before the paid package expired. The database helper
+  // returns true for an active chat entitlement OR at least one existing match.
+  // All other paid actions (viewing profiles, Interested, comments, etc.) keep
+  // using the normal package entitlements.
   const result = await rpcRequest<boolean>(
-    "melo_has_entitlement_v25",
-    { p_key: "can_chat" },
+    "melo_can_use_chat_v41",
+    {},
   );
 
-  // If an older database has not received the package migration yet, preserve
-  // the previous chat behavior rather than blocking every member. Any other
-  // entitlement error fails closed so Free accounts cannot read chat content.
-  const allowed = result.error
-    ? missingFunction(result.error)
-    : result.data !== false;
+  let allowed: boolean;
+  if (!result.error) {
+    allowed = result.data !== false;
+  } else if (missingFunction(result.error)) {
+    const legacy = await rpcRequest<boolean>(
+      "melo_has_entitlement_v25",
+      { p_key: "can_chat" },
+    );
+    allowed = legacy.error ? missingFunction(legacy.error) : legacy.data !== false;
+  } else {
+    allowed = false;
+  }
 
   chatEntitlementCache = { userId: user.id, allowed, checkedAt: Date.now() };
   return allowed;
@@ -4256,8 +4278,8 @@ export async function sendDirectMessage(
     string,
 ) {
   const entitlement = await rpcRequest<boolean>(
-    "melo_has_entitlement_v25",
-    { p_key: "can_chat" },
+    "melo_can_use_chat_v41",
+    {},
   );
   if (!entitlement.error && entitlement.data === false) {
     throw new Error("PLAN_UPGRADE_REQUIRED:chat");

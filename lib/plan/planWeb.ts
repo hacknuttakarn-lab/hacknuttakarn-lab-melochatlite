@@ -1,4 +1,4 @@
-import { rpcRequest, restSelect } from '@/lib/supabase/browser';
+import { getCurrentUser, rpcRequest, restSelect } from '@/lib/supabase/browser';
 
 export type PlanUsage = {
   user_id?: string;
@@ -79,6 +79,21 @@ export type TranslationAddon = {
   is_active: boolean;
 };
 
+export type TranslationAddonUsage = {
+  id: string;
+  addon_id: string;
+  cycle_start: string;
+  cycle_end: string;
+  character_limit: number;
+  character_used: number;
+  status: string;
+  created_at: string;
+  translation_addons?: {
+    code?: string;
+    name?: string;
+  } | null;
+};
+
 export async function loadMyPlanUsage(): Promise<PlanUsage> {
   const result = await rpcRequest<PlanUsage>('melo_get_my_plan_usage_v25');
   if (result.error || !result.data) throw new Error(result.error || 'Unable to load plan usage');
@@ -99,6 +114,22 @@ export async function loadPublicPlanOffers(): Promise<PlanOffer[]> {
 
 export async function loadTranslationAddons(): Promise<TranslationAddon[]> {
   const result = await restSelect<TranslationAddon[]>('translation_addons', 'select=*&is_active=eq.true&order=sort_order.asc,price.asc');
+  if (result.error) throw new Error(result.error);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function loadMyTranslationAddonUsage(): Promise<TranslationAddonUsage[]> {
+  const user = await getCurrentUser();
+  if (!user?.id) return [];
+  const now = new Date().toISOString();
+  const query = [
+    'select=id,addon_id,cycle_start,cycle_end,character_limit,character_used,status,created_at,translation_addons(code,name)',
+    `user_id=eq.${encodeURIComponent(user.id)}`,
+    'status=eq.active',
+    `cycle_end=gt.${encodeURIComponent(now)}`,
+    'order=created_at.desc',
+  ].join('&');
+  const result = await restSelect<TranslationAddonUsage[]>('user_translation_addons', query);
   if (result.error) throw new Error(result.error);
   return Array.isArray(result.data) ? result.data : [];
 }
