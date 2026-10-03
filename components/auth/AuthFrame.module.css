@@ -117,6 +117,14 @@
   .authIntro h1 { font-size: 40px; }
   .authIntro p { font-size: 14px; }
   .card { padding: 24px 20px; border-radius: 24px; }
+  .mobileCardOnly {
+    gap: 0;
+    padding-top: 18px;
+    padding-bottom: calc(32px + env(safe-area-inset-bottom, 0px));
+  }
+  .mobileCardOnly .authIntro { display: none; }
+  .mobileCardOnly .card { width: 100%; }
+
   .row { align-items: flex-start; flex-direction: column; }
   .accountIdentity { flex-wrap: wrap; }
 }

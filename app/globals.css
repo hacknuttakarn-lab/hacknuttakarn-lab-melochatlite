@@ -1670,3 +1670,87 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     box-shadow: 0 -12px 24px color-mix(in srgb, var(--surface) 92%, transparent) !important;
   }
 }
+
+/* =========================================================
+   V52 — ADMIN MOBILE DRAWER = USER MOBILE DRAWER LAYOUT
+   Keep Admin Center on the same proven mobile drawer geometry as User Area.
+   Admin-only content remains unchanged; only the mobile shell/scroll behavior
+   is normalized so the panel reaches below the visible edge and can scroll
+   naturally, including the Log out action.
+   ========================================================= */
+@media (max-width: 760px) {
+  /* Do not use the Admin-only visual viewport/sticky-logout geometry. */
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .desktopNav,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .desktopNav,
+  .memberSiteHeader.adminCenterSiteHeader .desktopNav {
+    position: absolute !important;
+    left: calc((100% - 100vw) / 2) !important;
+    right: auto !important;
+    top: 100% !important;
+    bottom: auto !important;
+    width: min(88vw, 342px) !important;
+    height: calc(100dvh - 66px + 128px) !important;
+    max-height: calc(100dvh - 66px + 128px) !important;
+    min-height: 0 !important;
+    margin: 0 !important;
+    padding: 14px 12px calc(112px + env(safe-area-inset-bottom)) !important;
+    display: flex !important;
+    flex-direction: column !important;
+    align-items: stretch !important;
+    gap: 0 !important;
+    overflow-x: hidden !important;
+    overflow-y: auto !important;
+    overscroll-behavior-y: contain !important;
+    -webkit-overflow-scrolling: touch;
+    touch-action: pan-y !important;
+    border: 0 !important;
+    border-right: 1px solid var(--border) !important;
+    border-radius: 0 22px 22px 0 !important;
+    background: var(--surface) !important;
+    box-shadow: 18px 0 52px color-mix(in srgb, var(--shadow) 88%, transparent) !important;
+    scroll-padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+    z-index: 10002 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileNavContent,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileNavContent,
+  .memberSiteHeader.adminCenterSiteHeader .memberMobileNavContent {
+    display: flex !important;
+    min-height: 100% !important;
+    height: auto !important;
+    flex: 0 0 auto !important;
+    flex-direction: column !important;
+    gap: 12px !important;
+    padding-bottom: calc(112px + env(safe-area-inset-bottom)) !important;
+    box-sizing: border-box !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .memberMobileDrawerLogout,
+  .memberSiteHeader.adminCenterSiteHeader .memberMobileDrawerLogout {
+    position: static !important;
+    left: auto !important;
+    right: auto !important;
+    bottom: auto !important;
+    flex: 0 0 auto !important;
+    min-height: 46px !important;
+    margin-top: 12px !important;
+    margin-bottom: calc(40px + env(safe-area-inset-bottom)) !important;
+    box-shadow: none !important;
+    scroll-margin-bottom: calc(80px + env(safe-area-inset-bottom)) !important;
+    z-index: auto !important;
+  }
+
+  /* Keep Admin backdrop above page content but below the drawer itself. */
+  body.meloAdminMobileMenuOpen .memberMobileMenuBackdrop.adminMobileMenuBackdrop,
+  .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    position: fixed !important;
+    inset: 66px 0 0 !important;
+    width: auto !important;
+    height: auto !important;
+    z-index: 10001 !important;
+    background: rgba(5, 12, 20, .42) !important;
+    backdrop-filter: blur(2px) !important;
+    -webkit-backdrop-filter: blur(2px) !important;
+  }
+}

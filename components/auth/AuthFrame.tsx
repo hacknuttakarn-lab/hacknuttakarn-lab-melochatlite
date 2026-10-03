@@ -7,7 +7,7 @@ import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
 import styles from './AuthFrame.module.css';
 
-export function AuthFrame({ title, body, children }: { title: string; body: string; children: ReactNode }) {
+export function AuthFrame({ title, body, children, mobileCardOnly = false }: { title: string; body: string; children: ReactNode; mobileCardOnly?: boolean }) {
   const { locale } = useLocale();
   const copy = authCopy[locale];
   const liteCopy = locale === 'th'
@@ -19,7 +19,7 @@ export function AuthFrame({ title, body, children }: { title: string; body: stri
   return (
     <main className={styles.authMain}>
       <Header />
-      <div className={styles.authShell}>
+      <div className={`${styles.authShell} ${mobileCardOnly ? styles.mobileCardOnly : ''}`}>
         <section className={styles.authIntro}>
           <div className={styles.logoLine}>
             <Image src="/melo-logo.png" alt="Melo Chat" width={52} height={52} priority />

@@ -59,7 +59,7 @@ export default function RegisterPage() {
   }
 
   return (
-    <AuthFrame title={copy.registerTitle} body={copy.registerBody}>
+    <AuthFrame title={copy.registerTitle} body={copy.registerBody} mobileCardOnly>
       <button className={styles.googleButton} type="button" disabled={!supabaseReady || googleBusy} onClick={()=>void signUpGoogle()}>
         <span className={styles.googleMark} aria-hidden="true">G</span>
         {locale==="th"?(googleBusy?"กำลังเชื่อมต่อ Google…":"สมัครด้วย Google"):locale==="de"?(googleBusy?"Google wird geöffnet…":"Mit Google registrieren"):(googleBusy?"Opening Google…":"Sign up with Google")}
