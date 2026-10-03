@@ -110,6 +110,77 @@ async function fulfillPaidCheckout(
   console.log('[Stripe webhook] Package fulfillment complete', { sessionId: session.id, result });
 }
 
+
+
+async function fulfillPaidTranslationAddon(
+  eventId: string,
+  environment: 'live' | 'sandbox',
+  session: StripeCheckoutSession,
+) {
+  if (!session.id) throw new Error('Stripe session id is missing.');
+
+  const metadata = session.metadata || {};
+  const userId = metadata.user_id?.trim();
+  const addonId = metadata.addon_id?.trim();
+  if (!userId || !addonId) throw new Error('Stripe translation add-on metadata is incomplete.');
+
+  if (typeof session.livemode === 'boolean') {
+    const expectedLive = environment === 'live';
+    if (session.livemode !== expectedLive) throw new Error('Stripe environment does not match webhook secret.');
+  }
+
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase service role is not configured for Stripe fulfillment.');
+
+  const amount = Number(session.amount_total || 0) / 100;
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/melo_fulfill_stripe_translation_addon_v40`, {
+    method: 'POST',
+    headers: {
+      apikey: serviceRoleKey,
+      Authorization: `Bearer ${serviceRoleKey}`,
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify({
+      p_event_id: eventId,
+      p_session_id: session.id,
+      p_environment: environment,
+      p_user_id: userId,
+      p_addon_id: addonId,
+      p_amount: amount,
+      p_currency: (session.currency || 'thb').toUpperCase(),
+    }),
+    cache: 'no-store',
+  });
+
+  const responseText = await response.text();
+  if (!response.ok) {
+    console.error('[Stripe webhook] Translation add-on fulfillment RPC failed', {
+      status: response.status,
+      body: responseText,
+      sessionId: session.id,
+    });
+    throw new Error('Unable to activate translation add-on.');
+  }
+
+  let result: unknown = null;
+  try { result = responseText ? JSON.parse(responseText) : null; } catch { result = responseText; }
+  console.log('[Stripe webhook] Translation add-on fulfillment complete', { sessionId: session.id, result });
+}
+
+async function fulfillPaidSession(
+  eventId: string,
+  environment: 'live' | 'sandbox',
+  session: StripeCheckoutSession,
+) {
+  const purchaseType = session.metadata?.purchase_type?.trim();
+  if (purchaseType === 'translation_addon') {
+    await fulfillPaidTranslationAddon(eventId, environment, session);
+    return;
+  }
+  await fulfillPaidCheckout(eventId, environment, session);
+}
+
 export async function POST(request: Request) {
   try {
     const rawBody = await request.text();
@@ -154,7 +225,7 @@ export async function POST(request: Request) {
         // Card / immediately-confirmed methods arrive here as paid.
         // Async methods are fulfilled later by checkout.session.async_payment_succeeded.
         if (session?.payment_status === 'paid') {
-          await fulfillPaidCheckout(String(event.id || ''), environment, session);
+          await fulfillPaidSession(String(event.id || ''), environment, session);
         }
         break;
       }
@@ -162,7 +233,7 @@ export async function POST(request: Request) {
       case 'checkout.session.async_payment_succeeded': {
         const session = event.data?.object as StripeCheckoutSession;
         console.log('[Stripe webhook] Async payment succeeded', { environment, sessionId: session?.id });
-        await fulfillPaidCheckout(String(event.id || ''), environment, session);
+        await fulfillPaidSession(String(event.id || ''), environment, session);
         break;
       }
 
