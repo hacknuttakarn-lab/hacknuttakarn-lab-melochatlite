@@ -55,7 +55,7 @@ export default function PremiumPlanExperience(){
 
   return <main className={styles.page}><Header/><section className={styles.shell}>
     <header className={styles.hero}><div><small>{t.eyebrow}</small><h1>{t.title}</h1></div></header>
-    <nav className={styles.tabs}><button data-active={tab==='plans'} onClick={()=>setTab('plans')}>{t.plans}</button><button data-active={tab==='usage'} onClick={()=>setTab('usage')}>{t.usage}</button><button data-active={tab==='addons'} onClick={()=>setTab('addons')}>{t.addons}</button></nav>
+    <nav className={styles.tabs}><button data-active={tab==='plans'} onClick={()=>setTab('plans')}>{t.plans}</button><button data-active={tab==='addons'} onClick={()=>setTab('addons')}>{t.addons}</button><button data-active={tab==='usage'} onClick={()=>setTab('usage')}>{t.usage}</button></nav>
     {loading?<div className={styles.state}>{t.loading}</div>:error?<div className={styles.state}>{error}</div>:null}
     {!loading&&!error&&tab==='plans'?<>
       <div className={styles.termSwitch}>{([1,3,6] as Term[]).map(v=><button key={v} data-active={term===v} onClick={()=>setTerm(v)}>{v} {t.month}</button>)}</div>
