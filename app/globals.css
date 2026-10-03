@@ -1754,3 +1754,28 @@ html:not([data-theme="dark"]) .languageSelect select,html:not([data-theme="dark"
     -webkit-backdrop-filter: blur(2px) !important;
   }
 }
+
+/* =========================================================
+   V53 — ADMIN MOBILE DRAWER STACKING FIX
+   The admin backdrop is rendered after <header>. V52 placed that sibling at
+   z-index 10001 while the header itself was 10000, so iOS displayed the blur
+   layer above the drawer and the menu could not be tapped. Keep the backdrop
+   below the complete header/drawer stacking context, matching User Area.
+   ========================================================= */
+@media (max-width: 760px) {
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen {
+    z-index: 10000 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberMobileMenuBackdrop.adminMobileMenuBackdrop,
+  .memberMobileMenuBackdrop.adminMobileMenuBackdrop {
+    z-index: 9990 !important;
+  }
+
+  body.meloAdminMobileMenuOpen .memberSiteHeader.adminCenterSiteHeader .desktopNav,
+  .memberSiteHeader.adminCenterSiteHeader.adminCenterMenuOpen .desktopNav {
+    z-index: 10002 !important;
+    pointer-events: auto !important;
+  }
+}

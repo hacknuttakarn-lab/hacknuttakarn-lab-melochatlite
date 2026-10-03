@@ -78,3 +78,20 @@
     background:transparent;
   }
 }
+
+/* V53 — iOS Safari date input must not keep its native intrinsic width. */
+@media(max-width:600px){
+  .formGrid label{width:100%;overflow:hidden}
+  .formGrid input[type="date"]{
+    -webkit-appearance:none!important;
+    appearance:none!important;
+    display:block!important;
+    width:100%!important;
+    max-width:100%!important;
+    min-width:0!important;
+    inline-size:100%!important;
+    max-inline-size:100%!important;
+    min-inline-size:0!important;
+    box-sizing:border-box!important;
+  }
+}

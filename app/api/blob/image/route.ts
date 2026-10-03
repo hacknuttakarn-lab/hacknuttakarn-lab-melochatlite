@@ -1,4 +1,4 @@
-import { del } from '@vercel/blob';
+import { del, put } from '@vercel/blob';
 import { handleUpload, type HandleUploadBody } from '@vercel/blob/client';
 import { NextRequest, NextResponse } from 'next/server';
 
@@ -102,6 +102,42 @@ export async function POST(request: NextRequest) {
     const message = cause instanceof Error ? cause.message : 'Blob upload failed.';
     const status = message === 'Unauthorized' ? 401 : 400;
     return NextResponse.json({ error: message }, { status });
+  }
+}
+
+export async function PUT(request: NextRequest) {
+  const user = await currentUser(request);
+  if (!user) return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+
+  const bucket = String(request.nextUrl.searchParams.get('bucket') || '').trim();
+  const rawPath = String(request.nextUrl.searchParams.get('path') || '').trim();
+  if (!ALLOWED_BUCKETS.has(bucket)) return NextResponse.json({ error: 'Unsupported image bucket.' }, { status: 400 });
+  if (!rawPath) return NextResponse.json({ error: 'Image path is required.' }, { status: 400 });
+
+  const path = safePath(rawPath);
+  if (!path || !path.startsWith(`${user.id}/`)) {
+    return NextResponse.json({ error: 'Image path does not belong to the signed-in user.' }, { status: 403 });
+  }
+
+  const contentType = String(request.headers.get('content-type') || '').toLowerCase();
+  if (!contentType.startsWith('image/')) return NextResponse.json({ error: 'Only image uploads are allowed.' }, { status: 415 });
+  const declaredLength = Number(request.headers.get('content-length') || '0');
+  const fallbackLimit = Math.floor(3.5 * 1024 * 1024);
+  if (declaredLength > fallbackLimit) return NextResponse.json({ error: 'Fallback image payload is too large.' }, { status: 413 });
+
+  try {
+    const bytes = await request.arrayBuffer();
+    if (bytes.byteLength > fallbackLimit) return NextResponse.json({ error: 'Fallback image payload is too large.' }, { status: 413 });
+    const token = (process.env.BLOB_READ_WRITE_TOKEN || '').trim();
+    const result = await put(`${bucket}/${path}`, Buffer.from(bytes), {
+      access: 'public',
+      addRandomSuffix: true,
+      contentType,
+      ...(token && token !== '[SENSITIVE]' ? { token } : {}),
+    });
+    return NextResponse.json({ url: result.url, pathname: result.pathname });
+  } catch (cause) {
+    return NextResponse.json({ error: cause instanceof Error ? cause.message : 'Blob upload failed.' }, { status: 500 });
   }
 }
 
