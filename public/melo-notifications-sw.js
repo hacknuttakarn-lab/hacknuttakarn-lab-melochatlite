@@ -60,12 +60,12 @@ self.addEventListener('push',(event)=>{
     body:payload.body||'',
     icon:payload.icon||'/melo-logo.png',
     badge:payload.badge||'/melo-logo.png',
-    tag:payload.tag||payload.id||undefined,
+    tag:payload.tag||payload.id||`melo-${Date.now()}-${Math.random()}`,
     renotify:true,
     requireInteraction:false,
     silent:false,
     timestamp:Number(payload.timestamp)||Date.now(),
-    data:{href:payload.href||'/',...(payload.data||{})},
+    data:{href:payload.href||'/',soundHint:payload.data&&payload.data.soundHint,...(payload.data||{})},
   };
   event.waitUntil((async()=>{
     const supplied=Number(payload.unreadCount??payload.badgeCount);

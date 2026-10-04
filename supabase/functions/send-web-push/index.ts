@@ -101,7 +101,7 @@ Deno.serve(async(req)=>{
         JSON.stringify({
           id:record.id,title,body,href,icon:'/melo-logo.png',badge:'/melo-logo.png',
           unreadCount:Number(unreadCount)||1,timestamp:Date.now(),
-          data:{type:record.type||record.notification_type||metadata.type||'notification'}
+          tag:`melo-${record.id||crypto.randomUUID()}`,data:{type:record.type||record.notification_type||metadata.type||'notification',soundHint:isDirectChatNotification(record,metadata)?'melo_chat_short_clear_v5':'melo_activity_fun_onebeat_v2'}
         })
       );
       sent++;
