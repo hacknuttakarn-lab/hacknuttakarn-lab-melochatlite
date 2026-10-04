@@ -2,14 +2,33 @@
 import webpush from 'npm:web-push@3.6.7';
 import { createClient } from 'npm:@supabase/supabase-js@2';
 
-const SUPABASE_URL=Deno.env.get('SUPABASE_URL')!;
-const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')!;
-const VAPID_PUBLIC=Deno.env.get('MELO_VAPID_PUBLIC_KEY')!;
-const VAPID_PRIVATE=Deno.env.get('MELO_VAPID_PRIVATE_KEY')!;
+const SUPABASE_URL=Deno.env.get('SUPABASE_URL')||'';
+const SERVICE_ROLE=Deno.env.get('SUPABASE_SERVICE_ROLE_KEY')||'';
+const VAPID_PUBLIC=Deno.env.get('MELO_VAPID_PUBLIC_KEY')||'';
+const VAPID_PRIVATE=Deno.env.get('MELO_VAPID_PRIVATE_KEY')||'';
 const VAPID_SUBJECT=Deno.env.get('MELO_VAPID_SUBJECT')||'mailto:support@melochat.app';
 const WEBHOOK_SECRET=Deno.env.get('MELO_PUSH_WEBHOOK_SECRET')||'';
-webpush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC,VAPID_PRIVATE);
-const supabase=createClient(SUPABASE_URL,SERVICE_ROLE,{auth:{persistSession:false}});
+const supabase=(SUPABASE_URL&&SERVICE_ROLE)
+  ? createClient(SUPABASE_URL,SERVICE_ROLE,{auth:{persistSession:false}})
+  : null;
+
+function configState(){
+  return {
+    supabaseUrl:Boolean(SUPABASE_URL),
+    serviceRole:Boolean(SERVICE_ROLE),
+    vapidPublic:Boolean(VAPID_PUBLIC),
+    vapidPrivate:Boolean(VAPID_PRIVATE),
+    webhookSecret:Boolean(WEBHOOK_SECRET),
+    vapidSubject:Boolean(VAPID_SUBJECT),
+  };
+}
+
+function ensureConfigured(){
+  const state=configState();
+  const missing=Object.entries(state).filter(([,ok])=>!ok).map(([key])=>key);
+  if(missing.length)throw new Error(`Melo Push configuration missing: ${missing.join(', ')}`);
+  webpush.setVapidDetails(VAPID_SUBJECT,VAPID_PUBLIC,VAPID_PRIVATE);
+}
 
 function recordText(record:any,metadata:any){
   return [
@@ -69,10 +88,22 @@ function genericMessageBody(locale:string){
 Deno.serve(async(req)=>{
   if(req.method!=='POST')return new Response('Method not allowed',{status:405});
   if(!WEBHOOK_SECRET||req.headers.get('x-melo-webhook-secret')!==WEBHOOK_SECRET)return new Response('Unauthorized',{status:401});
+
   const payload=await req.json().catch(()=>({}));
+  if(payload?.action==='health'){
+    return Response.json({ok:true,config:configState()});
+  }
+
+  try{
+    ensureConfigured();
+  }catch(error){
+    console.error('[Melo Push] configuration error',configState(),String(error));
+    return Response.json({ok:false,error:String(error),config:configState()},{status:500});
+  }
   const record=payload.record||payload;
   const userId=record.user_id||record.recipient_id||record.recipient_user_id;
   if(!userId)return Response.json({ok:true,skipped:'no recipient'});
+  console.log('[Melo Push] dispatch start',{notificationId:record.id,userId,type:record.type||record.notification_type});
   const metadata=typeof record.metadata==='object'&&record.metadata?record.metadata:{};
   const href=metadata.href||record.href||'/';
   let body=record.body||record.message||'';
@@ -132,5 +163,7 @@ Deno.serve(async(req)=>{
     }
     if(!delivered)failed++;
   }
-  return Response.json({ok:true,sent,failed,subscriptions:(subs||[]).length});
+  const result={ok:true,sent,failed,subscriptions:(subs||[]).length,notificationId:record.id||null,userId};
+  console.log('[Melo Push] dispatch complete',result);
+  return Response.json(result);
 });

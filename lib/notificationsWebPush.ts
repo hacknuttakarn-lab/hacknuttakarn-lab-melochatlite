@@ -107,8 +107,15 @@ export function prepareMeloWebPush() {
   };
 
   sync();
+  const periodicResync = window.setInterval(() => {
+    if (Notification.permission === 'granted' && getStoredSession()?.user?.id) {
+      void registerSubscription(true);
+    }
+  }, 5 * 60_000);
+
   window.addEventListener('focus', sync);
-  window.addEventListener('online', sync);
+  window.addEventListener('pageshow', forceSync);
+  window.addEventListener('online', forceSync);
   window.addEventListener('melo-auth-changed', forceSync);
   window.addEventListener('storage', (event) => {
     if (!event.key || event.key === 'melo-web-auth-session') forceSync();
