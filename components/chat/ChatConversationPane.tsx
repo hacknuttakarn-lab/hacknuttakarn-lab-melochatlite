@@ -1985,6 +1985,31 @@ export function ChatConversationPane({
     ],
   );
 
+  useEffect(() => {
+    if (!drawerMode || typeof window === "undefined") return;
+
+    const viewport = window.visualViewport;
+    let timer = 0;
+
+    const keepLatestVisible = () => {
+      window.clearTimeout(timer);
+      timer = window.setTimeout(() => {
+        endRef.current?.scrollIntoView({ block: "end" });
+      }, 40);
+    };
+
+    viewport?.addEventListener("resize", keepLatestVisible);
+    viewport?.addEventListener("scroll", keepLatestVisible);
+    window.addEventListener("orientationchange", keepLatestVisible);
+
+    return () => {
+      window.clearTimeout(timer);
+      viewport?.removeEventListener("resize", keepLatestVisible);
+      viewport?.removeEventListener("scroll", keepLatestVisible);
+      window.removeEventListener("orientationchange", keepLatestVisible);
+    };
+  }, [drawerMode, roomKey]);
+
   async function loadOlderDirectMessages() {
     if (!room || room.category !== "direct" || loadingOlder || !hasOlder || !messages.length) return;
     const scroll = messageListRef.current;

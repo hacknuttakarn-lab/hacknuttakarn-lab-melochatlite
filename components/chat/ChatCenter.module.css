@@ -1339,3 +1339,30 @@
 @media(max-width:760px){
   .planLocked{min-height:calc(100dvh - 156px);border-radius:20px;padding-inline:20px}
 }
+
+
+/* V64 — iOS keyboard: keep the conversation readable above the software keyboard. */
+@media (max-width: 760px) {
+  .conversationDrawer {
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+  }
+
+  .conversationDrawer .messageScroll {
+    min-height: 0;
+    overflow-y: auto;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: 92px;
+  }
+
+  .conversationDrawer .composer {
+    position: relative;
+    z-index: 20;
+    flex: 0 0 auto;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    background: var(--surface);
+  }
+}

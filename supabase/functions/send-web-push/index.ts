@@ -94,22 +94,43 @@ Deno.serve(async(req)=>{
   const {data:subs,error}=await supabase.from('web_push_subscriptions').select('endpoint,p256dh,auth_key').eq('user_id',userId);
   if(error) return new Response(error.message,{status:500});
   let sent=0;
-  for(const sub of subs||[]){
-    try{
-      await webpush.sendNotification(
-        {endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth_key}},
-        JSON.stringify({
-          id:record.id,title,body,href,icon:'/melo-logo.png',badge:'/melo-logo.png',
-          unreadCount:Number(unreadCount)||1,timestamp:Date.now(),
-          tag:`melo-${record.id||crypto.randomUUID()}`,data:{type:record.type||record.notification_type||metadata.type||'notification',soundHint:isDirectChatNotification(record,metadata)?'melo_chat_short_clear_v5':'melo_activity_fun_onebeat_v2'}
-        })
-      );
-      sent++;
-    }catch(err){
-      const status=(err as {statusCode?:number})?.statusCode;
-      if(status===404||status===410)await supabase.from('web_push_subscriptions').delete().eq('endpoint',sub.endpoint);
-      else console.error(err);
+  let failed=0;
+  const notificationPayload=JSON.stringify({
+    id:record.id,title,body,href,icon:'/melo-logo.png',badge:'/melo-logo.png',
+    unreadCount:Number(unreadCount)||1,timestamp:Date.now(),
+    tag:`melo-${record.id||crypto.randomUUID()}`,
+    data:{
+      type:record.type||record.notification_type||metadata.type||'notification',
+      soundHint:isDirectChatNotification(record,metadata)?'melo_chat_short_clear_v5':'melo_activity_fun_onebeat_v2'
     }
+  });
+
+  for(const sub of subs||[]){
+    let delivered=false;
+    for(let attempt=0;attempt<3 && !delivered;attempt++){
+      try{
+        await webpush.sendNotification(
+          {endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth_key}},
+          notificationPayload,
+          {TTL:86400,urgency:'high'}
+        );
+        delivered=true;
+        sent++;
+      }catch(err){
+        const status=(err as {statusCode?:number})?.statusCode;
+        if(status===404||status===410){
+          await supabase.from('web_push_subscriptions').delete().eq('endpoint',sub.endpoint);
+          break;
+        }
+        const retryable=!status || status===408 || status===429 || status>=500;
+        if(!retryable || attempt===2){
+          console.error('Melo push delivery failed',{userId,endpoint:sub.endpoint,status,attempt:attempt+1,error:String(err)});
+          break;
+        }
+        await new Promise((resolve)=>setTimeout(resolve,250*(attempt+1)));
+      }
+    }
+    if(!delivered)failed++;
   }
-  return Response.json({ok:true,sent});
+  return Response.json({ok:true,sent,failed,subscriptions:(subs||[]).length});
 });

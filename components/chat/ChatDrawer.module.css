@@ -708,3 +708,27 @@
   font-size: 13px;
   font-weight: 900;
 }
+
+
+/* V64 — bind the entire mobile drawer to Safari's visual viewport. */
+@media (max-width: 760px) {
+  .layer {
+    position: fixed;
+    top: var(--melo-chat-vv-top, 0px);
+    right: 0;
+    bottom: auto;
+    left: 0;
+    width: 100vw;
+    height: var(--melo-chat-vv-height, 100dvh);
+    max-height: var(--melo-chat-vv-height, 100dvh);
+    overflow: hidden;
+  }
+
+  .drawer,
+  .drawerConversation,
+  .conversationBody {
+    min-height: 0;
+    height: 100%;
+    max-height: 100%;
+  }
+}
