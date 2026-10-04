@@ -78,23 +78,32 @@ Deno.serve(async(req)=>{
   let body=record.body||record.message||'';
   let title=record.title||'Melo Chat';
 
-  // Free members may be told that somebody contacted them, but the push itself
-  // must never reveal the direct-message content. Support chat remains available
-  // because members need it for help and package purchases.
-  if(isDirectChatNotification(record,metadata)){
-    const canChat=await recipientCanUseChat(String(userId));
-    if(!canChat){
-      body=genericMessageBody(await recipientLanguage(String(userId)));
-      if(!String(title||'').trim())title='Melo Chat';
-    }
+  // Direct-message rows are created only after the server-side chat rules allow
+  // the message. Existing matched conversations remain chat-enabled even after
+  // a paid package expires, so push must follow the actual message instead of
+  // re-locking the recipient based only on the current package.
+  if(isDirectChatNotification(record,metadata) && !String(body||'').trim()) {
+    body=genericMessageBody(await recipientLanguage(String(userId)));
   }
+
+  const {count:unreadCount}=await supabase.from('notifications')
+    .select('id',{count:'exact',head:true})
+    .eq('user_id',userId)
+    .eq('is_read',false);
 
   const {data:subs,error}=await supabase.from('web_push_subscriptions').select('endpoint,p256dh,auth_key').eq('user_id',userId);
   if(error) return new Response(error.message,{status:500});
   let sent=0;
   for(const sub of subs||[]){
     try{
-      await webpush.sendNotification({endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth_key}},JSON.stringify({id:record.id,title,body,href,icon:'/melo-logo.png',badge:'/melo-logo.png'}));
+      await webpush.sendNotification(
+        {endpoint:sub.endpoint,keys:{p256dh:sub.p256dh,auth:sub.auth_key}},
+        JSON.stringify({
+          id:record.id,title,body,href,icon:'/melo-logo.png',badge:'/melo-logo.png',
+          unreadCount:Number(unreadCount)||1,timestamp:Date.now(),
+          data:{type:record.type||record.notification_type||metadata.type||'notification'}
+        })
+      );
       sent++;
     }catch(err){
       const status=(err as {statusCode?:number})?.statusCode;

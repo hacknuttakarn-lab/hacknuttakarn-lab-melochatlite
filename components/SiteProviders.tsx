@@ -4,6 +4,7 @@ import { createContext, useContext, useEffect, useMemo, useState } from 'react';
 import { dictionaries, localeLabels, supportedLocales, type Locale, type TranslationKey } from '@/i18n/dictionaries';
 import { GLOBAL_COUNTRY_SCOPE, isCountryScope, type CountryScope } from '@/lib/discoveryCountry';
 import { getStoredSession, refreshStoredSession } from '@/lib/supabase/browser';
+import { prepareMeloWebPush, syncMeloWebPushSubscription } from '@/lib/notificationsWebPush';
 
 type ThemeMode = 'light' | 'dark';
 export type ThemePreference = 'system' | ThemeMode;
@@ -98,6 +99,20 @@ export function SiteProviders({ children }: { children: React.ReactNode }) {
     document.documentElement.lang = locale;
     window.localStorage.setItem('melo-web-locale', locale);
   }, [locale]);
+
+  // Register Web Push globally for every signed-in route, not only pages that
+  // happen to render Header. This keeps the browser subscription alive across
+  // account/profile/settings/chat routes and after a normal page refresh.
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    prepareMeloWebPush();
+    if (getStoredSession()?.user?.id) void syncMeloWebPushSubscription();
+    const resync = () => {
+      if (getStoredSession()?.user?.id) void syncMeloWebPushSubscription();
+    };
+    window.addEventListener('melo-auth-changed', resync);
+    return () => window.removeEventListener('melo-auth-changed', resync);
+  }, []);
 
   // Keep a valid Supabase session alive while the member remains signed in.
   // There is no idle/inactivity logout: sign-out stays user initiated unless

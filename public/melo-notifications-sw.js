@@ -2,6 +2,14 @@
 const MELO_BADGE_CACHE='melo-app-badge-v1';
 const MELO_BADGE_STATE_URL='/__melo_app_badge_state__';
 
+self.addEventListener('install',(event)=>{
+  event.waitUntil(self.skipWaiting());
+});
+
+self.addEventListener('activate',(event)=>{
+  event.waitUntil(self.clients.claim());
+});
+
 async function readBadgeCount(){
   try{
     const cache=await caches.open(MELO_BADGE_CACHE);
@@ -55,6 +63,8 @@ self.addEventListener('push',(event)=>{
     tag:payload.tag||payload.id||undefined,
     renotify:true,
     requireInteraction:false,
+    silent:false,
+    timestamp:Number(payload.timestamp)||Date.now(),
     data:{href:payload.href||'/',...(payload.data||{})},
   };
   event.waitUntil((async()=>{
