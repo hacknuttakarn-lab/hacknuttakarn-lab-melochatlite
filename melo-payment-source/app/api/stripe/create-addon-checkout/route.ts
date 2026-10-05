@@ -59,8 +59,8 @@ export async function POST(request: Request) {
     const usage = await usageResponse.json() as UsagePayload;
     const planCode = String(usage?.plan_code || '').trim();
     const planId = String(usage?.plan_id || '').trim();
-    if (!planCode || !planId) {
-    return jsonError('Translation add-ons are not available for the current package.', 409);
+    if (!usage?.can_buy_translation_addon || !planCode || !planId) {
+      return jsonError('Translation add-ons are not available for the current package.', 409);
     }
 
     const addonQuery = new URLSearchParams({
