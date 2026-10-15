@@ -14,6 +14,7 @@ import { getCurrentUser, rpcRequest, restInsert, restSelect } from "@/lib/supaba
 import { loadMyPlanUsage, type PlanUsage } from "@/lib/plan/planWeb";
 import { VerifiedBadge } from "@/components/VerifiedBadge";
 import { loadPublicVerifiedUserIds } from "@/lib/publicVerification";
+import { lifestyleLabel } from "@/components/profile/lifestyleCanonical";
 
 type Kind = "feed"|"chat"|"profile"|"love"|"connect"|"settings"|"premium";
 type Person={id:string;name:string;age:number|null;country:string;photo:string;tags:string[];state:"incoming"|"outgoing"|"connected"};
@@ -35,6 +36,10 @@ const LIFESTYLE_TRANSLATIONS = {
 function normalizedOption(value:string){return value.trim().toLocaleLowerCase();}
 function translateLifestyleValue(category:keyof typeof LIFESTYLE_TRANSLATIONS,value:string,locale:string){
  const target=(locale==="th"||locale==="de"?locale:"en") as SupportedLocale;
+ if(category!=="relationship"&&category!=="interested"){
+  const canonical=lifestyleLabel(category==="pet"?"pets":category,value,target);
+  if(canonical)return canonical;
+ }
  const source=LIFESTYLE_TRANSLATIONS[category];
  const needle=normalizedOption(value);
  if(category==="relationship"&&["ความสัมพันธ์ระยะยาว","serious relationship","langfristige beziehung","ernste beziehung"].includes(needle)){
@@ -495,7 +500,7 @@ export function ProfileDemo({personId=""}:{personId?:string}){
    .map(value=>translateLifestyleValue("relationship",value,targetLocale))
    .filter((value,index,all)=>all.findIndex(other=>normalizedOption(other)===normalizedOption(value))===index)
    .join(", ");
-  return {pets:show("pet",life.pet),smoking:show("smoke",life.smoke),social:show("social",life.social),drinking:show("drink",life.drink),exercise:show("exercise",life.exercise),relationship};
+  return {pets:show("pet",life.pets??life.pet),smoking:show("smoke",life.smoke),social:show("social",life.social),drinking:show("drink",life.drink),exercise:show("exercise",life.exercise),relationship};
  },[isOwnProfile,ownSnapshot,remoteProfile,locale]);
  const lifestyleCopy=locale==="th"?{title:"ไลฟ์สไตล์",pets:"สัตว์เลี้ยง",smoking:"การสูบบุหรี่",social:"บุคลิกทางสังคม",drinking:"การดื่ม",exercise:"การออกกำลังกาย",relationship:"กำลังมองหา",empty:"—"}:locale==="de"?{title:"Lebensstil",pets:"Haustiere",smoking:"Rauchen",social:"Sozialer Typ",drinking:"Alkohol",exercise:"Sport",relationship:"Gesuchte Beziehung",empty:"—"}:{title:"Lifestyle",pets:"Pets",smoking:"Smoking",social:"Social style",drinking:"Drinking",exercise:"Exercise",relationship:"Relationship sought",empty:"—"};
  const [profileAvatarUrl,setProfileAvatarUrl]=useState(basePerson.photo);

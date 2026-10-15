@@ -1471,7 +1471,7 @@ function datingProfile(
           ? raw as Record<string, unknown>
           : {};
 
-      return stringArray(lifestyle.pet).join(", ") || text(row, "pets");
+      return stringArray(lifestyle.pets).join(", ") || stringArray(lifestyle.pet).join(", ") || text(row, "pets");
     })(),
 
     matchScore:
