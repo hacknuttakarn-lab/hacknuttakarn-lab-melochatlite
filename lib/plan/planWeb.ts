@@ -121,12 +121,10 @@ export async function loadTranslationAddons(): Promise<TranslationAddon[]> {
 export async function loadMyTranslationAddonUsage(): Promise<TranslationAddonUsage[]> {
   const user = await getCurrentUser();
   if (!user?.id) return [];
-  const now = new Date().toISOString();
   const query = [
     'select=id,addon_id,cycle_start,cycle_end,character_limit,character_used,status,created_at,translation_addons(code,name)',
     `user_id=eq.${encodeURIComponent(user.id)}`,
     'status=eq.active',
-    `cycle_end=gt.${encodeURIComponent(now)}`,
     'order=created_at.desc',
   ].join('&');
   const result = await restSelect<TranslationAddonUsage[]>('user_translation_addons', query);
