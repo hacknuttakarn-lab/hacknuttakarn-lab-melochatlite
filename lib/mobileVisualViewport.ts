@@ -19,18 +19,30 @@ export function bindMobileVisualViewport(
   const bottomVar = `--${prefix}-bottom-reserve`;
   const viewport = window.visualViewport;
 
-  const update = () => {
-    const height = Math.max(1, Math.round(viewport?.height ?? window.innerHeight));
-    const keyboardOpen = Boolean(
-      viewport && window.innerHeight - viewport.height > 120,
+  let frame = 0;
+  let settleTimer = 0;
+
+  const updateNow = () => {
+    const visualHeight = viewport?.height ?? window.innerHeight;
+    const layoutHeight = Math.max(
+      window.innerHeight,
+      document.documentElement.clientHeight,
     );
-    // iOS standalone/PWA can report a non-zero visualViewport.offsetTop even
-    // while the keyboard is closed. Applying that value all the time double
-    // counts the top safe-area/header and leaves a large blank band above chat.
-    // We only need the visual viewport offset while the keyboard is actually
-    // open and iOS is panning the viewport.
+    const visualTop = Math.max(0, viewport?.offsetTop ?? 0);
+    const obscured = Math.max(0, layoutHeight - visualHeight - visualTop);
+    const keyboardOpen = Boolean(
+      viewport && (
+        obscured > 90 ||
+        visualHeight < layoutHeight * 0.82
+      ),
+    );
+    const height = Math.max(1, Math.round(visualHeight));
+
+    // Only follow the visual viewport pan while a software keyboard is open.
+    // This avoids the large blank top band that iOS standalone mode can report
+    // from a persistent safe-area offset while the keyboard is closed.
     const top = keyboardOpen
-      ? Math.max(0, Math.round(viewport?.offsetTop ?? 0))
+      ? Math.max(0, Math.round(visualTop))
       : 0;
 
     root.style.setProperty(heightVar, `${height}px`);
@@ -38,17 +50,30 @@ export function bindMobileVisualViewport(
     root.style.setProperty(bottomVar, keyboardOpen ? '0px' : normalBottomReserve);
   };
 
-  update();
-  viewport?.addEventListener('resize', update);
-  viewport?.addEventListener('scroll', update);
-  window.addEventListener('resize', update);
-  window.addEventListener('orientationchange', update);
+  const scheduleUpdate = () => {
+    window.cancelAnimationFrame(frame);
+    frame = window.requestAnimationFrame(updateNow);
+
+    // Safari emits several intermediate viewport sizes during the keyboard
+    // animation. Re-read once after it settles so the drawer cannot remain at
+    // a transient height/offset.
+    window.clearTimeout(settleTimer);
+    settleTimer = window.setTimeout(updateNow, 180);
+  };
+
+  updateNow();
+  viewport?.addEventListener('resize', scheduleUpdate);
+  viewport?.addEventListener('scroll', scheduleUpdate);
+  window.addEventListener('resize', scheduleUpdate);
+  window.addEventListener('orientationchange', scheduleUpdate);
 
   return () => {
-    viewport?.removeEventListener('resize', update);
-    viewport?.removeEventListener('scroll', update);
-    window.removeEventListener('resize', update);
-    window.removeEventListener('orientationchange', update);
+    window.cancelAnimationFrame(frame);
+    window.clearTimeout(settleTimer);
+    viewport?.removeEventListener('resize', scheduleUpdate);
+    viewport?.removeEventListener('scroll', scheduleUpdate);
+    window.removeEventListener('resize', scheduleUpdate);
+    window.removeEventListener('orientationchange', scheduleUpdate);
     root.style.removeProperty(heightVar);
     root.style.removeProperty(topVar);
     root.style.removeProperty(bottomVar);

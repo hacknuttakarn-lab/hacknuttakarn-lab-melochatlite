@@ -169,8 +169,6 @@ export default function HomeDashboardExperience() {
 
   const pagedProfiles = useMemo(() => visibleProfiles.slice(0, profileLimit), [visibleProfiles, profileLimit]);
 
-  const isFreePlan = (planAccess?.plan_code || "").trim().toLowerCase() === "free";
-
   useEffect(() => {
     setProfileLimit(15);
   }, [lifestyle]);
@@ -241,9 +239,9 @@ export default function HomeDashboardExperience() {
                     </div>
                     <div className={styles.cardTags}>{((profile as DatingProfileWeb & { lifestyleTags?: string[] }).lifestyleTags || []).map((tag) => <span key={tag}>#{tag}</span>)}</div>
                     <div className={styles.cardActions}>
-                      {!isFreePlan ? <button type="button" className={styles.passAction} aria-label="Not interested" title="Not interested" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleDismiss(profile.id); }}>×</button> : null}
+                      <button type="button" className={styles.passAction} aria-label="Not interested" title="Not interested" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleDismiss(profile.id); }}>×</button>
                       <button type="button" className={`${styles.followAction} ${followedIds.includes(profile.id) ? styles.followActionActive : ""}`} aria-label={followedIds.includes(profile.id) ? "Following" : "Follow"} title={followedIds.includes(profile.id) ? "Following" : "Follow"} onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleFollow(profile.id); }}>{followedIds.includes(profile.id) ? "✓" : "+"}</button>
-                      {!isFreePlan ? <button type="button" className={`${styles.connectAction} ${interestedIds.includes(profile.id) ? styles.connectActionActive : ""}`} aria-label="Connect" title="Connect" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleInterested(profile.id); }}>♥</button> : null}
+                      {planAccess?.can_interested!==false ? <button type="button" className={`${styles.connectAction} ${interestedIds.includes(profile.id) ? styles.connectActionActive : ""}`} aria-label="Connect" title="Connect" onClick={(event) => { event.preventDefault(); event.stopPropagation(); void handleInterested(profile.id); }}>♥</button> : null}
                     </div>
                   </div>
                 </article>
@@ -253,7 +251,7 @@ export default function HomeDashboardExperience() {
         ) : null}
         {!loading && !error && profileLimit < visibleProfiles.length ? <div ref={loadMoreRef} aria-hidden="true" style={{ height: 1 }} /> : null}
 
-        {upgradeOpen ? <div className={styles.boostBackdrop} role="presentation" onMouseDown={()=>setUpgradeOpen(false)}><section className={styles.boostModal} role="dialog" aria-modal="true" onMouseDown={event=>event.stopPropagation()}><div className={styles.boostModalHead}><div><span className={styles.boostEyebrow}>MELO PREMIUM</span><h2>{locale==="th"?"ปลดล็อกฟีเจอร์ Premium":locale==="de"?"Premium-Funktionen freischalten":"Unlock Premium Features"}</h2><p>{locale==="th"?"อัปเกรด Premium เพื่อเปิดโปรไฟล์เต็ม สนใจ ติดตาม แมตช์ แชท และใช้ Boost":locale==="de"?"Upgrade für vollständige Profile, Likes, Folgen, Matches, Chat und Boosts.":"Upgrade to Premium to view full profiles, connect, follow, match, chat and use boosts."}</p></div><button type="button" className={styles.boostClose} onClick={()=>setUpgradeOpen(false)}>×</button></div><div className={styles.boostCardAction}><button type="button" onClick={()=>{window.location.href="/premium"}}>View Premium Plans</button></div></section></div>:null}
+        {upgradeOpen ? <div className={styles.boostBackdrop} role="presentation" onMouseDown={()=>setUpgradeOpen(false)}><section className={styles.boostModal} role="dialog" aria-modal="true" onMouseDown={event=>event.stopPropagation()}><div className={styles.boostModalHead}><div><span className={styles.boostEyebrow}>MELO PREMIUM</span><h2>{locale==="th"?"ปลดล็อกฟีเจอร์ Premium":locale==="de"?"Premium-Funktionen freischalten":"Unlock Premium Features"}</h2><p>{locale==="th"?"อัปเกรด Premium เพื่อเพิ่มโควตาโพสต์ การแปล Boost และสิทธิ์พิเศษเพิ่มเติม":locale==="de"?"Upgrade für mehr Beiträge, Übersetzung, Boosts und weitere Premium-Vorteile.":"Upgrade for more profile posts, translation, boosts and additional Premium benefits."}</p></div><button type="button" className={styles.boostClose} onClick={()=>setUpgradeOpen(false)}>×</button></div><div className={styles.boostCardAction}><button type="button" onClick={()=>{window.location.href="/premium"}}>View Premium Plans</button></div></section></div>:null}
 
         {boostOpen ? (
           <div className={styles.boostBackdrop} role="presentation" onMouseDown={() => setBoostOpen(false)}>

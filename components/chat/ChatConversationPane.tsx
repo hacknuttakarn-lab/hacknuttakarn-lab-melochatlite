@@ -60,6 +60,8 @@ const COPY = {
     translation: "แปลข้อความ",
     translationOn: "เปิด",
     translationOff: "ปิด",
+    chatQuotaExceeded: "คุณใช้โควตาแชทฟรี 20,000 ตัวอักษรตลอดอายุบัญชีครบแล้ว กรุณาอัปเกรดแพ็กเกจเพื่อแชทต่อ",
+    chatMessageTooLong: "ข้อความนี้ยาวเกินขีดจำกัดของแพ็กเกจ กรุณาแบ่งข้อความให้สั้นลง",
   },
   en: {
     select: "Choose a chat from the list to start a conversation",
@@ -87,6 +89,8 @@ const COPY = {
     translation: "Translation",
     translationOn: "On",
     translationOff: "Off",
+    chatQuotaExceeded: "You have used all 20,000 lifetime Free chat characters. Upgrade your plan to continue chatting.",
+    chatMessageTooLong: "This message is longer than your plan allows. Please split it into shorter messages.",
   },
   de: {
     select: "Wähle einen Chat aus der Liste, um zu beginnen",
@@ -114,6 +118,8 @@ const COPY = {
     translation: "Übersetzung",
     translationOn: "Ein",
     translationOff: "Aus",
+    chatQuotaExceeded: "Du hast alle 20.000 Chat-Zeichen des kostenlosen Kontingents für die gesamte Kontolaufzeit verbraucht. Upgrade dein Paket, um weiter zu chatten.",
+    chatMessageTooLong: "Diese Nachricht ist länger als dein Paket erlaubt. Bitte teile sie in kürzere Nachrichten auf.",
   },
   zh: {
     select: "从列表中选择聊天以开始对话",
@@ -141,6 +147,8 @@ const COPY = {
     translation: "翻译",
     translationOn: "开启",
     translationOff: "关闭",
+    chatQuotaExceeded: "你的免费套餐 20,000 个终身聊天字符额度已用完。请升级套餐以继续聊天。",
+    chatMessageTooLong: "此消息超过套餐允许的长度，请拆分为更短的消息。",
   },
   ja: {
     select: "一覧からチャットを選択して会話を開始します",
@@ -168,6 +176,8 @@ const COPY = {
     translation: "翻訳",
     translationOn: "オン",
     translationOff: "オフ",
+    chatQuotaExceeded: "Freeプランの生涯チャット上限20,000文字を使い切りました。チャットを続けるにはプランをアップグレードしてください。",
+    chatMessageTooLong: "このメッセージはプランの上限より長いため、短く分けて送信してください。",
   },
   ko: {
     select: "목록에서 채팅을 선택해 대화를 시작하세요",
@@ -195,6 +205,8 @@ const COPY = {
     translation: "번역",
     translationOn: "켜짐",
     translationOff: "꺼짐",
+    chatQuotaExceeded: "Free 플랜의 평생 채팅 한도 20,000자를 모두 사용했습니다. 채팅을 계속하려면 플랜을 업그레이드해 주세요.",
+    chatMessageTooLong: "이 메시지는 플랜에서 허용하는 길이를 초과했습니다. 더 짧게 나누어 보내 주세요.",
   },
 } as const;
 
@@ -2297,6 +2309,10 @@ export function ChatConversationPane({
         setError(
           t.imageTooLarge,
         );
+      } else if (message.includes("PLAN_QUOTA_EXCEEDED:chat")) {
+        setError(t.chatQuotaExceeded);
+      } else if (message.includes("PLAN_MESSAGE_TOO_LONG:chat")) {
+        setError(t.chatMessageTooLong);
       } else {
         setError(
           message ||

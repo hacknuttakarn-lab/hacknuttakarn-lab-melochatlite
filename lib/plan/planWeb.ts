@@ -14,11 +14,14 @@ export type PlanUsage = {
   profile_post_limit?: number | null;
   high_post_limit?: boolean;
   translation_limit?: number;
+  chat_monthly_limit?: number | null;
+  chat_lifetime_limit?: number | null;
   profile_boost_limit?: number;
   post_boost_limit?: number;
   addon_translation_limit?: number;
   addon_translation_used?: number;
   base_translation_used?: number;
+  chat_characters_used?: number;
   profile_boost_used?: number;
   post_boost_used?: number;
   profile_posts_used?: number;
@@ -48,6 +51,8 @@ export type PublicPlan = Record<string, unknown> & {
   price_6_months?: number;
   profile_post_limit?: number | null;
   translation_monthly_limit?: number;
+  chat_monthly_limit?: number | null;
+  chat_lifetime_limit?: number | null;
   profile_boost_monthly_limit?: number;
   post_boost_monthly_limit?: number;
   high_post_limit?: boolean;

@@ -612,7 +612,7 @@ html[data-theme='dark'] .phoneV2 { border-color: #05070a; }
   display: contents;
 }
 
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: portrait) and (max-width: 1100px) {
   body.meloMemberBottomNavVisible {
     padding-bottom: calc(74px + env(safe-area-inset-bottom));
   }
@@ -1163,7 +1163,7 @@ html[data-theme='dark'] .memberSiteHeader .brand span {
 }
 
 /* Melo mobile V17: give the bottom nav content more breathing room above the device edge. */
-@media (max-width: 760px) {
+@media (max-width: 760px), (orientation: portrait) and (max-width: 1100px) {
   body.meloMemberBottomNavVisible {
     padding-bottom: calc(82px + env(safe-area-inset-bottom));
   }

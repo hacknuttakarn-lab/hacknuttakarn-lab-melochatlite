@@ -4267,6 +4267,31 @@ async function buildDirectChatInsertPayload(
   };
 }
 
+async function checkDirectTextChatQuota(body: string) {
+  if (!body) return;
+  const result = await rpcRequest<unknown>(
+    "melo_check_chat_message_v67",
+    { p_body: body },
+  );
+  if (result.error && !missingFunction(result.error)) {
+    throw new Error(result.error);
+  }
+}
+
+async function recordDirectTextChatUsage(body: string) {
+  if (!body) return;
+  const result = await rpcRequest<unknown>(
+    "melo_record_chat_message_v67",
+    { p_body: body },
+  );
+  if (result.error && !missingFunction(result.error)) {
+    console.warn("[Melo Chat] Unable to record chat quota usage:", result.error);
+  }
+  if (typeof window !== "undefined") {
+    window.dispatchEvent(new CustomEvent("melo-plan-usage-changed"));
+  }
+}
+
 export async function sendDirectMessage(
   conversationId:
     string,
@@ -4289,6 +4314,18 @@ export async function sendDirectMessage(
     messageBodyForPayload(
       payload,
     );
+
+  const quotaTrackedBody = payload.messageType === "text" ? body.trim() : "";
+  if (quotaTrackedBody) {
+    await checkDirectTextChatQuota(quotaTrackedBody);
+  }
+
+  const finalizeDirectSend = async <T,>(value: T): Promise<T> => {
+    if (quotaTrackedBody) {
+      await recordDirectTextChatUsage(quotaTrackedBody);
+    }
+    return value;
+  };
 
   const rich = {
     p_conversation_id:
@@ -4391,11 +4428,13 @@ export async function sendDirectMessage(
           result.data,
         )[0];
 
-      return row
-        ? directMessage(
-            row,
-          )
-        : null;
+      return finalizeDirectSend(
+        row
+          ? directMessage(
+              row,
+            )
+          : null,
+      );
     }
 
     rpcError =
@@ -4427,19 +4466,21 @@ export async function sendDirectMessage(
           inserted.data,
         )[0];
 
-      return row
-        ? directMessage({
-            ...row,
+      return finalizeDirectSend(
+        row
+          ? directMessage({
+              ...row,
 
-            is_mine:
-              true,
+              is_mine:
+                true,
 
-            sender_side:
-              detected.businessId
-                ? "business"
-                : "user",
-          })
-        : null;
+              sender_side:
+                detected.businessId
+                  ? "business"
+                  : "user",
+            })
+          : null,
+      );
     }
 
     throw new Error(

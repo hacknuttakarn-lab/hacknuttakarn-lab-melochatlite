@@ -1367,20 +1367,48 @@
   }
 }
 
-/* V65 — iOS keyboard stability. Keep scrolling inside the message viewport
-   instead of allowing Safari to pan the page behind the fixed chat drawer. */
-@media (max-width: 760px) {
-  .conversationDrawer,
-  .conversationDrawer .messageScroll,
-  .conversationDrawer .composer {
-    overscroll-behavior: contain;
+/* V68 — mobile/portrait keyboard containment. Only the message viewport is
+   allowed to shrink/scroll; the room header and composer stay inside chat. */
+@media (max-width: 760px), (orientation: portrait) and (max-width: 1100px) {
+  .conversationDrawer {
+    display: grid;
+    grid-template-rows: auto minmax(0, 1fr) auto auto;
+    width: 100%;
+    height: 100%;
+    max-height: 100%;
+    min-height: 0;
+    overflow: hidden;
+    overscroll-behavior: none;
+  }
+
+  .conversationDrawer .conversationTop {
+    position: relative;
+    z-index: 25;
+    flex: 0 0 auto;
+    background: var(--surface);
   }
 
   .conversationDrawer .messageScroll {
-    touch-action: pan-y;
+    min-width: 0;
+    min-height: 0;
+    height: auto;
+    overflow-x: hidden;
+    overflow-y: auto;
+    overscroll-behavior-y: contain;
+    -webkit-overflow-scrolling: touch;
+    scroll-padding-bottom: 92px;
+  }
+
+  .conversationDrawer .composer {
+    position: relative;
+    z-index: 30;
+    min-width: 0;
+    flex: 0 0 auto;
+    padding-bottom: max(8px, env(safe-area-inset-bottom));
+    background: var(--surface);
   }
 
   .conversationDrawer .composer textarea {
-    scroll-margin: 0;
+    font-size: 16px !important;
   }
 }

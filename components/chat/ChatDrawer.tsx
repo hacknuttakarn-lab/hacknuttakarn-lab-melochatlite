@@ -18,6 +18,7 @@ import {
 
 const TRANSLATION_STORAGE_KEY = "melo-chat-translation-enabled";
 const TRANSLATION_SETTING_EVENT = "melo-chat-translation-setting-changed";
+const MOBILE_CHAT_LAYOUT_QUERY = "(max-width: 760px), (orientation: portrait) and (max-width: 1100px)";
 /* MELO_DRAWER_ACCOUNT_TRANSLATION_V2 */
 
 const EMPTY: ChatSnapshot = {
@@ -504,6 +505,58 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
     return bindMobileVisualViewport("melo-chat");
   }, [open]);
 
+  // Keep iOS Safari/PWA from panning the page behind the chat when the
+  // software keyboard focuses the composer. Overflow alone is not enough on
+  // iOS: the browser can still move the layout viewport and expose the page
+  // underneath the fixed drawer. Lock the body to its current scroll position
+  // for mobile-sized and portrait layouts, then restore it when chat closes.
+  useEffect(() => {
+    if (!open || typeof window === "undefined") return;
+
+    const body = document.body;
+    const root = document.documentElement;
+    const query = window.matchMedia(MOBILE_CHAT_LAYOUT_QUERY);
+    const scrollY = window.scrollY;
+    const previous = {
+      bodyOverflow: body.style.overflow,
+      bodyPosition: body.style.position,
+      bodyTop: body.style.top,
+      bodyLeft: body.style.left,
+      bodyRight: body.style.right,
+      bodyWidth: body.style.width,
+      rootOverflow: root.style.overflow,
+      rootOverscroll: root.style.overscrollBehavior,
+    };
+
+    if (query.matches) {
+      root.style.overflow = "hidden";
+      root.style.overscrollBehavior = "none";
+      body.style.overflow = "hidden";
+      body.style.position = "fixed";
+      body.style.top = `-${scrollY}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    } else {
+      body.style.overflow = "hidden";
+    }
+
+    return () => {
+      body.style.overflow = previous.bodyOverflow;
+      body.style.position = previous.bodyPosition;
+      body.style.top = previous.bodyTop;
+      body.style.left = previous.bodyLeft;
+      body.style.right = previous.bodyRight;
+      body.style.width = previous.bodyWidth;
+      root.style.overflow = previous.rootOverflow;
+      root.style.overscrollBehavior = previous.rootOverscroll;
+
+      if (query.matches) {
+        window.scrollTo(0, scrollY);
+      }
+    };
+  }, [open]);
+
   useEffect(() => {
     let active = true;
     if (!open) return () => { active = false; };
@@ -594,31 +647,6 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
 
     if (partnerMode) void loadPartner();
     else if (chatAllowed) { void load(); void loadMatches(); }
-    const body = document.body;
-    const previousOverflow = body.style.overflow;
-    const previousPosition = body.style.position;
-    const previousTop = body.style.top;
-    const previousLeft = body.style.left;
-    const previousRight = body.style.right;
-    const previousWidth = body.style.width;
-    const previousOverscroll = body.style.overscrollBehavior;
-    const lockedScrollY = window.scrollY;
-    const mobileDrawer = window.matchMedia("(max-width: 760px)").matches;
-
-    body.style.overflow = "hidden";
-    body.style.overscrollBehavior = "none";
-
-    // iOS Safari/PWA can pan the layout viewport when a textarea near the
-    // bottom receives focus. Lock the document itself while the mobile chat
-    // drawer is open so only the message list follows the software keyboard.
-    if (mobileDrawer) {
-      body.style.position = "fixed";
-      body.style.top = `-${lockedScrollY}px`;
-      body.style.left = "0";
-      body.style.right = "0";
-      body.style.width = "100%";
-    }
-
     const poll = window.setInterval(() => {
       if (partnerMode) void loadPartner();
       else if (chatAllowed) void load();
@@ -642,14 +670,6 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
     window.addEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
 
     return () => {
-      body.style.overflow = previousOverflow;
-      body.style.position = previousPosition;
-      body.style.top = previousTop;
-      body.style.left = previousLeft;
-      body.style.right = previousRight;
-      body.style.width = previousWidth;
-      body.style.overscrollBehavior = previousOverscroll;
-      if (mobileDrawer) window.scrollTo(0, lockedScrollY);
       window.clearInterval(poll);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
