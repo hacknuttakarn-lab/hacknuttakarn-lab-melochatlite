@@ -1571,11 +1571,15 @@ export function ChatConversationPane({
       "ko",
     ] as const;
 
+    // primary_language is independent from the website UI language.
+    // Legacy profiles can have NULL here; Settings treats that as Thai,
+    // so Chat must use the same fallback instead of the current UI locale.
+
     return supportedLanguages.includes(
       base as (typeof supportedLanguages)[number],
     )
       ? (base as typeof locale)
-      : locale;
+      : "th";
   }
 
   async function loadPrimaryChatLanguage(
