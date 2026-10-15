@@ -8,6 +8,7 @@ import { useLocale } from "@/components/SiteProviders";
 import { loadChatSnapshot, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatHead.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
+import PublicVerifiedBadge from "@/components/profile/PublicVerifiedBadge";
 
 const EMPTY: ChatSnapshot = {
   rooms: { direct: [], trip: [], event: [], community: [] },
@@ -165,7 +166,7 @@ export function ChatHead() {
                   <div className={styles.roomCopy}>
                     <div>
                       {room.category === "direct" && room.userId && !room.businessId ? (
-                        <strong><Link href={`/users/${room.userId}`} className={styles.profileNameLink} onClick={(event) => { event.stopPropagation(); setOpen(false); }}>{room.title}</Link></strong>
+                        <strong><Link href={`/users/${room.userId}`} className={styles.profileNameLink} onClick={(event) => { event.stopPropagation(); setOpen(false); }}>{room.title}</Link><PublicVerifiedBadge userId={room.userId} size={15} /></strong>
                       ) : <strong>{room.title}</strong>}
                       <time>{formatTime(room.lastMessageAt, locale)}</time>
                     </div>

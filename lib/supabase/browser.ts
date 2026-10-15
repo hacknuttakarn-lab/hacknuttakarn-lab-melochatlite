@@ -225,10 +225,49 @@ async function authFetch(input: string, init: RequestInit = {}, retry401 = true)
   return response;
 }
 
+export function getPublicAuthRedirectUrl(pathname: string) {
+  const cleanPath = pathname.startsWith("/") ? pathname : `/${pathname}`;
+  const configured = (process.env.NEXT_PUBLIC_SITE_URL || process.env.NEXT_PUBLIC_APP_URL || "").trim().replace(/\/$/, "");
+
+  const isLocalOrigin = (value: string) => {
+    try {
+      const parsed = new URL(value);
+      const host = parsed.hostname.toLowerCase();
+      return host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0";
+    } catch {
+      return true;
+    }
+  };
+
+  // OAuth and recovery links are external links. Never allow a stale localhost
+  // env value to be embedded in production emails/Google callbacks.
+  if (configured && !isLocalOrigin(configured)) return `${configured}${cleanPath}`;
+
+  if (typeof window !== "undefined") {
+    const origin = window.location.origin.replace(/\/$/, "");
+    if (!isLocalOrigin(origin)) return `${origin}${cleanPath}`;
+  }
+
+  return `https://melochat.me${cleanPath}`;
+}
+
+function sanitizePublicAuthRedirect(redirectTo: string | undefined, fallbackPath: string) {
+  const fallback = getPublicAuthRedirectUrl(fallbackPath);
+  if (!redirectTo) return fallback;
+  try {
+    const parsed = new URL(redirectTo);
+    const host = parsed.hostname.toLowerCase();
+    if (host === "localhost" || host === "127.0.0.1" || host === "0.0.0.0") return fallback;
+    return parsed.toString();
+  } catch {
+    return fallback;
+  }
+}
+
 export async function signInWithPassword(email: string, password: string): Promise<AuthResult<MeloSession>> {
   if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
   const response = await fetch(`${url}/auth/v1/token?grant_type=password`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ email, password }),
+    method: "POST", headers: headers(), body: JSON.stringify({ email: email.trim().toLowerCase(), password }),
   });
   if (!response.ok) return { data: null, error: await readError(response) };
   const session = normalizeSession((await response.json()) as MeloSession);
@@ -238,8 +277,8 @@ export async function signInWithPassword(email: string, password: string): Promi
 
 export async function signUpWithPassword(email: string, password: string, redirectTo: string, userData?: Record<string, unknown>): Promise<AuthResult<{ user: MeloUser | null; session: MeloSession | null }>> {
   if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
-  const response = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(redirectTo)}`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ email, password, ...(userData ? { data: userData } : {}) }),
+  const response = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(sanitizePublicAuthRedirect(redirectTo, "/onboarding"))}`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ email: email.trim().toLowerCase(), password, ...(userData ? { data: userData } : {}) }),
   });
   if (!response.ok) return { data: null, error: await readError(response) };
   const payload = await response.json();
@@ -250,11 +289,32 @@ export async function signUpWithPassword(email: string, password: string, redire
 
 export async function sendPasswordReset(email: string, redirectTo: string): Promise<AuthResult<true>> {
   if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
-  const response = await fetch(`${url}/auth/v1/recover?redirect_to=${encodeURIComponent(redirectTo)}`, {
-    method: "POST", headers: headers(), body: JSON.stringify({ email }),
+  const response = await fetch(`${url}/auth/v1/recover?redirect_to=${encodeURIComponent(sanitizePublicAuthRedirect(redirectTo, "/reset-password"))}`, {
+    method: "POST", headers: headers(), body: JSON.stringify({ email: email.trim().toLowerCase() }),
   });
   if (!response.ok) return { data: null, error: await readError(response) };
   return { data: true, error: null };
+}
+
+export async function verifyRecoveryTokenHash(tokenHash: string): Promise<AuthResult<MeloSession>> {
+  if (!isSupabaseConfigured()) return { data: null, error: "Supabase is not configured." };
+  const normalizedTokenHash = tokenHash.trim();
+  if (!normalizedTokenHash) return { data: null, error: "Recovery token is missing." };
+
+  const response = await fetch(`${url}/auth/v1/verify`, {
+    method: "POST",
+    headers: headers(),
+    body: JSON.stringify({ token_hash: normalizedTokenHash, type: "recovery" }),
+  });
+  if (!response.ok) return { data: null, error: await readError(response) };
+
+  const payload = await response.json();
+  const candidate = (payload?.session ?? payload) as MeloSession;
+  if (!candidate?.access_token) return { data: null, error: "Recovery session was not returned." };
+
+  const session = normalizeSession(candidate, getStoredSessionRaw());
+  saveSession(session);
+  return { data: session, error: null };
 }
 
 export async function getCurrentUser(): Promise<MeloUser | null> {
@@ -362,7 +422,7 @@ export async function signInWithGoogle(
 
     const authorizeUrl = new URL(`${url}/auth/v1/authorize`);
     authorizeUrl.searchParams.set("provider", "google");
-    authorizeUrl.searchParams.set("redirect_to", redirectTo || `${window.location.origin}/onboarding`);
+    authorizeUrl.searchParams.set("redirect_to", sanitizePublicAuthRedirect(redirectTo, "/onboarding"));
     window.location.assign(authorizeUrl.toString());
     return { error: null };
   } catch (error) {

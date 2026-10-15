@@ -2,6 +2,7 @@
 
 import Image from 'next/image';
 import Link from 'next/link';
+import { useEffect } from 'react';
 import { Header } from '@/components/Header';
 import { useLocale } from '@/components/SiteProviders';
 
@@ -65,6 +66,24 @@ const copy = {
 export default function HomePage() {
   const { locale } = useLocale();
   const c = copy[locale === 'th' || locale === 'de' ? locale : 'en'];
+
+  useEffect(() => {
+    // Supabase can occasionally return legacy recovery links to the configured
+    // Site URL root. Hash fragments are only visible in the browser, so move
+    // recovery callbacks to the dedicated reset-password page before the user
+    // sees the public landing page.
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const query = new URLSearchParams(window.location.search);
+    const recoveryType = (hash.get('type') || query.get('type') || '').toLowerCase();
+    const errorCode = (hash.get('error_code') || query.get('error_code') || '').toLowerCase();
+    const hasRecoverySession = recoveryType === 'recovery' && Boolean(hash.get('access_token'));
+    const hasRecoveryTokenHash = recoveryType === 'recovery' && Boolean(query.get('token_hash'));
+    const recoveryError = errorCode === 'otp_expired' || errorCode === 'otp_disabled' || errorCode === 'bad_json' || (hash.get('error') === 'access_denied' && Boolean(hash.get('error_description')));
+
+    if (hasRecoverySession || hasRecoveryTokenHash || recoveryError) {
+      window.location.replace(`/reset-password${window.location.search}${window.location.hash}`);
+    }
+  }, []);
 
   return (
     <main>

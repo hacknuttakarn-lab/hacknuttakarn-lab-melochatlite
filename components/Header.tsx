@@ -7,7 +7,7 @@ import { useEffect, useMemo, useRef, useState, type FormEvent } from 'react';
 import { useLocale } from './SiteProviders';
 import { authCopy } from '@/i18n/authUi';
 import { selectableLocales } from '@/i18n/dictionaries';
-import { getCurrentUser, getStoredSession, isSupabaseConfigured, publicStorageUrl, restSelect, rpcRequest, signOut } from '@/lib/supabase/browser';
+import { getCurrentUser, getStoredSession, isSupabaseConfigured, publicStorageUrl, restSelect, restUpdate, rpcRequest, signOut } from '@/lib/supabase/browser';
 import accountStyles from './HeaderAccount.module.css';
 import { loadFriendSnapshot } from '@/components/connect/connectData';
 import { loadChatUnreadTotal } from '@/components/chat/chatData';
@@ -57,6 +57,7 @@ type HeaderNotification = {
   systemKind?: 'support' | 'verification';
   supportThreadId?: string;
   adminNotice?: { id:string; level:string; subject:string; message:string; createdAt:string; readAt:string };
+  backendNotificationId?: string;
 };
 
 
@@ -1592,13 +1593,13 @@ export function Header() {
     ko: '파트너 모드',
   } as Record<string, string>)[locale] ?? 'Partner mode';
   const notificationCopy = ({
-    th: { label: 'การแจ้งเตือน', empty: 'ยังไม่มีการแจ้งเตือน', all: 'ดูทั้งหมด', loading: 'กำลังโหลด...' },
-    en: { label: 'Notifications', empty: 'No notifications yet', all: 'View all', loading: 'Loading...' },
-    de: { label: 'Benachrichtigungen', empty: 'Noch keine Benachrichtigungen', all: 'Alle ansehen', loading: 'Wird geladen...' },
+    th: { label: 'การแจ้งเตือน', empty: 'ยังไม่มีการแจ้งเตือน', all: 'ดูทั้งหมด', readAll: 'อ่านทั้งหมด', loading: 'กำลังโหลด...' },
+    en: { label: 'Notifications', empty: 'No notifications yet', all: 'View all', readAll: 'Read all', loading: 'Loading...' },
+    de: { label: 'Benachrichtigungen', empty: 'Noch keine Benachrichtigungen', all: 'Alle ansehen', readAll: 'Alle als gelesen markieren', loading: 'Wird geladen...' },
     zh: { label: '通知', empty: '暂无通知', all: '查看全部', loading: '加载中...' },
     ja: { label: '通知', empty: '通知はまだありません', all: 'すべて見る', loading: '読み込み中...' },
     ko: { label: '알림', empty: '알림이 아직 없습니다', all: '전체 보기', loading: '불러오는 중...' },
-  } as Record<string, { label: string; empty: string; all: string; loading: string }>)[locale] ?? { label: 'Notifications', empty: 'No notifications yet', all: 'View all', loading: 'Loading...' };
+  } as Record<string, { label: string; empty: string; all: string; readAll?: string; loading: string }>)[locale] ?? { label: 'Notifications', empty: 'No notifications yet', all: 'View all', readAll: 'Read all', loading: 'Loading...' };
   const safetyCopy = ({
     th: { label: 'ศูนย์ความปลอดภัย' },
     en: { label: 'Safety Center' },
@@ -1702,6 +1703,32 @@ export function Header() {
     return notificationItems.filter((item) => item.href?.startsWith('/admin') || item.adminNotice);
   }, [adminArea, notificationItems]);
   const notificationUnreadCount = useMemo(() => visibleNotificationItems.filter((item) => item.unread).length, [visibleNotificationItems]);
+  const markNotificationItemRead = async (item: HeaderNotification) => {
+    if (!item.unread) return;
+    setNotificationItems((items) => items.map((row) => row.id === item.id ? { ...row, unread:false, adminNotice: row.adminNotice ? { ...row.adminNotice, readAt: row.adminNotice.readAt || new Date().toISOString() } : row.adminNotice } : row));
+    if (item.backendNotificationId && user?.id) await restUpdate('notifications', `id=eq.${encodeURIComponent(item.backendNotificationId)}&user_id=eq.${encodeURIComponent(user.id)}`, { is_read:true }).catch(()=>null);
+    if (item.adminNotice && !item.adminNotice.readAt) await rpcRequest('mark_admin_user_notice_read',{p_notice_id:item.adminNotice.id}).catch(()=>null);
+    if (item.supportThreadId) await rpcRequest('support_mark_my_thread_read',{p_thread_id:item.supportThreadId}).catch(()=>null);
+    if (item.systemSourceKey) await rpcRequest('mark_my_system_notification_read',{p_source_key:item.systemSourceKey}).catch(()=>null);
+    setNotificationRefreshTick((tick)=>tick+1);
+  };
+
+  const markAllNotificationsRead = async () => {
+    const unread = visibleNotificationItems.filter((item)=>item.unread);
+    if (!unread.length) { void updateMeloAppBadge(chatUnreadCount); return; }
+    setNotificationItems((items)=>items.map((item)=>({ ...item, unread:false, adminNotice:item.adminNotice ? { ...item.adminNotice, readAt:item.adminNotice.readAt || new Date().toISOString() } : item.adminNotice })));
+    void updateMeloAppBadge(chatUnreadCount);
+    const jobs: Promise<unknown>[] = [];
+    if (user?.id) jobs.push(restUpdate('notifications', `user_id=eq.${encodeURIComponent(user.id)}&is_read=eq.false`, { is_read:true }));
+    for (const item of unread) {
+      if (item.adminNotice && !item.adminNotice.readAt) jobs.push(rpcRequest('mark_admin_user_notice_read',{p_notice_id:item.adminNotice.id}));
+      if (item.supportThreadId) jobs.push(rpcRequest('support_mark_my_thread_read',{p_thread_id:item.supportThreadId}));
+      if (item.systemSourceKey) jobs.push(rpcRequest('mark_my_system_notification_read',{p_source_key:item.systemSourceKey}));
+    }
+    await Promise.allSettled(jobs);
+    window.dispatchEvent(new CustomEvent('melo-support-unread-changed'));
+    setNotificationRefreshTick((tick)=>tick+1);
+  };
 
   // Keep the installed PWA/app icon badge synced to unread Chats + Notifications.
   // The service worker also increments the badge while the app is closed; when
@@ -1972,6 +1999,7 @@ export function Header() {
           // MELO_CHAT_NOTIFICATION_DRAWER_V2
           // Detect chat from the original notification payload.
           isChat: isChatActivityNotification(row),
+          backendNotificationId: searchText(row, 'id'),
         } satisfies HeaderNotification;
       });
 
@@ -2958,7 +2986,7 @@ export function Header() {
                 <div className={accountStyles.notificationDropdown} role="menu">
                   <div className={accountStyles.notificationDropdownHead}>
                     <strong>{notificationCopy.label}</strong>
-                    {notificationsLoading ? <span>{notificationCopy.loading}</span> : null}
+                    <span className={accountStyles.notificationHeadActions}>{notificationUnreadCount>0?<button type="button" onClick={()=>void markAllNotificationsRead()}>{notificationCopy.readAll}</button>:null}{notificationsLoading ? <span>{notificationCopy.loading}</span> : null}</span>
                   </div>
 
                   {visibleNotificationItems.length ? (
@@ -2969,6 +2997,7 @@ export function Header() {
                           key={item.id}
                           className={`${accountStyles.notificationRow} ${item.unread ? accountStyles.notificationRowUnread : ''}`}
                           onClick={(event) => {
+                            void markNotificationItemRead(item);
                             if (item.adminNotice) {
                               event.preventDefault();
                               event.stopPropagation();

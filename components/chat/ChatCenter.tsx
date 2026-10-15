@@ -9,6 +9,7 @@ import { ChatConversationPane } from "./ChatConversationPane";
 import { canCurrentUserUseChat, loadChatSnapshot, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatCenter.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
+import { loadSettingsAccountSnapshot, saveAutoTranslationEnabled } from "@/components/settings/settingsWebData";
 
 const TRANSLATION_STORAGE_KEY = "melo-chat-translation-enabled";
 
@@ -192,14 +193,25 @@ export default function ChatCenter() {
   }, []);
 
   useEffect(() => {
+    let active = true;
     const saved = window.localStorage.getItem(TRANSLATION_STORAGE_KEY);
-    if (saved === "off") setTranslationEnabled(false);
+    if (saved) setTranslationEnabled(saved !== "off");
+    void loadSettingsAccountSnapshot().then((settings) => {
+      if (!active) return;
+      setTranslationEnabled(settings.autoTranslationEnabled);
+      window.localStorage.setItem(TRANSLATION_STORAGE_KEY, settings.autoTranslationEnabled ? "on" : "off");
+    }).catch(() => undefined);
+    return () => { active = false; };
   }, []);
 
   function toggleTranslation() {
     setTranslationEnabled((current) => {
       const next = !current;
       window.localStorage.setItem(TRANSLATION_STORAGE_KEY, next ? "on" : "off");
+      void loadSettingsAccountSnapshot()
+        .then((settings) => saveAutoTranslationEnabled(settings.userId, next))
+        .then(() => window.dispatchEvent(new CustomEvent("melo-chat-translation-setting-changed", { detail: { enabled: next } })))
+        .catch(() => undefined);
       return next;
     });
   }

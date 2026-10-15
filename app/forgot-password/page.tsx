@@ -5,7 +5,7 @@ import { FormEvent, useState } from 'react';
 import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { isSupabaseConfigured, sendPasswordReset } from '@/lib/supabase/browser';
+import { getPublicAuthRedirectUrl, isSupabaseConfigured, sendPasswordReset } from '@/lib/supabase/browser';
 
 export default function ForgotPasswordPage() {
   const { locale } = useLocale();
@@ -20,7 +20,7 @@ export default function ForgotPasswordPage() {
     event.preventDefault();
     if (!supabaseReady) return;
     setBusy(true); setError(''); setSuccess('');
-    const { error: resetError } = await sendPasswordReset(email.trim(), `${window.location.origin}/reset-password`);
+    const { error: resetError } = await sendPasswordReset(email.trim(), getPublicAuthRedirectUrl("/reset-password"));
     setBusy(false);
     if (resetError) return setError(resetError || copy.resetFailed);
     setSuccess(copy.resetSent);

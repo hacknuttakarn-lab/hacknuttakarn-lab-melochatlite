@@ -1,15 +1,41 @@
 'use client';
 
 import Link from 'next/link';
-import { FormEvent, useState } from 'react';
+import { FormEvent, useEffect, useMemo, useState } from 'react';
 import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { isSupabaseConfigured, updatePassword } from '@/lib/supabase/browser';
+import { isSupabaseConfigured, updatePassword, verifyRecoveryTokenHash } from '@/lib/supabase/browser';
+
+function recoveryCopy(locale: string) {
+  if (locale === 'th') {
+    return {
+      invalid: 'ลิงก์รีเซ็ตรหัสผ่านไม่ถูกต้องหรือหมดอายุแล้ว กรุณาขอลิงก์ใหม่',
+      missing: 'ไม่พบข้อมูลยืนยันสำหรับรีเซ็ตรหัสผ่าน กรุณาขอลิงก์ใหม่',
+      verifying: 'กำลังตรวจสอบลิงก์รีเซ็ตรหัสผ่าน…',
+      requestNew: 'ขอลิงก์รีเซ็ตรหัสผ่านใหม่',
+    };
+  }
+  if (locale === 'de') {
+    return {
+      invalid: 'Der Link zum Zurücksetzen des Passworts ist ungültig oder abgelaufen. Bitte fordere einen neuen Link an.',
+      missing: 'Es wurden keine gültigen Wiederherstellungsdaten gefunden. Bitte fordere einen neuen Link an.',
+      verifying: 'Link zum Zurücksetzen des Passworts wird geprüft…',
+      requestNew: 'Neuen Link anfordern',
+    };
+  }
+  return {
+    invalid: 'This password reset link is invalid or has expired. Please request a new link.',
+    missing: 'No valid password recovery information was found. Please request a new link.',
+    verifying: 'Verifying password reset link…',
+    requestNew: 'Request a new reset link',
+  };
+}
 
 export default function ResetPasswordPage() {
   const { locale } = useLocale();
   const copy = authCopy[locale];
+  const recovery = useMemo(() => recoveryCopy(locale), [locale]);
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [busy, setBusy] = useState(false);
@@ -19,13 +45,56 @@ export default function ResetPasswordPage() {
   const [success, setSuccess] = useState('');
   const supabaseReady = isSupabaseConfigured();
 
+  useEffect(() => {
+    if (typeof window === 'undefined') return;
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    const query = new URLSearchParams(window.location.search);
+    const errorCode = (hash.get('error_code') || query.get('error_code') || '').toLowerCase();
+    const authError = hash.get('error') || query.get('error');
+    if (errorCode === 'otp_expired' || authError === 'access_denied') {
+      setError(recovery.invalid);
+    }
+  }, [recovery.invalid]);
+
+  async function establishRecoverySession() {
+    if (typeof window === 'undefined') return { ok: false, message: recovery.missing };
+
+    // Backward compatibility for old Supabase recovery links that return an
+    // authenticated recovery session in the URL hash.
+    const hash = new URLSearchParams(window.location.hash.replace(/^#/, ''));
+    if (hash.get('access_token') && hash.get('refresh_token')) return { ok: true, message: '' };
+
+    // V51 recovery emails land on Melo Chat with a token_hash. Do not exchange
+    // it on page load: link scanners can perform GET requests automatically.
+    // The one-time token is verified only when the real user submits a new password.
+    const query = new URLSearchParams(window.location.search);
+    const type = query.get('type');
+    const tokenHash = query.get('token_hash');
+    if (!tokenHash || (type && type !== 'recovery')) return { ok: false, message: recovery.missing };
+
+    const verified = await verifyRecoveryTokenHash(tokenHash);
+    if (verified.error || !verified.data) return { ok: false, message: recovery.invalid };
+
+    window.history.replaceState({}, document.title, '/reset-password');
+    return { ok: true, message: '' };
+  }
+
   async function submit(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
-    setError(''); setSuccess('');
+    setError('');
+    setSuccess('');
     if (!supabaseReady) return;
     if (password.length < 6) return setError(copy.passwordTooShort);
     if (password !== confirmPassword) return setError(copy.passwordMismatch);
+
     setBusy(true);
+    const recoverySession = await establishRecoverySession();
+    if (!recoverySession.ok) {
+      setBusy(false);
+      setError(recoverySession.message);
+      return;
+    }
+
     const { error: updateError } = await updatePassword(password);
     setBusy(false);
     if (updateError) return setError(updateError || copy.resetFailed);
@@ -70,9 +139,13 @@ export default function ResetPasswordPage() {
             </button>
           </div>
         </div>
-        <button className={styles.submit} type="submit" disabled={!supabaseReady || busy}>{busy ? copy.updating : copy.updatePassword}</button>
+        <button className={styles.submit} type="submit" disabled={!supabaseReady || busy}>{busy ? recovery.verifying : copy.updatePassword}</button>
       </form>
-      <p className={styles.bottomText}><Link href="/login">{copy.backToLogin}</Link></p>
+      <p className={styles.bottomText}>
+        <Link href="/forgot-password">{recovery.requestNew}</Link>
+        {' · '}
+        <Link href="/login">{copy.backToLogin}</Link>
+      </p>
     </AuthFrame>
   );
 }

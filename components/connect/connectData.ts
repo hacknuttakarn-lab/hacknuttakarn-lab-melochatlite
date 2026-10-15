@@ -281,37 +281,16 @@ function stringArray(
 }
 
 
-function hasCompleteLiteProfile(row: Row) {
-  const lifestyle = row.lifestyle_preferences;
-  const life = lifestyle && typeof lifestyle === 'object' && !Array.isArray(lifestyle)
-    ? lifestyle as Record<string, unknown>
-    : {};
-
-  const hasLifestyle = [
-    ['pet', 'pets'],
-    ['drink', 'drinking'],
-    ['smoke', 'smoking'],
-    ['exercise'],
-    ['social'],
-    ['interests'],
-  ].every((keys) =>
-    keys.some((key) => stringArray(life[key]).length > 0),
-  );
-
-  return Boolean(
-    text(row, 'first_name') &&
-    text(row, 'last_name') &&
-    text(row, 'gender') &&
-    text(row, 'date_of_birth') &&
-    numberValue(row, 'height_cm') > 0 &&
-    text(row, 'nationality', 'country') &&
-    text(row, 'education') &&
-    text(row, 'marital_status') &&
-    stringArray(row.looking_for).length > 0 &&
-    stringArray(row.sexual_orientations).length > 0 &&
-    hasLifestyle &&
-    stringArray(row.photo_paths).length > 0
-  );
+function hasDiscoverableLiteProfile(row: Row) {
+  // Identity verification is intentionally NOT part of Home discovery.
+  // A member should be discoverable as soon as they have meaningful profile
+  // information, even while verification_requests is still pending/missing.
+  // This also avoids legacy onboarding rows being hidden just because one
+  // optional lifestyle field has not been completed yet.
+  const hasName = Boolean(text(row, 'first_name', 'display_name'));
+  const hasPhoto = stringArray(row.photo_paths).length > 0 || Boolean(text(row, 'avatar_url'));
+  const onboardingCompleted = boolValue(row, 'onboarding_completed', false);
+  return Boolean(text(row, 'id') && (onboardingCompleted || hasName || hasPhoto));
 }
 
 function unique(
@@ -2024,6 +2003,19 @@ function countryKey(
     );
 }
 
+
+function normalizeDatingGender(value: string) {
+  const raw = String(value || '').trim().toLocaleLowerCase();
+  const compact = raw.replace(/[\s._-]+/g, ' ');
+  const male = new Set(['male','man','men','ชาย','เพศชาย','ผู้ชาย','mann','männer','maenner']);
+  const female = new Set(['female','woman','women','หญิง','เพศหญิง','ผู้หญิง','frau','frauen']);
+  const lgbtq = new Set(['lgbtq','lgbtq+','non binary','non-binary','นอนไบนารี','อื่น ๆ','อื่นๆ','other','prefer not to say','nicht binär','nicht-binär','andere','keine angabe']);
+  if (male.has(raw) || male.has(compact)) return 'male';
+  if (female.has(raw) || female.has(compact)) return 'female';
+  if (lgbtq.has(raw) || lgbtq.has(compact)) return 'lgbtq';
+  return raw;
+}
+
 function recommendedForViewer(
   row: Row,
   filters:
@@ -2038,9 +2030,11 @@ function recommendedForViewer(
     );
 
   const gender =
-    text(
-      row,
-      'gender',
+    normalizeDatingGender(
+      text(
+        row,
+        'gender',
+      ),
     );
 
   const candidateCountry =
@@ -2050,11 +2044,15 @@ function recommendedForViewer(
       'country',
     );
 
+  const wantedGenders = filters.genders
+    .map(normalizeDatingGender)
+    .filter(Boolean);
+
   const genderOk =
-    !filters.genders.length ||
+    !wantedGenders.length ||
     Boolean(
       gender &&
-      filters.genders.includes(
+      wantedGenders.includes(
         gender,
       ),
     );
@@ -2100,6 +2098,7 @@ async function loadRecommended(
   userId: string,
 ) {
   const names = [
+    'get_lite_home_profiles_v48',
     'get_dating_feed_profiles_v5',
     'get_dating_feed_profiles_v4',
     'get_dating_feed_profiles_v3',
@@ -2145,15 +2144,31 @@ async function loadRecommended(
       result.error;
   }
 
-  if (lastError || rows.length === 0) {
-    // Lite must still discover real users when legacy dating RPCs are missing
-    // or exist but have no rows yet. The current profiles table is the source of truth.
-    const fallback = await restSelect<Row[]>(
-      'profiles',
-      'select=*&limit=100',
-    );
-    if (fallback.error) throw new Error(fallback.error);
-    rows = rowsOf(fallback.data);
+  // Always merge the current profiles table with the legacy dating RPC result.
+  // Some older RPCs only returned identity-verified members, which meant a new
+  // member disappeared from Home until Admin approved verification. Verification
+  // is a trust badge only; it must not be a discovery visibility requirement.
+  const directProfiles = await restSelect<Row[]>(
+    'profiles',
+    'select=*&limit=100',
+  );
+
+  if (directProfiles.error && (lastError || rows.length === 0)) {
+    throw new Error(directProfiles.error || lastError);
+  }
+
+  if (!directProfiles.error) {
+    const byId = new Map<string, Row>();
+    for (const row of [...rows, ...rowsOf(directProfiles.data)]) {
+      const id = text(row, 'id');
+      if (!id) continue;
+      const previous = byId.get(id);
+      // Direct profiles are the source of truth for current onboarding/profile data,
+      // while any RPC-only ranking fields are retained when present.
+      byId.set(id, previous ? { ...previous, ...row } : row);
+    }
+    rows = [...byId.values()];
+    lastError = '';
   }
 
   // Home discovery ranking: recently joined profiles stay near the front, while a
@@ -2213,7 +2228,7 @@ async function loadRecommended(
         ),
     )
     .filter((row) => !passedIds.has(text(row, 'id')))
-    .filter(hasCompleteLiteProfile)
+    .filter(hasDiscoverableLiteProfile)
     .filter(
       (row) =>
         recommendedForViewer(
@@ -2274,11 +2289,24 @@ export async function loadLoveSnapshot(
     )[0] ??
     {};
 
+  const explicitInterestedGenders = stringArray(
+    viewer.interested_genders,
+  );
+  const onboardingLookingForGenders = stringArray(
+    viewer.looking_for,
+  ).filter((value) => {
+    const normalized = normalizeDatingGender(value);
+    return normalized === 'male' || normalized === 'female' || normalized === 'lgbtq';
+  });
+
   const filters = {
+    // Settings stores canonical interested_genders, while onboarding historically
+    // stored the same choice inside looking_for. Support both so Home discovery
+    // always follows the user's selected gender preference.
     genders:
-      stringArray(
-        viewer.interested_genders,
-      ),
+      explicitInterestedGenders.length
+        ? explicitInterestedGenders
+        : onboardingLookingForGenders,
 
     ageMin:
       Math.max(

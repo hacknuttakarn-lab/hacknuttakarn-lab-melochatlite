@@ -21,10 +21,65 @@ const themeBootScript = `
 })();
 `;
 
+const siteUrl = 'https://melochat.me';
+const seoTitle = 'Melo Chat — พบเจอ จับคู่ แชท และเชื่อมต่อ';
+const seoDescription = 'Melo Chat เว็บไซต์หาคู่และสร้างความสัมพันธ์ ค้นหาคนใหม่ จับคู่ ดูฟีดและโพสต์ แชทพร้อมแปลภาษา และเพิ่มความน่าเชื่อถือด้วยการยืนยันตัวตน';
+
 export const metadata: Metadata = {
-  title: 'Melo Chat — Dating, Feed & Chat',
-  description:
-    'Melo Chat helps people discover meaningful relationships, share through Feed, chat with translation, and connect with verified profiles.',
+  metadataBase: new URL(siteUrl),
+  applicationName: 'Melo Chat',
+  title: {
+    default: seoTitle,
+    template: '%s | Melo Chat',
+  },
+  description: seoDescription,
+  keywords: [
+    'Melo Chat',
+    'เว็บหาคู่',
+    'หาคู่',
+    'แอปหาคู่',
+    'dating',
+    'match',
+    'chat',
+    'แชทแปลภาษา',
+    'verified profile',
+  ],
+  alternates: {
+    canonical: '/',
+  },
+  openGraph: {
+    type: 'website',
+    url: siteUrl,
+    siteName: 'Melo Chat',
+    title: seoTitle,
+    description: seoDescription,
+    locale: 'th_TH',
+    images: [
+      {
+        url: '/icon.png',
+        width: 512,
+        height: 512,
+        alt: 'Melo Chat',
+      },
+    ],
+  },
+  twitter: {
+    card: 'summary',
+    title: seoTitle,
+    description: seoDescription,
+    images: ['/icon.png'],
+  },
+  robots: {
+    index: true,
+    follow: true,
+    googleBot: {
+      index: true,
+      follow: true,
+      'max-image-preview': 'large',
+      'max-snippet': -1,
+      'max-video-preview': -1,
+    },
+  },
   icons: {
     icon: '/icon.png',
     apple: '/icon.png',
@@ -46,11 +101,24 @@ export const viewport: Viewport = {
   ],
 };
 
+const websiteStructuredData = {
+  '@context': 'https://schema.org',
+  '@type': 'WebSite',
+  name: 'Melo Chat',
+  url: siteUrl,
+  description: seoDescription,
+  inLanguage: ['th', 'en', 'de'],
+};
+
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="th" suppressHydrationWarning>
       <head>
         <script dangerouslySetInnerHTML={{ __html: themeBootScript }} />
+        <script
+          type="application/ld+json"
+          dangerouslySetInnerHTML={{ __html: JSON.stringify(websiteStructuredData) }}
+        />
       </head>
       <body>
         <SiteProviders>{children}</SiteProviders>

@@ -4,10 +4,12 @@ import Link from "next/link";
 import { Fragment, useEffect, useMemo, useRef, useState } from "react";
 import { useLocale } from "@/components/SiteProviders";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
 import {
   createSignedStorageUrl,
   getCurrentUser,
   getStoredSession,
+  refreshStoredSession,
   invokeEdgeFunction,
   isSupabaseConfigured,
   publicStorageUrl,
@@ -1359,6 +1361,38 @@ export function ChatConversationPane({
     setUserId,
   ] = useState("");
 
+  const [roomVerified, setRoomVerified] = useState<boolean | null>(null);
+
+  useEffect(() => {
+    let active = true;
+    const targetUserId = room?.category === "direct" && !room?.businessId ? String(room?.userId || "").trim() : "";
+    if (!targetUserId) {
+      setRoomVerified(null);
+      return () => { active = false; };
+    }
+    setRoomVerified(null);
+    void rpcRequest<boolean>("get_public_identity_verification", { p_user_id: targetUserId })
+      .then((result) => {
+        if (active) setRoomVerified(!result.error && result.data === true);
+      })
+      .catch(() => {
+        if (active) setRoomVerified(false);
+      });
+    return () => { active = false; };
+  }, [room?.businessId, room?.category, room?.userId]);
+
+  const unverifiedWarningTitle = locale === "th"
+    ? "ประกาศความปลอดภัย"
+    : locale === "de"
+      ? "Sicherheitshinweis"
+      : "Safety notice";
+
+  const unverifiedWarning = locale === "th"
+    ? "ผู้ใช้นี้ยังไม่ได้ยืนยันตัวตน โปรดใช้ความระมัดระวัง และตรวจสอบข้อมูลให้แน่ใจก่อนนัดพบหรือแชร์ข้อมูลส่วนตัว"
+    : locale === "de"
+      ? "Dieser Nutzer ist noch nicht verifiziert. Bitte sei vorsichtig und prüfe die Angaben, bevor du dich triffst oder persönliche Daten teilst."
+      : "This user has not been verified yet. Please use caution and verify their information before meeting or sharing personal details.";
+
   const [
     messages,
     setMessages,
@@ -1597,12 +1631,13 @@ export function ChatConversationPane({
       return message;
     }
 
-    if (
-      normalizeChatLanguage(message.sourceLanguage) ===
-      normalizeChatLanguage(targetLanguage)
-    ) {
-      return message;
-    }
+    /*
+     * Do not decide whether translation is needed from nationality, country,
+     * website locale, or the stored source_language value. A user can type a
+     * language that differs from all of those values. Google Translate detects
+     * the actual language from the message text and the API skips quota
+     * recording when the detected language already matches the target.
+     */
 
     const alreadyTranslated =
       message.translations?.[
@@ -1638,32 +1673,47 @@ export function ChatConversationPane({
     }
 
     try {
-      const response =
-        await fetch(
+      const requestTranslation = async (forceRefresh = false) => {
+        const session = forceRefresh
+          ? await refreshStoredSession(true).catch(() => null)
+          : (await refreshStoredSession().catch(() => null)) ?? getStoredSession();
+        const accessToken = session?.access_token || getStoredSession()?.access_token || "";
+        return fetch(
           "/api/translate",
           {
-            method:
-              "POST",
-
+            method: "POST",
             headers: {
               "Content-Type": "application/json",
-              ...(getStoredSession()?.access_token ? { Authorization: `Bearer ${getStoredSession()!.access_token}` } : {}),
+              ...(accessToken ? { Authorization: `Bearer ${accessToken}` } : {}),
             },
-
-            body:
-              JSON.stringify(
-                {
-                  text:
-                    message.originalBody,
-
-                  target:
-                    targetLanguage,
-                },
-              ),
+            body: JSON.stringify({
+              text: message.originalBody,
+              target: targetLanguage,
+            }),
           },
         );
+      };
+
+      let response = await requestTranslation(false);
+      if (response.status === 401) {
+        response = await requestTranslation(true);
+      }
 
       if (!response.ok) {
+        try {
+          const failure = await response.clone().json();
+          console.warn("[Melo Chat] Auto translation failed", {
+            status: response.status,
+            error: failure?.error || failure,
+            diagnostic: failure?.diagnostic || "",
+            stage: failure?.stage || "",
+            requestId: failure?.requestId || "",
+            targetLanguage,
+            messageId: message.id,
+          });
+        } catch {
+          console.warn("[Melo Chat] Auto translation failed", response.status);
+        }
         return message;
       }
 
@@ -1750,12 +1800,19 @@ export function ChatConversationPane({
         async (
           message,
         ) => {
+          // For translation, determine direction from the authenticated sender id
+          // whenever possible. Some legacy message rows expose an is_mine flag
+          // that can be stale after hydration; relying on it can cause every
+          // incoming message to be treated as the current user's own message and
+          // silently skip auto translation.
           const mine =
-            directMine(
-              message,
-              room!,
-              currentUserId,
-            );
+            message.senderId && currentUserId
+              ? message.senderId === currentUserId
+              : directMine(
+                  message,
+                  room!,
+                  currentUserId,
+                );
 
           // Auto Translation is for incoming messages.
           // The sender continues seeing their original message.
@@ -2164,7 +2221,7 @@ export function ChatConversationPane({
           await sendDirectMessage(
             room.id,
             payload,
-            locale,
+            primaryChatLanguage,
           );
 
         if (saved) {
@@ -2221,7 +2278,7 @@ export function ChatConversationPane({
             room.category,
             room.id,
             payload,
-            locale,
+            primaryChatLanguage,
           );
 
         const mapped =
@@ -2633,6 +2690,7 @@ export function ChatConversationPane({
                 >
                   {title}
                 </Link>
+                {roomVerified === true ? <VerifiedBadge size={16} label="Verified" /> : null}
               </strong>
             ) : (
               <strong>
@@ -2887,6 +2945,15 @@ export function ChatConversationPane({
               </div>
             ) : null}
           </section>
+        ) : null}
+        {room.category === "direct" && room.userId && !room.businessId && roomVerified === false ? (
+          <div className={styles.unverifiedChatWarning} role="alert">
+            <span className={styles.unverifiedChatWarningIcon} aria-hidden="true">!</span>
+            <span className={styles.unverifiedChatWarningCopy}>
+              <strong>{unverifiedWarningTitle}</strong>
+              <span>{unverifiedWarning}</span>
+            </span>
+          </div>
         ) : null}
       </div>
 

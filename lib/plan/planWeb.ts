@@ -134,6 +134,22 @@ export async function loadMyTranslationAddonUsage(): Promise<TranslationAddonUsa
   return Array.isArray(result.data) ? result.data : [];
 }
 
+export type BoostAddon = { id:string; code:string; name:string; profile_boost_count:number; post_boost_count:number; price:number; credit_days:number; badge_label?:string|null; is_active:boolean; };
+export type BoostAddonUsage = { id:string; addon_id:string; boost_type:'profile'|'post'; credit_total:number; credit_used:number; purchased_at:string; expires_at:string; status:string; boost_addons?:{code?:string;name?:string}|null; };
+
+export async function loadBoostAddons(): Promise<BoostAddon[]> {
+  const result = await restSelect<BoostAddon[]>('boost_addons', 'select=id,code,name,profile_boost_count,post_boost_count,price,credit_days,badge_label,is_active&is_active=eq.true&order=sort_order.asc,price.asc');
+  if (result.error) throw new Error(result.error);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
+export async function loadMyBoostAddonUsage(): Promise<BoostAddonUsage[]> {
+  const user = await getCurrentUser(); if (!user?.id) return [];
+  const result = await restSelect<BoostAddonUsage[]>('user_boost_addon_purchases', `select=id,addon_id,boost_type,credit_total,credit_used,purchased_at,expires_at,status,boost_addons(code,name)&user_id=eq.${encodeURIComponent(user.id)}&order=purchased_at.desc`);
+  if (result.error) throw new Error(result.error);
+  return Array.isArray(result.data) ? result.data : [];
+}
+
 export function remaining(used = 0, limit = 0) {
   return Math.max(0, Number(limit || 0) - Number(used || 0));
 }

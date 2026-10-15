@@ -1366,3 +1366,16 @@
     background: var(--surface);
   }
 }
+
+
+/* V55: identity verification status in direct chat */
+.conversationTitle strong{display:inline-flex;align-items:center;gap:4px;min-width:0}
+.unverifiedChatWarning{position:relative;z-index:9;display:flex;align-items:flex-start;gap:11px;width:100%;box-sizing:border-box;margin:0;padding:12px 16px;border-top:1px solid rgba(245,158,11,.42);border-bottom:1px solid rgba(245,158,11,.42);background:color-mix(in srgb,#f59e0b 14%,var(--surface));color:inherit;font-size:13px;line-height:1.45;box-shadow:0 6px 18px rgba(0,0,0,.08)}
+.unverifiedChatWarningIcon{display:inline-flex;align-items:center;justify-content:center;flex:0 0 auto;width:22px;height:22px;border-radius:999px;background:rgba(245,158,11,.18);font-weight:900;color:#f59e0b}
+.unverifiedChatWarningCopy{display:flex;min-width:0;flex-direction:column;gap:2px}.unverifiedChatWarningCopy strong{font-size:12px;font-weight:900;color:#f59e0b}.unverifiedChatWarningCopy>span{color:var(--text-secondary)}
+@media(max-width:760px){.unverifiedChatWarning{padding:10px 12px;font-size:12px}.unverifiedChatWarningCopy strong{font-size:11px}}
+
+/* V57 — keep the safety announcement pinned as part of the conversation top. */
+.conversationTop>.unverifiedChatWarning{position:relative;inset:auto;min-height:56px}
+.unverifiedChatWarningCopy{flex:1 1 auto;min-width:0}
+.unverifiedChatWarningCopy>span{display:block;white-space:normal;overflow-wrap:anywhere}

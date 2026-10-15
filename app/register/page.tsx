@@ -5,7 +5,7 @@ import { FormEvent, useState } from 'react';
 import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { isSupabaseConfigured, signInWithGoogle, signUpWithPassword } from '@/lib/supabase/browser';
+import { getPublicAuthRedirectUrl, isSupabaseConfigured, signInWithGoogle, signUpWithPassword } from '@/lib/supabase/browser';
 
 export default function RegisterPage() {
   const { locale } = useLocale();
@@ -26,7 +26,7 @@ export default function RegisterPage() {
     setError('');
     setSuccess('');
     setGoogleBusy(true);
-    const result = await signInWithGoogle(`${window.location.origin}/onboarding`);
+    const result = await signInWithGoogle(getPublicAuthRedirectUrl("/onboarding"));
     if (result.error) {
       const message = result.code === "provider_disabled"
         ? (locale === "th"
@@ -52,7 +52,7 @@ export default function RegisterPage() {
     if (password.length < 6) return setError(copy.passwordTooShort);
     if (password !== confirmPassword) return setError(copy.passwordMismatch);
     setBusy(true);
-    const { error: signUpError } = await signUpWithPassword(email.trim(), password, `${window.location.origin}/onboarding`);
+    const { error: signUpError } = await signUpWithPassword(email.trim(), password, getPublicAuthRedirectUrl("/onboarding"));
     setBusy(false);
     if (signUpError) return setError(signUpError || copy.registerFailed);
     setSuccess(copy.checkEmail);

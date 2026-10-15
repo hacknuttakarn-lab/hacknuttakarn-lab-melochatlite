@@ -9,7 +9,7 @@ import { AuthFrame, authStyles as styles } from '@/components/auth/AuthFrame';
 import PublicLanguageSwitcher from '@/components/public/PublicLanguageSwitcher';
 import { useLocale } from '@/components/SiteProviders';
 import { authCopy } from '@/i18n/authUi';
-import { getCurrentUser, isSupabaseConfigured, signInWithGoogle, signInWithPassword } from '@/lib/supabase/browser';
+import { getCurrentUser, getPublicAuthRedirectUrl, isSupabaseConfigured, signInWithGoogle, signInWithPassword } from '@/lib/supabase/browser';
 import { loadOwnProfile } from '@/components/profile/profileWebData';
 
 function createNumericCaptcha() {
@@ -124,7 +124,21 @@ export default function LoginPage() {
     setBusy(false);
 
     if (signInError) {
-      setError(signInError || copy.loginFailed);
+      const normalizedError = signInError.toLowerCase();
+      const friendlyError = normalizedError.includes('invalid login credentials')
+        ? (locale === 'th'
+          ? 'อีเมลหรือรหัสผ่านไม่ถูกต้อง หากบัญชีนี้สมัครด้วย Google ให้ใช้ปุ่ม “เข้าสู่ระบบด้วย Google” หรือใช้ “ลืมรหัสผ่าน?” เพื่อตั้งรหัสผ่านใหม่'
+          : locale === 'de'
+            ? 'E-Mail oder Passwort ist falsch. Wenn dieses Konto mit Google erstellt wurde, nutze „Mit Google anmelden“ oder „Passwort vergessen?“, um ein Passwort festzulegen.'
+            : 'Incorrect email or password. If this account was created with Google, use “Continue with Google” or “Forgot password?” to set a password.')
+        : normalizedError.includes('email not confirmed')
+          ? (locale === 'th'
+            ? 'อีเมลนี้ยังไม่ได้ยืนยัน กรุณาตรวจสอบอีเมลและกดลิงก์ยืนยันก่อนเข้าสู่ระบบ'
+            : locale === 'de'
+              ? 'Diese E-Mail-Adresse wurde noch nicht bestätigt. Bitte bestätige zuerst den Link in deiner E-Mail.'
+              : 'This email has not been confirmed yet. Please confirm the link in your email before signing in.')
+          : copy.loginFailed;
+      setError(friendlyError);
       refreshCaptcha();
       return;
     }
@@ -138,7 +152,7 @@ export default function LoginPage() {
     if (!supabaseReady || googleBusy) return;
     setError('');
     setGoogleBusy(true);
-    const result = await signInWithGoogle(`${window.location.origin}/onboarding`);
+    const result = await signInWithGoogle(getPublicAuthRedirectUrl("/onboarding"));
     if (result.error) {
       const message = result.code === "provider_disabled"
         ? (locale === "th"

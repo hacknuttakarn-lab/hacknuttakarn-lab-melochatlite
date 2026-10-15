@@ -10,6 +10,8 @@ import { getCurrentUser, isSupabaseConfigured } from "@/lib/supabase/browser";
 import { loadMyPlanUsage, type PlanUsage } from "@/lib/plan/planWeb";
 import { countryFlagEmoji } from "@/lib/countryFlag";
 import styles from "./HomeDashboardExperience.module.css";
+import { VerifiedBadge } from "@/components/VerifiedBadge";
+import { loadPublicVerifiedUserIds } from "@/lib/publicVerification";
 
 const COPY = {
   th: { title: "สำหรับคุณ", subtitle: "ค้นพบคนใหม่ที่อาจเข้ากับคุณ", loading: "กำลังค้นหาคนที่เหมาะกับคุณ…", empty: "ยังไม่มีโปรไฟล์แนะนำในตอนนี้", error: "ยังโหลดโปรไฟล์แนะนำไม่ได้", retry: "ลองอีกครั้ง", env: "ยังไม่ได้ตั้งค่า Supabase สำหรับ Melo Chat Lite", boost: "Boost Profile", boostTitle: "บูทโปรไฟล์", boostHint: "ดันโปรไฟล์ของคุณกลับขึ้นมาแนะนำในลำดับต้น ๆ ของหน้า Home", boostNow: "Boost Profile", boosting: "กำลังบูท…", boosted: "บูทโปรไฟล์สำเร็จ", boostedDetail: "โปรไฟล์ของคุณถูกดันกลับขึ้นมาในลำดับแนะนำแล้ว", boostError: "ไม่สามารถบูทโปรไฟล์ได้ กรุณาลองอีกครั้ง", close: "ปิด" },
@@ -45,6 +47,7 @@ export default function HomeDashboardExperience() {
   const [boostNotice, setBoostNotice] = useState<"success" | "error" | "">("");
   const [planAccess,setPlanAccess]=useState<PlanUsage|null>(null);
   const [upgradeOpen,setUpgradeOpen]=useState(false);
+  const [verifiedUserIds,setVerifiedUserIds]=useState<Set<string>>(()=>new Set());
 
   useEffect(() => {
     let active = true;
@@ -75,6 +78,12 @@ export default function HomeDashboardExperience() {
         setSelfProfile(ownProfile);
         setPlanAccess(access);
         setProfiles(snapshot.recommended);
+        const verifiedIds = await loadPublicVerifiedUserIds([
+          ...snapshot.recommended.map((profile) => profile.id),
+          ownProfile?.id || user.id,
+        ]);
+        if (!active) return;
+        setVerifiedUserIds(verifiedIds);
         setInterestedIds(snapshot.likedIds || []);
         setFollowedIds(await loadFollowedProfileIds());
         setDismissedIds([]);
@@ -224,6 +233,7 @@ export default function HomeDashboardExperience() {
                     <div className={styles.nameLine}>
                       <strong>{profile.name || "Melo"}</strong>
                       {profile.age ? <span>, {profile.age}</span> : null}
+                      {verifiedUserIds.has(profile.id) ? <VerifiedBadge label={locale === "th" ? "ยืนยันตัวตนแล้ว" : locale === "de" ? "Verifiziert" : "Verified"} /> : null}
                     </div>
                     <div className={styles.nationalityLine}>
                       {flag ? <span className={styles.flag}>{flag}</span> : null}
@@ -263,7 +273,7 @@ export default function HomeDashboardExperience() {
                       {selfProfile.isOnline ? <span className={styles.onlineDot} title="Online" /> : null}
                     </div>
                     <div className={styles.cardBody}>
-                      <div className={styles.nameLine}><strong>{selfProfile.name || "Melo"}</strong>{selfProfile.age ? <span>, {selfProfile.age}</span> : null}</div>
+                      <div className={styles.nameLine}><strong>{selfProfile.name || "Melo"}</strong>{selfProfile.age ? <span>, {selfProfile.age}</span> : null}{verifiedUserIds.has(selfProfile.id) ? <VerifiedBadge label={locale === "th" ? "ยืนยันตัวตนแล้ว" : locale === "de" ? "Verifiziert" : "Verified"} /> : null}</div>
                       <div className={styles.nationalityLine}>{flag ? <span className={styles.flag}>{flag}</span> : null}<span>{nationality}</span></div>
                       <div className={styles.cardTags}>{selfProfile.lifestyleTags.map((tag) => <span key={tag}>#{tag}</span>)}</div>
                       <div className={styles.boostCardAction}>

@@ -168,6 +168,35 @@ async function fulfillPaidTranslationAddon(
   console.log('[Stripe webhook] Translation add-on fulfillment complete', { sessionId: session.id, result });
 }
 
+async function fulfillPaidBoostAddon(
+  eventId: string,
+  environment: 'live' | 'sandbox',
+  session: StripeCheckoutSession,
+) {
+  if (!session.id) throw new Error('Stripe session id is missing.');
+  const metadata = session.metadata || {};
+  const userId = metadata.user_id?.trim();
+  const addonId = metadata.addon_id?.trim();
+  if (!userId || !addonId) throw new Error('Stripe boost add-on metadata is incomplete.');
+  if (typeof session.livemode === 'boolean' && session.livemode !== (environment === 'live')) {
+    throw new Error('Stripe environment does not match webhook secret.');
+  }
+  const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL?.replace(/\/$/, '');
+  const serviceRoleKey = process.env.SUPABASE_SERVICE_ROLE_KEY?.trim();
+  if (!supabaseUrl || !serviceRoleKey) throw new Error('Supabase service role is not configured for Stripe fulfillment.');
+  const amount = Number(session.amount_total || 0) / 100;
+  const response = await fetch(`${supabaseUrl}/rest/v1/rpc/melo_fulfill_stripe_boost_addon_v42`, {
+    method: 'POST', headers: { apikey: serviceRoleKey, Authorization: `Bearer ${serviceRoleKey}`, 'Content-Type': 'application/json' },
+    body: JSON.stringify({ p_event_id:eventId, p_session_id:session.id, p_environment:environment, p_user_id:userId, p_addon_id:addonId, p_amount:amount, p_currency:(session.currency || 'thb').toUpperCase() }), cache:'no-store',
+  });
+  const responseText = await response.text();
+  if (!response.ok) {
+    console.error('[Stripe webhook] Boost add-on fulfillment RPC failed', { status:response.status, body:responseText, sessionId:session.id });
+    throw new Error('Unable to activate boost add-on.');
+  }
+  console.log('[Stripe webhook] Boost add-on fulfillment complete', { sessionId:session.id, result:responseText });
+}
+
 async function fulfillPaidSession(
   eventId: string,
   environment: 'live' | 'sandbox',
@@ -176,6 +205,10 @@ async function fulfillPaidSession(
   const purchaseType = session.metadata?.purchase_type?.trim();
   if (purchaseType === 'translation_addon') {
     await fulfillPaidTranslationAddon(eventId, environment, session);
+    return;
+  }
+  if (purchaseType === 'boost_addon') {
+    await fulfillPaidBoostAddon(eventId, environment, session);
     return;
   }
   await fulfillPaidCheckout(eventId, environment, session);

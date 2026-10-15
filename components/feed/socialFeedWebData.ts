@@ -450,7 +450,10 @@ export async function loadSocialFeedWeb(parameters?: {
   // client-side sorting cannot promote a boosted post that was never included in
   // the legacy RPC page in the first place. The database now ranks by
   // coalesce(boosted_at, created_at) before LIMIT/OFFSET is applied.
-  let result = await rpcRequest<Row[]>("get_social_feed_boosted_v11", params);
+  // V48 explicitly keeps identity verification out of Feed visibility.
+  // Pending/unverified members can publish normal public posts immediately.
+  let result = await rpcRequest<Row[]>("get_social_feed_v48", params);
+  if (result.error) result = await rpcRequest<Row[]>("get_social_feed_boosted_v11", params);
   if (result.error) result = await rpcRequest<Row[]>("get_social_feed_boosted", params);
   if (result.error) result = await rpcRequest<Row[]>("get_social_feed", params);
   if (result.error) throw new Error(result.error);

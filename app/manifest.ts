@@ -4,7 +4,7 @@ export default function manifest(): MetadataRoute.Manifest {
   return {
     name: 'Melo Chat',
     short_name: 'Melo Chat',
-    description: 'Melo Chat Lite',
+    description: 'เว็บหาคู่และสร้างความสัมพันธ์ พร้อม Feed, Match, Chat, การแปลภาษา และการยืนยันตัวตน',
     start_url: '/account',
     display: 'standalone',
     background_color: '#ffffff',

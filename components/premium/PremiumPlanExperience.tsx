@@ -4,21 +4,21 @@ import { useEffect, useMemo, useState } from 'react';
 import { Header } from '@/components/Header';
 import { useLocale } from '@/components/SiteProviders';
 import { getStoredSession, refreshStoredSession } from '@/lib/supabase/browser';
-import { loadMyPlanUsage, loadMyTranslationAddonUsage, loadPublicPlanOffers, loadPublicPlans, loadTranslationAddons, remaining, type PlanOffer, type PlanUsage, type PublicPlan, type TranslationAddon, type TranslationAddonUsage } from '@/lib/plan/planWeb';
+import { loadBoostAddons, loadMyBoostAddonUsage, loadMyPlanUsage, loadMyTranslationAddonUsage, loadPublicPlanOffers, loadPublicPlans, loadTranslationAddons, remaining, type BoostAddon, type BoostAddonUsage, type PlanOffer, type PlanUsage, type PublicPlan, type TranslationAddon, type TranslationAddonUsage } from '@/lib/plan/planWeb';
 import styles from './PremiumPlanExperience.module.css';
 
 type Term = 1 | 3 | 6;
-type Tab = 'plans' | 'usage' | 'addons';
+type Tab = 'plans' | 'usage' | 'addons' | 'boosts';
 
 const copy = {
   th: {
-    eyebrow:'MELO CHAT LITE', title:'แพ็กเกต', plans:'แพ็กเกจ', usage:'My Plan / การใช้งาน', addons:'แพ็กเกจแปลภาษา', current:'แพ็กเกจปัจจุบัน', popular:'แนะนำ', choose:'เลือกแพ็กเกจ', contact:'ติดต่อทีมงานเพื่อสมัคร', checkoutLoading:'กำลังเปิดหน้าชำระเงิน…', checkoutError:'ไม่สามารถเปิดหน้าชำระเงินได้ กรุณาลองใหม่อีกครั้ง', free:'ฟรี', month:'เดือน', prepaid:'แพ็ก 3 และ 6 เดือนเป็นการจ่ายล่วงหน้าในราคาที่ถูกลง โดยโควตารีเซ็ตใหม่ทุก Billing Month', posts:'โพสต์โปรไฟล์', translation:'การแปล', profileBoost:'Profile Boost', postBoost:'Post Boost', high:'High Limit / Fair Use', chars:'ตัวอักษร', times:'ครั้ง', currentCycle:'รอบบิลปัจจุบัน', subscriptionEnd:'วันสิ้นสุดสมาชิก', nextReset:'รีเซ็ตครั้งถัดไป', used:'ใช้แล้ว', remaining:'คงเหลือ', unlimited:'High Limit / Fair Use', noAddon:'ยังไม่มี Translation Add-on', addonRule:'ซื้อเพิ่มได้เฉพาะ Premium / Premium+ และไม่สะสมข้าม Billing Month', buyAddon:'ซื้อ Add-on', loading:'กำลังโหลดข้อมูลแพ็กเกจ…', error:'ไม่สามารถโหลดข้อมูลแพ็กเกจได้', priority:'Priority Support', reset:'รีเซ็ตทุก Billing Month', mainPlanPeriod:'ระยะเวลาแพ็กเกจหลัก', translationPlanPeriod:'ระยะเวลาแพ็กเกจแปลภาษา', purchasedAt:'วันที่ซื้อ', addonExpires:'หมดอายุ', addonNone:'ยังไม่มีแพ็กเกจแปลภาษาที่ใช้งานอยู่', mainPlanUsage:'การใช้งานแพ็กเกจหลัก', addonUsage:'การใช้งานแพ็กเกจแปลภาษา'
+    eyebrow:'MELO CHAT LITE', title:'แพ็กเกต', plans:'แพ็กเกจ', usage:'My Plan / การใช้งาน', addons:'แพ็กเกจแปลภาษา', boosts:'Boost Add-ons', current:'แพ็กเกจปัจจุบัน', popular:'แนะนำ', choose:'เลือกแพ็กเกจ', contact:'ติดต่อทีมงานเพื่อสมัคร', checkoutLoading:'กำลังเปิดหน้าชำระเงิน…', checkoutError:'ไม่สามารถเปิดหน้าชำระเงินได้ กรุณาลองใหม่อีกครั้ง', checkoutAuth:'เซสชันเข้าสู่ระบบหมดอายุ กรุณาเข้าสู่ระบบใหม่', checkoutUnavailable:'แพ็กเกจนี้ไม่พร้อมจำหน่ายในขณะนี้', checkoutConfig:'ระบบชำระเงินยังตั้งค่าไม่สมบูรณ์ กรุณาติดต่อผู้ดูแลระบบ', checkoutStripe:'Stripe ไม่สามารถสร้างหน้าชำระเงินได้', addonNotEligible:'แพ็กเกจปัจจุบันไม่สามารถซื้อ Translation Add-on นี้ได้', diagnostic:'รหัสตรวจสอบ', free:'ฟรี', month:'เดือน', prepaid:'แพ็ก 3 และ 6 เดือนเป็นการจ่ายล่วงหน้าในราคาที่ถูกลง โดยโควตารีเซ็ตใหม่ทุก Billing Month', posts:'โพสต์โปรไฟล์', translation:'การแปล', profileBoost:'Profile Boost', postBoost:'Post Boost', high:'High Limit / Fair Use', chars:'ตัวอักษร', times:'ครั้ง', currentCycle:'รอบบิลปัจจุบัน', subscriptionEnd:'วันสิ้นสุดสมาชิก', nextReset:'รีเซ็ตครั้งถัดไป', used:'ใช้แล้ว', remaining:'คงเหลือ', unlimited:'High Limit / Fair Use', noAddon:'ยังไม่มี Translation Add-on', addonRule:'ซื้อเพิ่มได้เฉพาะ Premium / Premium+ และไม่สะสมข้าม Billing Month', buyAddon:'ซื้อ Add-on', loading:'กำลังโหลดข้อมูลแพ็กเกจ…', error:'ไม่สามารถโหลดข้อมูลแพ็กเกจได้', priority:'Priority Support', reset:'รีเซ็ตทุก Billing Month', mainPlanPeriod:'ระยะเวลาแพ็กเกจหลัก', translationPlanPeriod:'ระยะเวลาแพ็กเกจแปลภาษา', purchasedAt:'วันที่ซื้อ', addonExpires:'หมดอายุ', addonNone:'ยังไม่มีแพ็กเกจแปลภาษาที่ใช้งานอยู่', mainPlanUsage:'การใช้งานแพ็กเกจหลัก', addonUsage:'การใช้งานแพ็กเกจแปลภาษา', buyBoost:'ซื้อ Boost', boostRule:'Boost Add-ons รวม Profile Boost + Post Boost ในแพ็กเดียว เครดิตแยกจากโควตารายเดือน และมีอายุ 90 วัน', boostCredits:'เครดิต', creditDays:'วัน', boostUsed:'ใช้แล้ว', boostRemaining:'คงเหลือ', confirmTitle:'ยืนยันการซื้อแพ็กเกจ', cancel:'ยกเลิก', continuePayment:'ไปชำระเงิน', currentUntil:'คุณมี {plan} ใช้งานได้ถึง {date}', buyMore:'คุณต้องการซื้อ {plan} {months} เดือนเพิ่มหรือไม่?' 
   },
   en: {
-    eyebrow:'MELO CHAT LITE', title:'Package', plans:'Plans', usage:'My Plan / Usage', addons:'Translation Add-ons', current:'Current plan', popular:'Popular', choose:'Choose plan', contact:'Contact support to subscribe', checkoutLoading:'Opening secure checkout…', checkoutError:'Unable to open checkout. Please try again.', free:'Free', month:'month', prepaid:'3- and 6-month plans are prepaid at a lower price. Usage limits still reset every billing month.', posts:'Profile posts', translation:'Translation', profileBoost:'Profile Boost', postBoost:'Post Boost', high:'High Limit / Fair Use', chars:'characters', times:'times', currentCycle:'Current billing cycle', subscriptionEnd:'Subscription end', nextReset:'Next reset', used:'Used', remaining:'Remaining', unlimited:'High Limit / Fair Use', noAddon:'No Translation Add-on', addonRule:'Available only to Premium / Premium+. Add-on quota does not roll over to the next billing month.', buyAddon:'Buy add-on', loading:'Loading plan information…', error:'Unable to load plan information', priority:'Priority Support', reset:'Resets every billing month', mainPlanPeriod:'Main package period', translationPlanPeriod:'Translation package period', purchasedAt:'Purchased', addonExpires:'Expires', addonNone:'No active translation package', mainPlanUsage:'Main package usage', addonUsage:'Translation add-on usage'
+    eyebrow:'MELO CHAT LITE', title:'Package', plans:'Plans', usage:'My Plan / Usage', addons:'Translation Add-ons', boosts:'Boost Add-ons', current:'Current plan', popular:'Popular', choose:'Choose plan', contact:'Contact support to subscribe', checkoutLoading:'Opening secure checkout…', checkoutError:'Unable to open checkout. Please try again.', checkoutAuth:'Your login session has expired. Please sign in again.', checkoutUnavailable:'This package is currently unavailable for purchase.', checkoutConfig:'Payment configuration is incomplete. Please contact the administrator.', checkoutStripe:'Stripe could not create the checkout session.', addonNotEligible:'Your current plan is not eligible for this Translation Add-on.', diagnostic:'Diagnostic code', free:'Free', month:'month', prepaid:'3- and 6-month plans are prepaid at a lower price. Usage limits still reset every billing month.', posts:'Profile posts', translation:'Translation', profileBoost:'Profile Boost', postBoost:'Post Boost', high:'High Limit / Fair Use', chars:'characters', times:'times', currentCycle:'Current billing cycle', subscriptionEnd:'Subscription end', nextReset:'Next reset', used:'Used', remaining:'Remaining', unlimited:'High Limit / Fair Use', noAddon:'No Translation Add-on', addonRule:'Available only to Premium / Premium+. Add-on quota does not roll over to the next billing month.', buyAddon:'Buy add-on', loading:'Loading plan information…', error:'Unable to load plan information', priority:'Priority Support', reset:'Resets every billing month', mainPlanPeriod:'Main package period', translationPlanPeriod:'Translation package period', purchasedAt:'Purchased', addonExpires:'Expires', addonNone:'No active translation package', mainPlanUsage:'Main package usage', addonUsage:'Translation add-on usage', buyBoost:'Buy Boost', boostRule:'Each Boost Add-on includes both Profile Boost and Post Boost. Credits are separate from monthly plan boosts and expire after 90 days.', boostCredits:'Credits', creditDays:'days', boostUsed:'Used', boostRemaining:'Remaining', confirmTitle:'Confirm package purchase', cancel:'Cancel', continuePayment:'Continue to payment', currentUntil:'You have {plan} active until {date}', buyMore:'Do you want to buy {plan} for {months} more month(s)?' 
   },
   de: {
-    eyebrow:'MELO CHAT LITE', title:'Pakete', plans:'Pakete', usage:'Mein Plan / Nutzung', addons:'Übersetzungs-Add-ons', current:'Aktueller Plan', popular:'Beliebt', choose:'Paket wählen', contact:'Support für Abschluss kontaktieren', checkoutLoading:'Sichere Zahlung wird geöffnet…', checkoutError:'Checkout konnte nicht geöffnet werden. Bitte erneut versuchen.', free:'Kostenlos', month:'Monat', prepaid:'3- und 6-Monats-Pakete werden günstiger im Voraus bezahlt. Nutzungslimits werden trotzdem jeden Abrechnungsmonat zurückgesetzt.', posts:'Profilbeiträge', translation:'Übersetzung', profileBoost:'Profil-Boost', postBoost:'Beitrags-Boost', high:'Hohes Limit / Fair Use', chars:'Zeichen', times:'Mal', currentCycle:'Aktueller Abrechnungszeitraum', subscriptionEnd:'Abo-Ende', nextReset:'Nächster Reset', used:'Verbraucht', remaining:'Verbleibend', unlimited:'Hohes Limit / Fair Use', noAddon:'Kein Übersetzungs-Add-on', addonRule:'Nur für Premium / Premium+. Add-on-Kontingent wird nicht in den nächsten Abrechnungsmonat übertragen.', buyAddon:'Add-on kaufen', loading:'Paketdaten werden geladen…', error:'Paketdaten konnten nicht geladen werden', priority:'Priority Support', reset:'Reset jeden Abrechnungsmonat', mainPlanPeriod:'Laufzeit Hauptpaket', translationPlanPeriod:'Laufzeit Übersetzungspaket', purchasedAt:'Gekauft', addonExpires:'Läuft ab', addonNone:'Kein aktives Übersetzungspaket', mainPlanUsage:'Nutzung des Hauptpakets', addonUsage:'Nutzung der Übersetzungs-Add-ons'
+    eyebrow:'MELO CHAT LITE', title:'Pakete', plans:'Pakete', usage:'Mein Plan / Nutzung', addons:'Übersetzungs-Add-ons', boosts:'Boost-Add-ons', current:'Aktueller Plan', popular:'Beliebt', choose:'Paket wählen', contact:'Support für Abschluss kontaktieren', checkoutLoading:'Sichere Zahlung wird geöffnet…', checkoutError:'Checkout konnte nicht geöffnet werden. Bitte erneut versuchen.', checkoutAuth:'Deine Anmeldesitzung ist abgelaufen. Bitte melde dich erneut an.', checkoutUnavailable:'Dieses Paket ist derzeit nicht zum Kauf verfügbar.', checkoutConfig:'Die Zahlungskonfiguration ist unvollständig. Bitte kontaktiere den Administrator.', checkoutStripe:'Stripe konnte keine Checkout-Sitzung erstellen.', addonNotEligible:'Dein aktueller Plan ist für dieses Übersetzungs-Add-on nicht berechtigt.', diagnostic:'Diagnosecode', free:'Kostenlos', month:'Monat', prepaid:'3- und 6-Monats-Pakete werden günstiger im Voraus bezahlt. Nutzungslimits werden trotzdem jeden Abrechnungsmonat zurückgesetzt.', posts:'Profilbeiträge', translation:'Übersetzung', profileBoost:'Profil-Boost', postBoost:'Beitrags-Boost', high:'Hohes Limit / Fair Use', chars:'Zeichen', times:'Mal', currentCycle:'Aktueller Abrechnungszeitraum', subscriptionEnd:'Abo-Ende', nextReset:'Nächster Reset', used:'Verbraucht', remaining:'Verbleibend', unlimited:'Hohes Limit / Fair Use', noAddon:'Kein Übersetzungs-Add-on', addonRule:'Nur für Premium / Premium+. Add-on-Kontingent wird nicht in den nächsten Abrechnungsmonat übertragen.', buyAddon:'Add-on kaufen', loading:'Paketdaten werden geladen…', error:'Paketdaten konnten nicht geladen werden', priority:'Priority Support', reset:'Reset jeden Abrechnungsmonat', mainPlanPeriod:'Laufzeit Hauptpaket', translationPlanPeriod:'Laufzeit Übersetzungspaket', purchasedAt:'Gekauft', addonExpires:'Läuft ab', addonNone:'Kein aktives Übersetzungspaket', mainPlanUsage:'Nutzung des Hauptpakets', addonUsage:'Nutzung der Übersetzungs-Add-ons', buyBoost:'Boost kaufen', boostRule:'Jedes Boost-Add-on enthält Profil-Boosts und Beitrags-Boosts. Das Guthaben ist vom Monatsplan getrennt und 90 Tage gültig.', boostCredits:'Guthaben', creditDays:'Tage', boostUsed:'Verbraucht', boostRemaining:'Verbleibend', confirmTitle:'Paketkauf bestätigen', cancel:'Abbrechen', continuePayment:'Weiter zur Zahlung', currentUntil:'Du hast {plan} bis {date} aktiv', buyMore:'Möchtest du {plan} für weitere {months} Monat(e) kaufen?' 
   }
 } as const;
 
@@ -36,13 +36,17 @@ export default function PremiumPlanExperience(){
   const [offers,setOffers]=useState<PlanOffer[]>([]);
   const [checkoutOfferId,setCheckoutOfferId]=useState<string|null>(null);
   const [checkoutAddonId,setCheckoutAddonId]=useState<string|null>(null);
+  const [checkoutBoostId,setCheckoutBoostId]=useState<string|null>(null);
+  const [pendingPlan,setPendingPlan]=useState<PublicPlan|null>(null);
   const [checkoutError,setCheckoutError]=useState('');
   const [addons,setAddons]=useState<TranslationAddon[]>([]);
   const [addonUsage,setAddonUsage]=useState<TranslationAddonUsage[]>([]);
+  const [boosts,setBoosts]=useState<BoostAddon[]>([]);
+  const [boostUsage,setBoostUsage]=useState<BoostAddonUsage[]>([]);
   const [loading,setLoading]=useState(true);
   const [error,setError]=useState('');
 
-  useEffect(()=>{let active=true;(async()=>{setLoading(true);setError('');try{const [p,o,u,a,au]=await Promise.all([loadPublicPlans(),loadPublicPlanOffers(),loadMyPlanUsage(),loadTranslationAddons().catch(()=>[]),loadMyTranslationAddonUsage().catch(()=>[])]);if(!active)return;setPlans(p);setOffers(o);setUsage(u);setAddons(a);setAddonUsage(au)}catch(e){if(active)setError(e instanceof Error?e.message:t.error)}finally{if(active)setLoading(false)}})();return()=>{active=false}},[t.error]);
+  useEffect(()=>{let active=true;(async()=>{setLoading(true);setError('');try{const [p,o,u,a,au,b,bu]=await Promise.all([loadPublicPlans(),loadPublicPlanOffers(),loadMyPlanUsage(),loadTranslationAddons().catch(()=>[]),loadMyTranslationAddonUsage().catch(()=>[]),loadBoostAddons().catch(()=>[]),loadMyBoostAddonUsage().catch(()=>[])]);if(!active)return;setPlans(p);setOffers(o);setUsage(u);setAddons(a);setAddonUsage(au);setBoosts(b);setBoostUsage(bu)}catch(e){if(active)setError(e instanceof Error?e.message:t.error)}finally{if(active)setLoading(false)}})();return()=>{active=false}},[t.error]);
 
   const currentCode=usage?.plan_code||'free';
   const ordered=useMemo(()=>plans.length?plans:[
@@ -53,12 +57,87 @@ export default function PremiumPlanExperience(){
   const offerFor=(p:PublicPlan)=>offers.find(o=>o.plan_id===p.id&&Number(o.duration_months)===term);
   const effectivePrice=(offer:PlanOffer|undefined)=>{if(!offer)return 0;const now=Date.now();const start=offer.promotion_start?Date.parse(offer.promotion_start):null;const end=offer.promotion_end?Date.parse(offer.promotion_end):null;const promo=offer.promotion_enabled&&offer.promotion_price!=null&&(start==null||now>=start)&&(end==null||now<end);return Number(promo?offer.promotion_price:offer.regular_price)||0};
   const price=(p:PublicPlan)=>{const offer=offerFor(p);return offer?effectivePrice(offer):(Number(term===3?p.price_3_months:term===6?p.price_6_months:p.price_1_month)||0)};
-  const checkout=async(plan:PublicPlan)=>{const offer=offerFor(plan);if(!offer||checkoutOfferId)return;setCheckoutError('');setCheckoutOfferId(offer.id);try{const refreshed=await refreshStoredSession().catch(()=>null);const session=refreshed??getStoredSession();if(!session?.access_token)throw new Error('AUTH_REQUIRED');const response=await fetch('/api/stripe/create-checkout',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({offer_id:offer.id})});const payload=await response.json().catch(()=>({}));if(!response.ok||typeof payload?.url!=='string')throw new Error(typeof payload?.error==='string'?payload.error:t.checkoutError);window.location.assign(payload.url)}catch(e){setCheckoutError(t.checkoutError);setCheckoutOfferId(null)}};
-  const checkoutAddon=async(addon:TranslationAddon)=>{if(checkoutAddonId||checkoutOfferId)return;setCheckoutError('');setCheckoutAddonId(addon.id);try{const refreshed=await refreshStoredSession().catch(()=>null);const session=refreshed??getStoredSession();if(!session?.access_token)throw new Error('AUTH_REQUIRED');const response=await fetch('/api/stripe/create-addon-checkout',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({addon_id:addon.id})});const payload=await response.json().catch(()=>({}));if(!response.ok||typeof payload?.url!=='string')throw new Error(typeof payload?.error==='string'?payload.error:t.checkoutError);window.location.assign(payload.url)}catch(e){setCheckoutError(t.checkoutError);setCheckoutAddonId(null)}};
+  const checkout=async(plan:PublicPlan)=>{
+    const offer=offerFor(plan);
+    if(!offer||checkoutOfferId)return;
+    setCheckoutError('');
+    setCheckoutOfferId(offer.id);
+    try{
+      const refreshed=await refreshStoredSession().catch(()=>null);
+      const session=refreshed??getStoredSession();
+      if(!session?.access_token)throw new Error('AUTH_REQUIRED');
+      const response=await fetch('/api/stripe/create-checkout',{
+        method:'POST',
+        headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},
+        body:JSON.stringify({offer_id:offer.id})
+      });
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok||typeof payload?.url!=='string'){
+        const code=typeof payload?.code==='string'?payload.code:'CHECKOUT_ERROR';
+        const details=payload?.details&&typeof payload.details==='object'?payload.details:{};
+        const stripeCode=typeof details?.stripe_code==='string'?details.stripe_code:'';
+        const requestId=typeof details?.request_id==='string'?details.request_id:'';
+        const mode=details?.stripe_mode==='live'||details?.stripe_mode==='sandbox'?details.stripe_mode:'';
+        const upstreamStatus=typeof details?.upstream_status==='number'?details.upstream_status:null;
+        const serverMessage=typeof payload?.error==='string'?payload.error:'';
+        let message: string=t.checkoutError;
+        if(response.status===401||code==='AUTH_REQUIRED'||code==='AUTH_VERIFY_FAILED'||code==='AUTH_USER_MISSING')message=t.checkoutAuth;
+        else if(code==='SUPABASE_CONFIG_MISSING'||code==='STRIPE_MODE_INVALID'||code==='STRIPE_KEY_MISSING'||code==='STRIPE_KEY_MISMATCH')message=t.checkoutConfig;
+        else if(code==='OFFER_NOT_FOUND'||code==='OFFER_UNAVAILABLE'||response.status===404||response.status===409)message=t.checkoutUnavailable;
+        else if(code==='STRIPE_SESSION_CREATE'||code==='STRIPE_URL_MISSING')message=t.checkoutStripe;
+        else if(serverMessage)message=serverMessage;
+        const diagnostic=[code,stripeCode,mode?`mode:${mode}`:'',requestId?`req:${requestId}`:'',upstreamStatus?`upstream:${upstreamStatus}`:''].filter(Boolean).join(' · ');
+        setCheckoutError(diagnostic?`${message} (${t.diagnostic}: ${diagnostic})`:message);
+        return;
+      }
+      window.location.assign(payload.url);
+    }catch(e){
+      setCheckoutError(e instanceof Error&&e.message==='AUTH_REQUIRED'?t.checkoutAuth:t.checkoutError);
+    }finally{
+      setCheckoutOfferId(null);
+    }
+  };
+  const checkoutAddon=async(addon:TranslationAddon)=>{
+    if(checkoutAddonId||checkoutOfferId)return;
+    setCheckoutError('');
+    setCheckoutAddonId(addon.id);
+    try{
+      const refreshed=await refreshStoredSession().catch(()=>null);
+      const session=refreshed??getStoredSession();
+      if(!session?.access_token)throw new Error('AUTH_REQUIRED');
+      const response=await fetch('/api/stripe/create-addon-checkout',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({addon_id:addon.id})});
+      const payload=await response.json().catch(()=>({}));
+      if(!response.ok||typeof payload?.url!=='string'){
+        const code=typeof payload?.code==='string'?payload.code:'CHECKOUT_ERROR';
+        const serverMessage=typeof payload?.error==='string'?payload.error:'';
+        const stripeCode=typeof payload?.stripe_code==='string'?payload.stripe_code:'';
+        const mode=typeof payload?.mode==='string'?payload.mode:'';
+        const requestId=typeof payload?.request_id==='string'?payload.request_id:'';
+        const upstreamStatus=typeof payload?.upstream_status==='number'?String(payload.upstream_status):'';
+        let message:string=t.checkoutError;
+        if(response.status===401||code==='AUTH_REQUIRED')message=t.checkoutAuth;
+        else if(code==='PLAN_NOT_ELIGIBLE')message=t.addonNotEligible;
+        else if(code==='ADDON_NOT_FOUND'||code==='ADDON_UNAVAILABLE'||response.status===404||response.status===409)message=t.checkoutUnavailable;
+        else if(code==='SUPABASE_CONFIG_MISSING'||code==='STRIPE_MODE_INVALID'||code==='STRIPE_KEY_MISSING'||code==='STRIPE_KEY_MISMATCH')message=t.checkoutConfig;
+        else if(code==='STRIPE_SESSION_CREATE'||code==='STRIPE_URL_MISSING')message=t.checkoutStripe;
+        else if(serverMessage)message=serverMessage;
+        const diagnostic=[code,stripeCode,mode?`mode:${mode}`:'',requestId?`req:${requestId}`:'',upstreamStatus?`upstream:${upstreamStatus}`:''].filter(Boolean).join(' · ');
+        setCheckoutError(diagnostic?`${message} (${t.diagnostic}: ${diagnostic})`:message);
+        return;
+      }
+      window.location.assign(payload.url);
+    }catch(e){
+      setCheckoutError(e instanceof Error&&e.message==='AUTH_REQUIRED'?t.checkoutAuth:t.checkoutError);
+    }finally{
+      setCheckoutAddonId(null);
+    }
+  };
+
+  const checkoutBoost=async(addon:BoostAddon)=>{if(checkoutBoostId||checkoutAddonId||checkoutOfferId)return;setCheckoutError('');setCheckoutBoostId(addon.id);try{const refreshed=await refreshStoredSession().catch(()=>null);const session=refreshed??getStoredSession();if(!session?.access_token)throw new Error('AUTH_REQUIRED');const response=await fetch('/api/stripe/create-boost-checkout',{method:'POST',headers:{'Content-Type':'application/json',Authorization:`Bearer ${session.access_token}`},body:JSON.stringify({addon_id:addon.id})});const payload=await response.json().catch(()=>({}));if(!response.ok||typeof payload?.url!=='string')throw new Error(typeof payload?.error==='string'?payload.error:t.checkoutError);window.location.assign(payload.url)}catch(e){setCheckoutError(t.checkoutError);setCheckoutBoostId(null)}};
 
   return <main className={styles.page}><Header/><section className={styles.shell}>
     <header className={styles.hero}><div><small>{t.eyebrow}</small><h1>{t.title}</h1></div></header>
-    <nav className={styles.tabs}><button data-active={tab==='plans'} onClick={()=>setTab('plans')}>{t.plans}</button><button data-active={tab==='addons'} onClick={()=>setTab('addons')}>{t.addons}</button><button data-active={tab==='usage'} onClick={()=>setTab('usage')}>{t.usage}</button></nav>
+    <nav className={styles.tabs}><button data-active={tab==='plans'} onClick={()=>{setCheckoutError('');setTab('plans')}}>{t.plans}</button><button data-active={tab==='addons'} onClick={()=>{setCheckoutError('');setTab('addons')}}>{t.addons}</button><button data-active={tab==='boosts'} onClick={()=>{setCheckoutError('');setTab('boosts')}}>{t.boosts}</button><button data-active={tab==='usage'} onClick={()=>{setCheckoutError('');setTab('usage')}}>{t.usage}</button></nav>
     {loading?<div className={styles.state}>{t.loading}</div>:error?<div className={styles.state}>{error}</div>:null}
     {!loading&&!error&&tab==='plans'?<>
       <div className={styles.termSwitch}>{([1,3,6] as Term[]).map(v=><button key={v} data-active={term===v} onClick={()=>setTerm(v)}>{v} {t.month}</button>)}</div>
@@ -67,7 +146,7 @@ export default function PremiumPlanExperience(){
       <div className={styles.planGrid}>{ordered.map(plan=>{const code=String(plan.code);const current=code===currentCode;const offer=offerFor(plan);const checkingOut=checkoutOfferId===offer?.id;return <article key={code} className={code==='premium'?styles.featured:''}>
         <div className={styles.planTop}><small>{current?t.current:code==='premium'?t.popular:'PLAN'}</small><h2>{plan.name}</h2><strong>{price(plan)===0?t.free:`฿${price(plan).toLocaleString()}`}</strong></div>
         <ul><li>{t.posts}: <b>{plan.high_post_limit||plan.profile_post_limit==null?t.high:`${num(plan.profile_post_limit)} / ${t.month}`}</b></li><li>{t.translation}: <b>{num(plan.translation_monthly_limit)} {t.chars} / {t.month}</b></li><li>{t.profileBoost}: <b>{num(plan.profile_boost_monthly_limit)} {t.times} / {t.month}</b></li><li>{t.postBoost}: <b>{num(plan.post_boost_monthly_limit)} {t.times} / {t.month}</b></li>{plan.priority_support?<li>{t.priority}</li>:null}</ul>
-        <button disabled={current||code==='free'||!offer||checkoutOfferId!==null} onClick={()=>checkout(plan)}>{checkingOut?t.checkoutLoading:current?t.current:code==='free'?t.free:t.choose}</button>
+        <button disabled={code==='free'||!offer||checkoutOfferId!==null} onClick={()=>setPendingPlan(plan)}>{checkingOut?t.checkoutLoading:code==='free'?t.free:t.choose}</button>
       </article>})}</div>
     </>:null}
     {!loading&&!error&&tab==='usage'&&usage?<div className={styles.usageGrid}>
@@ -78,8 +157,11 @@ export default function PremiumPlanExperience(){
       <Usage title={t.posts} used={Number(usage.profile_posts_used||0)} limit={usage.profile_post_limit==null?null:Number(usage.profile_post_limit)} unit="" unlimited={usage.high_post_limit?t.unlimited:undefined}/>
       <article className={styles.summary}><small>{t.translationPlanPeriod}</small><h2>{addonUsage.length?t.addons:t.addonNone}</h2>{!addonUsage.length?<p className={styles.prepaid}>{t.addonNone}</p>:<p className={styles.prepaid}>{t.addonUsage}</p>}</article>
       {addonUsage.map(item=><Usage key={item.id} title={item.translation_addons?.name||t.addons} used={Number(item.character_used||0)} limit={Number(item.character_limit||0)} unit={t.chars} note={`${t.purchasedAt}: ${fmtDate(item.created_at,lang)} · ${t.addonExpires}: ${fmtDate(item.cycle_end,lang)}`} />)}
+      {boostUsage.map(item=><Usage key={item.id} title={`${item.boost_type==='profile'?t.profileBoost:t.postBoost} · ${t.boostCredits}`} used={Number(item.credit_used||0)} limit={Number(item.credit_total||0)} unit={t.times} note={`${t.purchasedAt}: ${fmtDate(item.purchased_at,lang)} · ${t.addonExpires}: ${fmtDate(item.expires_at,lang)}`} />)}
     </div>:null}
-    {!loading&&!error&&tab==='addons'?<><p className={styles.prepaid}>{t.addonRule}</p>{checkoutError?<div className={styles.state}>{checkoutError}</div>:null}<div className={styles.addonGrid}>{addons.length?addons.map(addon=>{const checkingOut=checkoutAddonId===addon.id;return <article key={addon.id}><small>TRANSLATION</small><h3>{addon.name}</h3><strong>฿{Number(addon.price).toLocaleString()}</strong><p>+{Number(addon.translation_characters).toLocaleString()} {t.chars}</p><button disabled={!usage?.can_buy_translation_addon||checkoutAddonId!==null||checkoutOfferId!==null} onClick={()=>checkoutAddon(addon)}>{checkingOut?t.checkoutLoading:t.buyAddon}</button></article>}):<div className={styles.state}>{t.noAddon}</div>}</div></>:null}
+    {!loading&&!error&&tab==='addons'?<><p className={styles.prepaid}>{t.addonRule}</p>{checkoutError?<div className={styles.state}>{checkoutError}</div>:null}<div className={styles.addonGrid}>{addons.length?addons.map(addon=>{const checkingOut=checkoutAddonId===addon.id;const eligiblePlans=Array.isArray(addon.eligible_plans)?addon.eligible_plans.map(v=>String(v).trim().toLowerCase()):[];const addonEligible=eligiblePlans.length===0||eligiblePlans.includes(String(currentCode).trim().toLowerCase());return <article key={addon.id}><small>TRANSLATION</small><h3>{addon.name}</h3><strong>฿{Number(addon.price).toLocaleString()}</strong><p>+{Number(addon.translation_characters).toLocaleString()} {t.chars}</p><button disabled={!addonEligible||checkoutAddonId!==null||checkoutOfferId!==null} title={!addonEligible?t.addonNotEligible:undefined} onClick={()=>checkoutAddon(addon)}>{checkingOut?t.checkoutLoading:t.buyAddon}</button></article>}):<div className={styles.state}>{t.noAddon}</div>}</div></>:null}
+    {!loading&&!error&&tab==='boosts'?<><p className={styles.prepaid}>{t.boostRule}</p>{checkoutError?<div className={styles.state}>{checkoutError}</div>:null}<div className={styles.boostGrid}>{boosts.map(addon=><article key={addon.id} className={addon.badge_label?styles.boostFeatured:undefined}><div className={styles.boostCardHead}><small>BOOST ADD-ON</small>{addon.badge_label?<span className={styles.boostBadge}>{addon.badge_label}</span>:null}</div><h3>{addon.name}</h3><strong>฿{Number(addon.price).toLocaleString()}</strong><div className={styles.boostEntitlements}><p><span>{t.profileBoost}</span><b>{Number(addon.profile_boost_count).toLocaleString()} {t.times}</b></p><p><span>{t.postBoost}</span><b>{Number(addon.post_boost_count).toLocaleString()} {t.times}</b></p></div><small className={styles.boostExpiry}>{addon.credit_days} {t.creditDays}</small><button disabled={checkoutBoostId!==null||checkoutAddonId!==null||checkoutOfferId!==null} onClick={()=>checkoutBoost(addon)}>{checkoutBoostId===addon.id?t.checkoutLoading:t.buyBoost}</button></article>)}</div></>:null}
+    {pendingPlan?<div className={styles.modalBackdrop} role="presentation" onMouseDown={()=>setPendingPlan(null)}><div className={styles.modalCard} role="dialog" aria-modal="true" onMouseDown={e=>e.stopPropagation()}><h3>{t.confirmTitle}</h3><p>{t.currentUntil.replace('{plan}',usage?.plan_name||usage?.plan_code||'—').replace('{date}',fmtDate(usage?.subscription_end,lang))}</p><p>{t.buyMore.replace('{plan}',pendingPlan.name).replace('{months}',String(term))}</p><div className={styles.modalActions}><button onClick={()=>setPendingPlan(null)}>{t.cancel}</button><button onClick={()=>{const plan=pendingPlan;setPendingPlan(null);void checkout(plan)}}>{t.continuePayment}</button></div></div></div>:null}
   </section></main>
 }
 
