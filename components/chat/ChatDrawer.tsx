@@ -7,7 +7,6 @@ import { ChatConversationPane } from "./ChatConversationPane";
 import { canCurrentUserUseChat, ensureBusinessChatRoom, ensureDirectChatRoom, loadChatSnapshot, loadPartnerBusinessChatRooms, loadPinnedConversationIds, setConversationPinned, type ChatCategory, type ChatRoom, type ChatSnapshot } from "./chatData";
 import styles from "./ChatDrawer.module.css";
 import VerifiedUserAvatar from "@/components/profile/VerifiedUserAvatar";
-import PublicVerifiedBadge from "@/components/profile/PublicVerifiedBadge";
 import AdminSupportChat from "@/components/support/AdminSupportChat";
 import { loadLoveSnapshot, type DatingProfileWeb } from "@/components/connect/connectData";
 import { getCurrentUser } from "@/lib/supabase/browser";
@@ -595,8 +594,30 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
 
     if (partnerMode) void loadPartner();
     else if (chatAllowed) { void load(); void loadMatches(); }
-    const previousOverflow = document.body.style.overflow;
-    document.body.style.overflow = "hidden";
+    const body = document.body;
+    const previousOverflow = body.style.overflow;
+    const previousPosition = body.style.position;
+    const previousTop = body.style.top;
+    const previousLeft = body.style.left;
+    const previousRight = body.style.right;
+    const previousWidth = body.style.width;
+    const previousOverscroll = body.style.overscrollBehavior;
+    const lockedScrollY = window.scrollY;
+    const mobileDrawer = window.matchMedia("(max-width: 760px)").matches;
+
+    body.style.overflow = "hidden";
+    body.style.overscrollBehavior = "none";
+
+    // iOS Safari/PWA can pan the layout viewport when a textarea near the
+    // bottom receives focus. Lock the document itself while the mobile chat
+    // drawer is open so only the message list follows the software keyboard.
+    if (mobileDrawer) {
+      body.style.position = "fixed";
+      body.style.top = `-${lockedScrollY}px`;
+      body.style.left = "0";
+      body.style.right = "0";
+      body.style.width = "100%";
+    }
 
     const poll = window.setInterval(() => {
       if (partnerMode) void loadPartner();
@@ -621,7 +642,14 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
     window.addEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
 
     return () => {
-      document.body.style.overflow = previousOverflow;
+      body.style.overflow = previousOverflow;
+      body.style.position = previousPosition;
+      body.style.top = previousTop;
+      body.style.left = previousLeft;
+      body.style.right = previousRight;
+      body.style.width = previousWidth;
+      body.style.overscrollBehavior = previousOverscroll;
+      if (mobileDrawer) window.scrollTo(0, lockedScrollY);
       window.clearInterval(poll);
       window.removeEventListener("keydown", onKeyDown);
       window.removeEventListener("melo-chat-unread-changed", onUnreadChanged as EventListener);
@@ -833,7 +861,7 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
                         <VerifiedUserAvatar userId={profile.id} name={profile.name} src={profile.photoUrls?.[0] || ""} country={profile.country} nationality={profile.nationality} className={styles.avatar} shape="rounded" badgeSize={15} alt="" />
                         <span className={styles.roomCopy}>
                           <span>
-                            <strong>{profile.name}{profile.age ? `, ${profile.age}` : ""}<PublicVerifiedBadge userId={profile.id} size={15} /></strong>
+                            <strong>{profile.name}{profile.age ? `, ${profile.age}` : ""}</strong>
                             {existingRoom?.lastMessageAt ? <time>{formatTime(existingRoom.lastMessageAt, locale)}</time> : null}
                           </span>
                           <small>{profile.country || profile.nationality || t.matches}</small>
@@ -902,7 +930,7 @@ function UserChatDrawer({ open, onClose, partnerBusinessId = "" }: { open: boole
                 pagedVisibleRooms.map((room) => (
                   <div className={styles.roomRow} key={`${room.category}-${room.id}`} role="button" tabIndex={0} onClick={() => chooseRoom(room)} onKeyDown={(event) => { if (event.key === "Enter" || event.key === " ") { event.preventDefault(); chooseRoom(room); } }}>
                     <span className={styles.avatar}>{room.avatarUrl ? <img src={room.avatarUrl} alt="" /> : <b>{ICON[room.category]}</b>}</span>
-                    <span className={styles.roomCopy}><span><strong>{room.title}{room.category === "direct" && room.userId && !room.businessId ? <PublicVerifiedBadge userId={room.userId} size={15} /> : null}</strong><time>{formatTime(room.lastMessageAt, locale)}</time></span><small>{room.lastMessage || room.subtitle || t[room.category]}</small></span>
+                    <span className={styles.roomCopy}><span><strong>{room.title}</strong><time>{formatTime(room.lastMessageAt, locale)}</time></span><small>{room.lastMessage || room.subtitle || t[room.category]}</small></span>
                     {room.unreadCount > 0 ? <b className={styles.unreadBadge}>{room.unreadCount > 99 ? "99+" : room.unreadCount}</b> : null}
                     <span className={styles.chevron}>›</span>
                   </div>
