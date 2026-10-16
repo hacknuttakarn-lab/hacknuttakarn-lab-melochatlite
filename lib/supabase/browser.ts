@@ -280,11 +280,26 @@ export async function signUpWithPassword(email: string, password: string, redire
   const response = await fetch(`${url}/auth/v1/signup?redirect_to=${encodeURIComponent(sanitizePublicAuthRedirect(redirectTo, "/onboarding"))}`, {
     method: "POST", headers: headers(), body: JSON.stringify({ email: email.trim().toLowerCase(), password, ...(userData ? { data: userData } : {}) }),
   });
-  if (!response.ok) return { data: null, error: await readError(response) };
+  if (!response.ok) {
+    const rawError = await readError(response);
+    const lowered = rawError.toLowerCase();
+    if (lowered.includes("already registered") || lowered.includes("already exists") || lowered.includes("user already")) {
+      return { data: null, error: "EMAIL_ALREADY_REGISTERED" };
+    }
+    return { data: null, error: rawError };
+  }
   const payload = await response.json();
+  const candidateUser = payload?.user ?? payload ?? null;
+  const identities = Array.isArray(candidateUser?.identities) ? candidateUser.identities : null;
+  // With email confirmation enabled Supabase intentionally returns an obfuscated
+  // successful response for an existing address. An empty identities array is
+  // the documented signal that no new identity was created.
+  if (identities && identities.length === 0) {
+    return { data: null, error: "EMAIL_ALREADY_REGISTERED" };
+  }
   const session = payload?.access_token ? normalizeSession(payload as MeloSession) : null;
   if (session) saveSession(session);
-  return { data: { user: payload?.user ?? payload ?? null, session }, error: null };
+  return { data: { user: candidateUser, session }, error: null };
 }
 
 export async function sendPasswordReset(email: string, redirectTo: string): Promise<AuthResult<true>> {

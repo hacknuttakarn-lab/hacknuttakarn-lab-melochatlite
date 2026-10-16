@@ -10,6 +10,11 @@ import { getPublicAuthRedirectUrl, isSupabaseConfigured, signInWithGoogle, signU
 export default function RegisterPage() {
   const { locale } = useLocale();
   const copy = authCopy[locale];
+  const duplicateEmailMessage = locale === 'th'
+    ? 'อีเมลนี้มีบัญชี Melo อยู่แล้ว กรุณาเข้าสู่ระบบ หรือใช้เมนูลืมรหัสผ่านเพื่อกู้คืนบัญชีเดิม'
+    : locale === 'de'
+      ? 'Für diese E-Mail-Adresse besteht bereits ein Melo-Konto. Bitte melde dich an oder nutze „Passwort vergessen“, um das bestehende Konto wiederherzustellen.'
+      : 'This email already has a Melo account. Please sign in or use Forgot password to recover the existing account.';
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
@@ -54,7 +59,7 @@ export default function RegisterPage() {
     setBusy(true);
     const { error: signUpError } = await signUpWithPassword(email.trim(), password, getPublicAuthRedirectUrl("/onboarding"));
     setBusy(false);
-    if (signUpError) return setError(signUpError || copy.registerFailed);
+    if (signUpError) return setError(signUpError === 'EMAIL_ALREADY_REGISTERED' ? duplicateEmailMessage : (signUpError || copy.registerFailed));
     setSuccess(copy.checkEmail);
   }
 
