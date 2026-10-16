@@ -369,3 +369,63 @@
     height:52vh;
   }
 }
+
+/* =========================================================
+   V71 — Admin Users > Package: themed Plans / Translation tabs
+   ========================================================= */
+.packageAssignTabs{
+  display:inline-flex;
+  align-items:center;
+  gap:6px;
+  margin:0 0 16px;
+  padding:5px;
+  border:1px solid var(--border);
+  border-radius:14px;
+  background:var(--surface-2);
+  box-shadow:inset 0 1px 0 color-mix(in srgb,var(--text) 4%,transparent);
+}
+.packageAssignTabs button{
+  min-height:38px;
+  border:1px solid transparent;
+  border-radius:10px;
+  background:transparent;
+  color:var(--text-secondary);
+  padding:8px 14px;
+  font:inherit;
+  font-size:12px;
+  font-weight:850;
+  line-height:1.15;
+  white-space:nowrap;
+  cursor:pointer;
+  transition:background .18s ease,color .18s ease,border-color .18s ease,box-shadow .18s ease,transform .18s ease;
+}
+.packageAssignTabs button:hover:not([data-active=true]){
+  background:var(--surface-3);
+  color:var(--text);
+}
+.packageAssignTabs button[data-active=true]{
+  background:var(--primary);
+  border-color:var(--primary);
+  color:#fff;
+  box-shadow:0 6px 16px color-mix(in srgb,var(--primary) 24%,transparent);
+}
+.packageAssignTabs button:active{
+  transform:translateY(1px);
+}
+.packageAssignTabs button:focus-visible{
+  outline:3px solid color-mix(in srgb,var(--primary) 28%,transparent);
+  outline-offset:2px;
+}
+
+@media(max-width:600px){
+  .packageAssignTabs{
+    display:flex;
+    width:100%;
+    box-sizing:border-box;
+  }
+  .packageAssignTabs button{
+    flex:1 1 0;
+    min-width:0;
+    padding-inline:10px;
+  }
+}
